@@ -37,7 +37,13 @@ describe("app security", () => {
 
     expect(res.status).toBe(403);
     expect(res.headers.get("X-Request-Id")).toBeTruthy();
-    expect(await res.json()).toEqual({ error: "forbidden (csrf)" });
+    expect(await res.json()).toEqual({
+      error: {
+        code: "csrf_rejected",
+        message: "Forbidden",
+        requestId: expect.any(String),
+      },
+    });
   });
 
   it("blocks requests after the auth login rate limit is exhausted", async () => {
@@ -64,5 +70,37 @@ describe("app security", () => {
     expect(blocked.status).toBe(429);
     expect(blocked.headers.get("Retry-After")).toBeTruthy();
     expect(blocked.headers.get("X-Request-Id")).toBeTruthy();
+    expect(await blocked.json()).toEqual({
+      error: {
+        code: "too_many_requests",
+        message: "Too many requests",
+        requestId: expect.any(String),
+      },
+    });
+  });
+
+  it("returns a unified validation error shape", async () => {
+    const res = await app.fetch(
+      new Request("http://local.test/api/auth/login", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({}),
+      }),
+      createTestEnv()
+    );
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: {
+        code: "validation_error",
+        message: "Invalid request",
+        requestId: expect.any(String),
+        details: {
+          issues: expect.any(Array),
+        },
+      },
+    });
   });
 });

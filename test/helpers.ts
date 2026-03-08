@@ -1,4 +1,5 @@
 import { RateLimiter } from "../src/durable-objects/rate-limiter";
+import type { JobMessage } from "../src/queues/types";
 import type { Env } from "../src/types";
 
 class FakeDurableObjectStorage {
@@ -52,7 +53,22 @@ export function createRateLimiterNamespace(): DurableObjectNamespace {
   } as DurableObjectNamespace;
 }
 
+export function createJobQueue() {
+  const messages: JobMessage[] = [];
+
+  return {
+    messages,
+    queue: {
+      send: async (message: JobMessage) => {
+        messages.push(message);
+      },
+    } as Queue<JobMessage>,
+  };
+}
+
 export function createTestEnv(overrides: Partial<Env> = {}): Env {
+  const jobs = createJobQueue();
+
   return {
     DB: {} as D1Database,
     KV: {
@@ -62,6 +78,7 @@ export function createTestEnv(overrides: Partial<Env> = {}): Env {
       head: async () => null,
     } as R2Bucket,
     RATE_LIMITER: createRateLimiterNamespace(),
+    JOBS: jobs.queue,
     ASSETS: {
       fetch: async () => new Response("not found", { status: 404 }),
     } as Fetcher,

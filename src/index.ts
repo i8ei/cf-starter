@@ -14,6 +14,8 @@ import { resolveCorsOrigins } from "./lib/cors";
 import { logEvent } from "./lib/logging";
 import { RateLimiter } from "./durable-objects/rate-limiter";
 import { requestId } from "./middleware/request-id";
+import { jsonError } from "./lib/http";
+import { handleJobBatch } from "./queues/jobs";
 
 export const app = new Hono<AppContextEnv>()
   .use("*", requestId)
@@ -47,10 +49,7 @@ export const app = new Hono<AppContextEnv>()
       message: err.message,
       requestId: c.get("requestId"),
     });
-    return c.json(
-      { error: "Internal Server Error", requestId: c.get("requestId") },
-      500
-    );
+    return jsonError(c, 500, "internal_error", "Internal Server Error");
   })
   .route("/api/health", health)
   .route("/api/items", items)
@@ -68,4 +67,5 @@ export default {
       logEvent("info", "sessions.purged", { deleted });
     }
   },
+  queue: handleJobBatch,
 };

@@ -1,5 +1,6 @@
 import { createMiddleware } from "hono/factory";
 import type { AppContextEnv } from "../types";
+import { jsonError } from "../lib/http";
 import { getClientIp, logRequestEvent } from "../lib/logging";
 
 type RateLimitOptions = {
@@ -48,7 +49,7 @@ export function rateLimit(options: RateLimitOptions) {
         limit: options.maxRequests,
         count: result.count,
       });
-      return c.json({ error: "too many requests" }, 429);
+      return jsonError(c, 429, "too_many_requests", "Too many requests");
     }
 
     await next();

@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
 import { setCookie, deleteCookie } from "hono/cookie";
 import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
@@ -17,8 +16,11 @@ import {
   SESSION_MAX_AGE_SECONDS,
 } from "../lib/session";
 import { writeAuditLog } from "../lib/audit";
+import { jsonError } from "../lib/http";
 import { logRequestEvent } from "../lib/logging";
 import { ensureDefaultUserRole } from "../lib/rbac";
+import { validator } from "../lib/validator";
+import { enqueueJob } from "../queues/jobs";
 
 const PBKDF2_ITERATIONS = 310000;
 const PBKDF2_KEY_LENGTH = 32;
@@ -130,7 +132,7 @@ const app = new Hono<AppContextEnv>()
   .post(
     "/signup",
     rateLimit({ namespace: "auth-signup", maxRequests: 5, windowSeconds: 60 }),
-    zValidator("json", signupSchema),
+    validator("json", signupSchema),
     async (c) => {
       const db = drizzle(c.env.DB);
       const { email, password, name } = c.req.valid("json");
@@ -143,7 +145,7 @@ const app = new Hono<AppContextEnv>()
 
       if (existing) {
         logRequestEvent("warn", "auth.signup_conflict", c, {});
-        return c.json({ error: "email already registered" }, 409);
+        return jsonError(c, 409, "email_taken", "Email already registered");
       }
 
       const passwordHash = await hashPassword(password);
@@ -163,13 +165,22 @@ const app = new Hono<AppContextEnv>()
         status: 201,
         metadata: { roles },
       });
+      await enqueueJob(c.env.JOBS, {
+        type: "user.welcome",
+        payload: {
+          userId: user.id,
+          email: user.email,
+          name: user.name,
+          requestId: c.get("requestId"),
+        },
+      });
       return c.json({ id: user.id, email: user.email, name: user.name, roles }, 201);
     }
   )
   .post(
     "/login",
     rateLimit({ namespace: "auth-login", maxRequests: 10, windowSeconds: 60 }),
-    zValidator("json", loginSchema),
+    validator("json", loginSchema),
     async (c) => {
       const db = drizzle(c.env.DB);
       const { email, password } = c.req.valid("json");
@@ -190,7 +201,7 @@ const app = new Hono<AppContextEnv>()
           status: 401,
           metadata: { email },
         });
-        return c.json({ error: "invalid email or password" }, 401);
+        return jsonError(c, 401, "invalid_credentials", "Invalid email or password");
       }
 
       if (user.passwordHash.includes(":")) {
@@ -217,7 +228,9 @@ const app = new Hono<AppContextEnv>()
   .post("/logout", requireAuth, async (c) => {
     const db = drizzle(c.env.DB);
     const userId = c.get("userId");
-    if (!userId) return c.json({ error: "unauthorized" }, 401);
+    if (!userId) {
+      return jsonError(c, 401, "unauthorized", "Authentication required");
+    }
     const { sameSite, secure } = resolveCookieOptions(c.env);
 
     await db.delete(sessions).where(eq(sessions.userId, userId));
@@ -238,7 +251,9 @@ const app = new Hono<AppContextEnv>()
   .get("/me", requireAuth, async (c) => {
     const db = drizzle(c.env.DB);
     const userId = c.get("userId");
-    if (!userId) return c.json({ error: "unauthorized" }, 401);
+    if (!userId) {
+      return jsonError(c, 401, "unauthorized", "Authentication required");
+    }
     const roles = c.get("roles") ?? [];
 
     const [user] = await db
@@ -253,7 +268,7 @@ const app = new Hono<AppContextEnv>()
       .limit(1);
 
     if (!user) {
-      return c.json({ error: "user not found" }, 404);
+      return jsonError(c, 404, "not_found", "User not found");
     }
 
     return c.json({ ...user, roles });

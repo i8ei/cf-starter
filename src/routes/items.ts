@@ -1,11 +1,11 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
 import { items } from "../db/schema";
 import { desc } from "drizzle-orm";
 import { createItemSchema } from "../../shared/schemas/items";
 import type { AppContextEnv } from "../types";
 import { writeAuditLog } from "../lib/audit";
+import { validator } from "../lib/validator";
 
 const app = new Hono<AppContextEnv>()
   .get("/", async (c) => {
@@ -15,7 +15,7 @@ const app = new Hono<AppContextEnv>()
   })
   .post(
     "/",
-    zValidator("json", createItemSchema),
+    validator("json", createItemSchema),
     async (c) => {
       const db = drizzle(c.env.DB);
       const { name } = c.req.valid("json");

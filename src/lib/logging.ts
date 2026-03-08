@@ -35,22 +35,23 @@ export function logEvent(
   console.log(entry);
 }
 
+export function getRequestId(c: Context): string | undefined {
+  return "get" in c && typeof c.get === "function"
+    ? (c.get("requestId") as string | undefined)
+    : undefined;
+}
+
 export function logRequestEvent(
   level: LogLevel,
   event: string,
   c: Context,
   fields: Record<string, unknown> = {}
 ) {
-  const requestId =
-    "get" in c && typeof c.get === "function"
-      ? (c.get("requestId") as string | undefined)
-      : undefined;
-
   logEvent(level, event, {
     method: c.req.method,
     path: c.req.path,
     ip: getClientIp(c.req.raw.headers),
-    requestId: requestId ?? null,
+    requestId: getRequestId(c) ?? null,
     ...fields,
   });
 }

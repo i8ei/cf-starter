@@ -1,6 +1,7 @@
 import { createMiddleware } from "hono/factory";
 import type { AppContextEnv } from "../types";
 import { resolveCorsOrigins } from "../lib/cors";
+import { jsonError } from "../lib/http";
 import { logRequestEvent } from "../lib/logging";
 import { hasSessionCookie } from "../lib/session";
 
@@ -43,5 +44,5 @@ export const csrfProtection = createMiddleware<AppContextEnv>(async (c, next) =>
     origin: origin ?? null,
     referer: c.req.header("referer") ?? null,
   });
-  return c.json({ error: "forbidden (csrf)" }, 403);
+  return jsonError(c, 403, "csrf_rejected", "Forbidden");
 });

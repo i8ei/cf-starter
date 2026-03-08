@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { requireAuth } from "../middleware/auth";
 import type { AppContextEnv } from "../types";
 import { writeAuditLog } from "../lib/audit";
+import { jsonError } from "../lib/http";
+import { enqueueJob } from "../queues/jobs";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -22,9 +24,13 @@ const app = new Hono<AppContextEnv>()
   .post("/", async (c) => {
     const formData = await c.req.formData();
     const file = formData.get("file") as File | null;
-    if (!file) return c.json({ error: "file is required" }, 400);
+    if (!file) {
+      return jsonError(c, 400, "file_required", "File is required");
+    }
     if (file.size > MAX_FILE_SIZE) {
-      return c.json({ error: `file too large (max ${MAX_FILE_SIZE / 1024 / 1024}MB)` }, 400);
+      return jsonError(c, 400, "file_too_large", "File too large", {
+        maxBytes: MAX_FILE_SIZE,
+      });
     }
 
     const safeName = sanitizeFilename(file.name);
@@ -39,6 +45,15 @@ const app = new Hono<AppContextEnv>()
       resourceId: key,
       status: 201,
       metadata: { size: file.size, contentType: file.type || null },
+    });
+    await enqueueJob(c.env.JOBS, {
+      type: "upload.process",
+      payload: {
+        key,
+        size: file.size,
+        contentType: file.type || null,
+        requestId: c.get("requestId"),
+      },
     });
     return c.json({ key, size: file.size }, 201);
   });

@@ -14,6 +14,7 @@ cp して即開発。DB・ストレージ・キャッシュ・API・認証・フ
 | Storage | R2 (オブジェクトストレージ) |
 | Cache | KV (キーバリューストア) |
 | Rate Limit | Durable Object |
+| Async Jobs | Cloudflare Queues |
 | Validation | Zod (フロント・バック共有) |
 | Build | `@cloudflare/vite-plugin` (統合ビルド) |
 
@@ -42,6 +43,7 @@ npm run dev
 wrangler d1 create my-app-db
 wrangler kv namespace create KV
 wrangler r2 bucket create my-app-bucket
+wrangler queues create my-app-jobs
 
 # 2. wrangler.jsonc の bindings に返ってきた ID / name を記入
 #    CORS_ORIGIN も本番ドメインに設定（例: https://app.example.com）
@@ -118,6 +120,10 @@ cf-starter/
 | `POST /api/auth/logout` | ログアウト（要認証）                    |
 | `GET /api/auth/me`      | 現在のユーザーとロール取得（要認証）          |
 
+### エラー契約について
+
+エラー応答は `{ error: { code, message, requestId, details? } }` に統一している。バリデーションエラーも同じ形で返るので、フロント側で共通処理しやすい。
+
 ### 認証について
 
 D1 セッション + HttpOnly Cookie によるシンプルな実装。パスワードは PBKDF2 でハッシュ化。旧形式（`salt:sha256`）が残っていても、ログイン成功時に自動で PBKDF2 形式へ再ハッシュされる。
@@ -137,6 +143,10 @@ Cookie は `Secure=true` のとき `__Host-session`、`Secure=false` のとき�
 ### 監査ログについて
 
 `audit_logs` テーブルに `who did what` を残す共通 helper を入れてある。`signup/login/logout`、`item.create`、`kv.put`、`upload.create`、権限不足拒否が監査対象。
+
+### Queue について
+
+`JOBS` Queue binding を用意し、`signup` 時の `user.welcome` と `upload` 時の `upload.process` を sample job として enqueue する。consumer 側は Worker module の `queue()` handler で処理する。
 
 ### セッション掃除（Cron）
 
@@ -228,6 +238,7 @@ const app = new Hono<AppContextEnv>()
 - [ ] `wrangler.jsonc` の `vars.CORS_ORIGIN` を本番ドメインに変更（複数はカンマ区切り）
 - [ ] `wrangler.jsonc` の `vars.COOKIE_SAME_SITE` / `vars.COOKIE_SECURE` を配信形態に合わせて調整
 - [ ] `wrangler.jsonc` の Durable Object binding / migration を変更した場合は tag を進める
+- [ ] Queue 名をアプリ用に変更した場合は `wrangler.jsonc` の producer / consumer を揃える
 - [ ] 認証 Cookie を使う場合、フロントの API 呼び出しが `credentials: include` になっているか確認
 - [ ] Cron を使わない構成にする場合は `wrangler.jsonc` の `triggers.crons` を調整
 - [ ] auth レート制限（`src/routes/auth.ts`）の閾値を要件に合わせて調整

@@ -1,11 +1,12 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/require-role";
 import type { AppContextEnv } from "../types";
 import { writeAuditLog } from "../lib/audit";
+import { jsonError } from "../lib/http";
 import { ADMIN_ROLE } from "../lib/rbac";
+import { validator } from "../lib/validator";
 
 const keySchema = z.object({
   key: z
@@ -18,16 +19,18 @@ const keySchema = z.object({
 const app = new Hono<AppContextEnv>()
   .use("*", requireAuth)
   .use("*", requireRole(ADMIN_ROLE))
-  .get("/:key", zValidator("param", keySchema), async (c) => {
+  .get("/:key", validator("param", keySchema), async (c) => {
     const { key } = c.req.valid("param");
     const value = await c.env.KV.get(key);
-    if (value === null) return c.json({ error: "not found" }, 404);
+    if (value === null) {
+      return jsonError(c, 404, "not_found", "Resource not found");
+    }
     return c.json({ key, value });
   })
   .put(
     "/:key",
-    zValidator("param", keySchema),
-    zValidator("json", z.object({ value: z.string() })),
+    validator("param", keySchema),
+    validator("json", z.object({ value: z.string() })),
     async (c) => {
       const { key } = c.req.valid("param");
       const { value } = c.req.valid("json");

@@ -1,6 +1,7 @@
 import { createMiddleware } from "hono/factory";
 import type { AppContextEnv } from "../types";
 import { writeAuditLog } from "../lib/audit";
+import { jsonError } from "../lib/http";
 import { logRequestEvent } from "../lib/logging";
 import { hasRequiredRole } from "../lib/rbac";
 
@@ -12,7 +13,7 @@ export function requireRole(requiredRoles: string | string[]) {
     const assignedRoles = c.get("roles") ?? [];
 
     if (!userId) {
-      return c.json({ error: "unauthorized" }, 401);
+      return jsonError(c, 401, "unauthorized", "Authentication required");
     }
 
     if (!hasRequiredRole(assignedRoles, expected)) {
@@ -33,7 +34,7 @@ export function requireRole(requiredRoles: string | string[]) {
         },
       });
 
-      return c.json({ error: "forbidden" }, 403);
+      return jsonError(c, 403, "forbidden", "Forbidden");
     }
 
     await next();

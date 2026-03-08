@@ -30,6 +30,21 @@
       }
     ]
   },
+  "queues": {
+    "producers": [
+      {
+        "binding": "JOBS",
+        "queue": "cf-starter-jobs"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "cf-starter-jobs",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5
+      }
+    ]
+  },
   "migrations": [
     {
       "tag": "v1",

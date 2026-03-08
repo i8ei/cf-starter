@@ -4,11 +4,14 @@ import { eq } from "drizzle-orm";
 import { sessions } from "../db/schema";
 import type { AppContextEnv } from "../types";
 import { getSessionCookie } from "../lib/session";
+import { jsonError } from "../lib/http";
 import { getUserRoleNames } from "../lib/rbac";
 
 export const requireAuth = createMiddleware<AppContextEnv>(async (c, next) => {
   const sessionId = getSessionCookie(c);
-  if (!sessionId) return c.json({ error: "unauthorized" }, 401);
+  if (!sessionId) {
+    return jsonError(c, 401, "unauthorized", "Authentication required");
+  }
 
   const db = drizzle(c.env.DB);
   const [session] = await db
@@ -18,7 +21,7 @@ export const requireAuth = createMiddleware<AppContextEnv>(async (c, next) => {
     .limit(1);
 
   if (!session || session.expiresAt < new Date().toISOString()) {
-    return c.json({ error: "unauthorized" }, 401);
+    return jsonError(c, 401, "unauthorized", "Authentication required");
   }
 
   const roles = await getUserRoleNames(db, session.userId);
