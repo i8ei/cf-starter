@@ -15,7 +15,7 @@ const app = new Hono<{ Bindings: Env }>().get("/", async (c) => {
   }
 
   try {
-    await c.env.KV.put("_health", "ok");
+    await c.env.KV.get("_health");
     checks.kv = "ok";
   } catch {
     checks.kv = "error";

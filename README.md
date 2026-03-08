@@ -117,6 +117,8 @@ cf-starter/
 
 D1 セッション + HttpOnly Cookie によるシンプルな実装。パスワードは PBKDF2 でハッシュ化。旧形式（`salt:sha256`）が残っていても、ログイン成功時に自動で PBKDF2 形式へ再ハッシュされる。
 
+`/api/auth/signup` と `/api/auth/login` には KV ベースのレート制限（1分窓）を適用。ログイン成功時は既存セッションを失効して新しい1本に更新する。
+
 ### セッション掃除（Cron）
 
 `wrangler.jsonc` の Cron Trigger（デフォルト: 15分ごと）で期限切れセッションを自動削除する。`sessions.expires_at` にはインデックスを貼ってあるため、件数が増えても掃除が重くなりにくい。
@@ -185,6 +187,7 @@ const app = new Hono<{ Bindings: Env }>()
 - [ ] `wrangler.jsonc` の `vars.CORS_ORIGIN` を本番ドメインに変更（複数はカンマ区切り）
 - [ ] 認証 Cookie を使う場合、フロントの API 呼び出しが `credentials: include` になっているか確認
 - [ ] Cron を使わない構成にする場合は `wrangler.jsonc` の `triggers.crons` を調整
+- [ ] auth レート制限（`src/routes/auth.ts`）の閾値を要件に合わせて調整
 
 ## スケールするとき
 

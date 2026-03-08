@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { users, sessions } from "../db/schema";
 import { loginSchema, signupSchema } from "../../shared/schemas/auth";
 import { requireAuth } from "../middleware/auth";
+import { rateLimit } from "../middleware/rate-limit";
 import type { Env } from "../types";
 
 const SEVEN_DAYS = 60 * 60 * 24 * 7;
@@ -99,63 +100,73 @@ function setSessionCookie(c: any, sessionId: string) {
   });
 }
 
+async function issueSession(c: any, db: ReturnType<typeof drizzle>, userId: number) {
+  await db.delete(sessions).where(eq(sessions.userId, userId));
+  const sessionId = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + SEVEN_DAYS * 1000).toISOString();
+  await db.insert(sessions).values({ id: sessionId, userId, expiresAt });
+  setSessionCookie(c, sessionId);
+}
+
 const app = new Hono<{ Bindings: Env }>()
-  .post("/signup", zValidator("json", signupSchema), async (c) => {
-    const db = drizzle(c.env.DB);
-    const { email, password, name } = c.req.valid("json");
+  .post(
+    "/signup",
+    rateLimit({ namespace: "auth-signup", maxRequests: 5, windowSeconds: 60 }),
+    zValidator("json", signupSchema),
+    async (c) => {
+      const db = drizzle(c.env.DB);
+      const { email, password, name } = c.req.valid("json");
 
-    const [existing] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1);
+      const [existing] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
 
-    if (existing) {
-      return c.json({ error: "email already registered" }, 409);
+      if (existing) {
+        return c.json({ error: "email already registered" }, 409);
+      }
+
+      const passwordHash = await hashPassword(password);
+      const [user] = await db
+        .insert(users)
+        .values({ email, passwordHash, name })
+        .returning();
+
+      await issueSession(c, db, user.id);
+      return c.json({ id: user.id, email: user.email, name: user.name }, 201);
     }
+  )
+  .post(
+    "/login",
+    rateLimit({ namespace: "auth-login", maxRequests: 10, windowSeconds: 60 }),
+    zValidator("json", loginSchema),
+    async (c) => {
+      const db = drizzle(c.env.DB);
+      const { email, password } = c.req.valid("json");
 
-    const passwordHash = await hashPassword(password);
-    const [user] = await db
-      .insert(users)
-      .values({ email, passwordHash, name })
-      .returning();
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
 
-    const sessionId = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + SEVEN_DAYS * 1000).toISOString();
-    await db.insert(sessions).values({ id: sessionId, userId: user.id, expiresAt });
+      if (!user || !(await verifyPassword(password, user.passwordHash))) {
+        return c.json({ error: "invalid email or password" }, 401);
+      }
 
-    setSessionCookie(c, sessionId);
-    return c.json({ id: user.id, email: user.email, name: user.name }, 201);
-  })
-  .post("/login", zValidator("json", loginSchema), async (c) => {
-    const db = drizzle(c.env.DB);
-    const { email, password } = c.req.valid("json");
+      if (user.passwordHash.includes(":")) {
+        const upgradedHash = await hashPassword(password);
+        await db
+          .update(users)
+          .set({ passwordHash: upgradedHash })
+          .where(eq(users.id, user.id));
+      }
 
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1);
-
-    if (!user || !(await verifyPassword(password, user.passwordHash))) {
-      return c.json({ error: "invalid email or password" }, 401);
+      await issueSession(c, db, user.id);
+      return c.json({ id: user.id, email: user.email, name: user.name });
     }
-
-    if (user.passwordHash.includes(":")) {
-      const upgradedHash = await hashPassword(password);
-      await db
-        .update(users)
-        .set({ passwordHash: upgradedHash })
-        .where(eq(users.id, user.id));
-    }
-
-    const sessionId = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + SEVEN_DAYS * 1000).toISOString();
-    await db.insert(sessions).values({ id: sessionId, userId: user.id, expiresAt });
-
-    setSessionCookie(c, sessionId);
-    return c.json({ id: user.id, email: user.email, name: user.name });
-  })
+  )
   .post("/logout", requireAuth, async (c) => {
     const db = drizzle(c.env.DB);
     const userId = c.get("userId");
