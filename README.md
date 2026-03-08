@@ -55,7 +55,8 @@ npm run deploy
 
 | コマンド | 内容 |
 |---|---|
-| `npm run dev` | ローカル開発（React + Worker + DB が同時に起動） |
+| `npm run dev` | ローカル開発（統合モード: Vite + workerd） |
+| `npm run dev:split` | ローカル開発（分離モード: Vite + wrangler 別起動） |
 | `npm run build` | ビルド |
 | `npm run preview` | ビルド後プレビュー |
 | `npm run deploy` | Cloudflare にデプロイ |
@@ -110,6 +111,8 @@ cf-starter/
 | `GET /api/auth/me` | 現在のユーザー取得（要認証） |
 
 > **認証について:** D1 セッション + HttpOnly Cookie によるシンプルな実装。小規模業務ツール（~100ユーザー）向け。大規模 SaaS には向かない。さらに外側の門が必要な場合は [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/) を前段に置くこともできる。
+
+> **dev:split について:** `@cloudflare/vite-plugin` の統合モードで認証フロー（Cookie/セッション）がフリッカーする場合は `npm run dev:split` を使う。Vite と wrangler が分離起動し、`/api/*` はプロキシされる。ビルド・デプロイは統合プラグインのままなので本番に影響はない。
 
 ## 型安全チェーン
 

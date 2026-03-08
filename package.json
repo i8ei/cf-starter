@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
+    "dev:split": "wrangler dev src/index.ts --port 8787 --local & vite dev --config vite.config.split.ts && kill %1",
     "build": "vite build",
     "preview": "npm run build && vite preview",
     "deploy": "npm run build && wrangler deploy",
