@@ -44,6 +44,7 @@ wrangler r2 bucket create my-app-bucket
 
 # 2. wrangler.jsonc の bindings に返ってきた ID / name を記入
 #    CORS_ORIGIN も本番ドメインに設定（例: https://app.example.com）
+#    必要なら COOKIE_SAME_SITE / COOKIE_SECURE も運用に合わせて設定
 
 # 3. リモート DB にテーブル作成
 npm run db:migrate:remote
@@ -119,6 +120,12 @@ D1 セッション + HttpOnly Cookie によるシンプルな実装。パスワ�
 
 `/api/auth/signup` と `/api/auth/login` には KV ベースのレート制限（1分窓）を適用。ログイン成功時は既存セッションを失効して新しい1本に更新する。
 
+Cookie 属性は `wrangler.jsonc` の `vars.COOKIE_SAME_SITE`（`Lax` / `Strict` / `None`）と `vars.COOKIE_SECURE`（`true` / `false`）で切替できる。`SameSite=None` のときは自動で `Secure=true` になる。
+
+### CSRF について
+
+`/api/*` の変更系メソッド（POST/PUT/PATCH/DELETE）で、`session` Cookie が付いている場合は `Origin` または `Referer` が許可済みオリジンと一致することを必須にしている。
+
 ### セッション掃除（Cron）
 
 `wrangler.jsonc` の Cron Trigger（デフォルト: 15分ごと）で期限切れセッションを自動削除する。`sessions.expires_at` にはインデックスを貼ってあるため、件数が増えても掃除が重くなりにくい。
@@ -185,6 +192,7 @@ const app = new Hono<{ Bindings: Env }>()
 
 - [ ] `wrangler.jsonc` の `database_id` / KV `id` を実際の値に置換
 - [ ] `wrangler.jsonc` の `vars.CORS_ORIGIN` を本番ドメインに変更（複数はカンマ区切り）
+- [ ] `wrangler.jsonc` の `vars.COOKIE_SAME_SITE` / `vars.COOKIE_SECURE` を配信形態に合わせて調整
 - [ ] 認証 Cookie を使う場合、フロントの API 呼び出しが `credentials: include` になっているか確認
 - [ ] Cron を使わない構成にする場合は `wrangler.jsonc` の `triggers.crons` を調整
 - [ ] auth レート制限（`src/routes/auth.ts`）の閾値を要件に合わせて調整

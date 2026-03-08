@@ -9,6 +9,7 @@ import kv from "./routes/kv";
 import upload from "./routes/upload";
 import auth from "./routes/auth";
 import { purgeExpiredSessions } from "./db/session-maintenance";
+import { csrfProtection } from "./middleware/csrf";
 
 const DEFAULT_ORIGINS = ["http://localhost:5173"];
 
@@ -44,6 +45,7 @@ const app = new Hono<{ Bindings: Env }>()
       allowHeaders: ["Content-Type", "Authorization"],
     })
   )
+  .use("/api/*", csrfProtection)
   .onError((err, c) => {
     console.error(`[ERROR] ${c.req.method} ${c.req.path}:`, err.message);
     return c.json({ error: "Internal Server Error" }, 500);

@@ -23,7 +23,9 @@
     }
   ],
   "vars": {
-    "CORS_ORIGIN": "http://localhost:5173"
+    "CORS_ORIGIN": "http://localhost:5173",
+    "COOKIE_SAME_SITE": "Lax",
+    "COOKIE_SECURE": "true"
   },
   "triggers": {
     "crons": ["*/15 * * * *"]

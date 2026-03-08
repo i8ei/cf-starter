@@ -14,6 +14,7 @@ const PBKDF2_ITERATIONS = 310000;
 const PBKDF2_KEY_LENGTH = 32;
 const PBKDF2_ALGORITHM = "PBKDF2";
 const PBKDF2_HASH = "SHA-256";
+const COOKIE_SAME_SITE_VALUES = new Set(["Lax", "Strict", "None"]);
 
 function bytesToHex(bytes: Uint8Array): string {
   return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -90,22 +91,44 @@ async function verifyPassword(
   return constantTimeEquals(hashHex, computedHex);
 }
 
-function setSessionCookie(c: any, sessionId: string) {
+function resolveCookieSameSite(raw?: string): "Lax" | "Strict" | "None" {
+  if (!raw) return "Lax";
+  const normalized = raw[0].toUpperCase() + raw.slice(1).toLowerCase();
+  if (COOKIE_SAME_SITE_VALUES.has(normalized)) {
+    return normalized as "Lax" | "Strict" | "None";
+  }
+  return "Lax";
+}
+
+function resolveCookieSecure(raw: string | undefined, sameSite: "Lax" | "Strict" | "None"): boolean {
+  if (sameSite === "None") return true;
+  if (raw === undefined) return true;
+  return raw.toLowerCase() !== "false";
+}
+
+function resolveCookieOptions(env: Env) {
+  const sameSite = resolveCookieSameSite(env.COOKIE_SAME_SITE);
+  const secure = resolveCookieSecure(env.COOKIE_SECURE, sameSite);
+  return { sameSite, secure };
+}
+
+function setSessionCookie(c: any, env: Env, sessionId: string) {
+  const { sameSite, secure } = resolveCookieOptions(env);
   setCookie(c, "session", sessionId, {
     httpOnly: true,
-    secure: true,
-    sameSite: "Lax",
+    secure,
+    sameSite,
     path: "/",
     maxAge: SEVEN_DAYS,
   });
 }
 
-async function issueSession(c: any, db: ReturnType<typeof drizzle>, userId: number) {
+async function issueSession(c: any, env: Env, db: ReturnType<typeof drizzle>, userId: number) {
   await db.delete(sessions).where(eq(sessions.userId, userId));
   const sessionId = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + SEVEN_DAYS * 1000).toISOString();
   await db.insert(sessions).values({ id: sessionId, userId, expiresAt });
-  setSessionCookie(c, sessionId);
+  setSessionCookie(c, env, sessionId);
 }
 
 const app = new Hono<{ Bindings: Env }>()
@@ -133,7 +156,7 @@ const app = new Hono<{ Bindings: Env }>()
         .values({ email, passwordHash, name })
         .returning();
 
-      await issueSession(c, db, user.id);
+      await issueSession(c, c.env, db, user.id);
       return c.json({ id: user.id, email: user.email, name: user.name }, 201);
     }
   )
@@ -163,16 +186,17 @@ const app = new Hono<{ Bindings: Env }>()
           .where(eq(users.id, user.id));
       }
 
-      await issueSession(c, db, user.id);
+      await issueSession(c, c.env, db, user.id);
       return c.json({ id: user.id, email: user.email, name: user.name });
     }
   )
   .post("/logout", requireAuth, async (c) => {
     const db = drizzle(c.env.DB);
     const userId = c.get("userId");
+    const { sameSite, secure } = resolveCookieOptions(c.env);
 
     await db.delete(sessions).where(eq(sessions.userId, userId));
-    deleteCookie(c, "session", { path: "/" });
+    deleteCookie(c, "session", { path: "/", sameSite, secure });
     return c.json({ ok: true });
   })
   .get("/me", requireAuth, async (c) => {
