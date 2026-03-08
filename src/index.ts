@@ -10,19 +10,11 @@ import upload from "./routes/upload";
 import auth from "./routes/auth";
 import { purgeExpiredSessions } from "./db/session-maintenance";
 import { csrfProtection } from "./middleware/csrf";
+import { resolveCorsOrigins } from "./lib/cors";
+import { logEvent } from "./lib/logging";
+import { RateLimiter } from "./durable-objects/rate-limiter";
 
-const DEFAULT_ORIGINS = ["http://localhost:5173"];
-
-function resolveCorsOrigins(raw?: string): string[] {
-  if (!raw) return DEFAULT_ORIGINS;
-  const origins = raw
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-  return origins.length > 0 ? origins : DEFAULT_ORIGINS;
-}
-
-const app = new Hono<{ Bindings: Env }>()
+export const app = new Hono<{ Bindings: Env }>()
   .use("*", logger())
   .use(
     "*",
@@ -47,7 +39,11 @@ const app = new Hono<{ Bindings: Env }>()
   )
   .use("/api/*", csrfProtection)
   .onError((err, c) => {
-    console.error(`[ERROR] ${c.req.method} ${c.req.path}:`, err.message);
+    logEvent("error", "request.error", {
+      method: c.req.method,
+      path: c.req.path,
+      message: err.message,
+    });
     return c.json({ error: "Internal Server Error" }, 500);
   })
   .route("/api/health", health)
@@ -57,12 +53,13 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/api/auth", auth);
 
 export type AppType = typeof app;
+export { RateLimiter };
 export default {
   fetch: app.fetch,
   scheduled: async (_event: ScheduledEvent, env: Env) => {
     const deleted = await purgeExpiredSessions(env.DB);
     if (deleted > 0) {
-      console.log(`[CRON] purged ${deleted} expired sessions`);
+      logEvent("info", "sessions.purged", { deleted });
     }
   },
 };

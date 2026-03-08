@@ -22,6 +22,20 @@
       "bucket_name": "cf-starter-bucket"
     }
   ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "RATE_LIMITER",
+        "class_name": "RateLimiter"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["RateLimiter"]
+    }
+  ],
   "vars": {
     "CORS_ORIGIN": "http://localhost:5173",
     "COOKIE_SAME_SITE": "Lax",

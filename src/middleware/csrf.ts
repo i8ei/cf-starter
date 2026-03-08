@@ -1,17 +1,10 @@
 import { createMiddleware } from "hono/factory";
 import type { Env } from "../types";
+import { resolveCorsOrigins } from "../lib/cors";
+import { logRequestEvent } from "../lib/logging";
+import { hasSessionCookie } from "../lib/session";
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const DEFAULT_ORIGINS = ["http://localhost:5173"];
-
-function resolveAllowedOrigins(raw?: string): string[] {
-  if (!raw) return DEFAULT_ORIGINS;
-  const origins = raw
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-  return origins.length > 0 ? origins : DEFAULT_ORIGINS;
-}
 
 function isAllowedReferer(referer: string | undefined, allowlist: string[]): boolean {
   if (!referer) return false;
@@ -29,12 +22,12 @@ export const csrfProtection = createMiddleware<{ Bindings: Env }>(async (c, next
   }
 
   const cookieHeader = c.req.header("cookie") ?? "";
-  if (!cookieHeader.includes("session=")) {
+  if (!hasSessionCookie(cookieHeader)) {
     await next();
     return;
   }
 
-  const allowlist = resolveAllowedOrigins(c.env.CORS_ORIGIN);
+  const allowlist = resolveCorsOrigins(c.env.CORS_ORIGIN);
   const origin = c.req.header("origin");
   if (origin && allowlist.includes(origin)) {
     await next();
@@ -46,5 +39,9 @@ export const csrfProtection = createMiddleware<{ Bindings: Env }>(async (c, next
     return;
   }
 
+  logRequestEvent("warn", "security.csrf_rejected", c, {
+    origin: origin ?? null,
+    referer: c.req.header("referer") ?? null,
+  });
   return c.json({ error: "forbidden (csrf)" }, 403);
 });

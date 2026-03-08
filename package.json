@@ -8,6 +8,8 @@
     "build": "vite build",
     "preview": "npm run build && vite preview",
     "deploy": "npm run build && wrangler deploy",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/d1-migrate.mjs",
     "db:migrate:remote": "node scripts/d1-migrate.mjs remote"
@@ -32,6 +34,7 @@
     "@tailwindcss/vite": "^4",
     "typescript": "^5",
     "vite": "^6",
+    "vitest": "^3",
     "wrangler": "^4"
   }
 }

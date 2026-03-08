@@ -8,13 +8,20 @@ import { loginSchema, signupSchema } from "../../shared/schemas/auth";
 import { requireAuth } from "../middleware/auth";
 import { rateLimit } from "../middleware/rate-limit";
 import type { Env } from "../types";
+import {
+  HOST_SESSION_COOKIE_NAME,
+  LEGACY_SESSION_COOKIE_NAME,
+  resolveCookieOptions,
+  resolveSessionCookieName,
+  rotateSession,
+  SESSION_MAX_AGE_SECONDS,
+} from "../lib/session";
+import { logRequestEvent } from "../lib/logging";
 
-const SEVEN_DAYS = 60 * 60 * 24 * 7;
 const PBKDF2_ITERATIONS = 310000;
 const PBKDF2_KEY_LENGTH = 32;
 const PBKDF2_ALGORITHM = "PBKDF2";
 const PBKDF2_HASH = "SHA-256";
-const COOKIE_SAME_SITE_VALUES = new Set(["Lax", "Strict", "None"]);
 
 function bytesToHex(bytes: Uint8Array): string {
   return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -91,44 +98,30 @@ async function verifyPassword(
   return constantTimeEquals(hashHex, computedHex);
 }
 
-function resolveCookieSameSite(raw?: string): "Lax" | "Strict" | "None" {
-  if (!raw) return "Lax";
-  const normalized = raw[0].toUpperCase() + raw.slice(1).toLowerCase();
-  if (COOKIE_SAME_SITE_VALUES.has(normalized)) {
-    return normalized as "Lax" | "Strict" | "None";
-  }
-  return "Lax";
-}
-
-function resolveCookieSecure(raw: string | undefined, sameSite: "Lax" | "Strict" | "None"): boolean {
-  if (sameSite === "None") return true;
-  if (raw === undefined) return true;
-  return raw.toLowerCase() !== "false";
-}
-
-function resolveCookieOptions(env: Env) {
-  const sameSite = resolveCookieSameSite(env.COOKIE_SAME_SITE);
-  const secure = resolveCookieSecure(env.COOKIE_SECURE, sameSite);
-  return { sameSite, secure };
-}
-
 function setSessionCookie(c: any, env: Env, sessionId: string) {
   const { sameSite, secure } = resolveCookieOptions(env);
-  setCookie(c, "session", sessionId, {
+  setCookie(c, resolveSessionCookieName(env), sessionId, {
     httpOnly: true,
     secure,
     sameSite,
     path: "/",
-    maxAge: SEVEN_DAYS,
+    maxAge: SESSION_MAX_AGE_SECONDS,
   });
 }
 
 async function issueSession(c: any, env: Env, db: ReturnType<typeof drizzle>, userId: number) {
-  await db.delete(sessions).where(eq(sessions.userId, userId));
-  const sessionId = crypto.randomUUID();
-  const expiresAt = new Date(Date.now() + SEVEN_DAYS * 1000).toISOString();
-  await db.insert(sessions).values({ id: sessionId, userId, expiresAt });
-  setSessionCookie(c, env, sessionId);
+  const session = await rotateSession(
+    {
+      deleteSessionsForUser: async (targetUserId) => {
+        await db.delete(sessions).where(eq(sessions.userId, targetUserId));
+      },
+      createSession: async (record) => {
+        await db.insert(sessions).values(record);
+      },
+    },
+    userId
+  );
+  setSessionCookie(c, env, session.id);
 }
 
 const app = new Hono<{ Bindings: Env }>()
@@ -147,6 +140,7 @@ const app = new Hono<{ Bindings: Env }>()
         .limit(1);
 
       if (existing) {
+        logRequestEvent("warn", "auth.signup_conflict", c, {});
         return c.json({ error: "email already registered" }, 409);
       }
 
@@ -157,6 +151,7 @@ const app = new Hono<{ Bindings: Env }>()
         .returning();
 
       await issueSession(c, c.env, db, user.id);
+      logRequestEvent("info", "auth.signup_success", c, { userId: user.id });
       return c.json({ id: user.id, email: user.email, name: user.name }, 201);
     }
   )
@@ -175,6 +170,9 @@ const app = new Hono<{ Bindings: Env }>()
         .limit(1);
 
       if (!user || !(await verifyPassword(password, user.passwordHash))) {
+        logRequestEvent("warn", "auth.login_failed", c, {
+          reason: "invalid_credentials",
+        });
         return c.json({ error: "invalid email or password" }, 401);
       }
 
@@ -187,6 +185,7 @@ const app = new Hono<{ Bindings: Env }>()
       }
 
       await issueSession(c, c.env, db, user.id);
+      logRequestEvent("info", "auth.login_success", c, { userId: user.id });
       return c.json({ id: user.id, email: user.email, name: user.name });
     }
   )
@@ -196,7 +195,12 @@ const app = new Hono<{ Bindings: Env }>()
     const { sameSite, secure } = resolveCookieOptions(c.env);
 
     await db.delete(sessions).where(eq(sessions.userId, userId));
-    deleteCookie(c, "session", { path: "/", sameSite, secure });
+    deleteCookie(c, HOST_SESSION_COOKIE_NAME, {
+      path: "/",
+      sameSite,
+      secure: true,
+    });
+    deleteCookie(c, LEGACY_SESSION_COOKIE_NAME, { path: "/", sameSite, secure });
     return c.json({ ok: true });
   })
   .get("/me", requireAuth, async (c) => {

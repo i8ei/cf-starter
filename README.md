@@ -13,6 +13,7 @@ cp して即開発。DB・ストレージ・キャッシュ・API・認証・フ
 | DB | D1 (SQLite) + Drizzle ORM |
 | Storage | R2 (オブジェクトストレージ) |
 | Cache | KV (キーバリューストア) |
+| Rate Limit | Durable Object |
 | Validation | Zod (フロント・バック共有) |
 | Build | `@cloudflare/vite-plugin` (統合ビルド) |
 
@@ -62,6 +63,7 @@ npm run deploy
 | `npm run build`             | ビルド                                |
 | `npm run preview`           | ビルド後プレビュー                          |
 | `npm run deploy`            | Cloudflare にデプロイ                   |
+| `npm run test`              | Vitest による自動テスト                    |
 | `npm run db:generate`       | Drizzle スキーマからマイグレーション SQL 生成      |
 | `npm run db:migrate`        | D1 ローカルマイグレーション                    |
 | `npm run db:migrate:remote` | D1 リモートマイグレーション                    |
@@ -118,17 +120,21 @@ cf-starter/
 
 D1 セッション + HttpOnly Cookie によるシンプルな実装。パスワードは PBKDF2 でハッシュ化。旧形式（`salt:sha256`）が残っていても、ログイン成功時に自動で PBKDF2 形式へ再ハッシュされる。
 
-`/api/auth/signup` と `/api/auth/login` には KV ベースのレート制限（1分窓）を適用。ログイン成功時は既存セッションを失効して新しい1本に更新する。
+`/api/auth/signup` と `/api/auth/login` には Durable Object ベースのレート制限（1分窓）を適用。ログイン成功時は既存セッションを失効して新しい1本に更新する。
 
-Cookie 属性は `wrangler.jsonc` の `vars.COOKIE_SAME_SITE`（`Lax` / `Strict` / `None`）と `vars.COOKIE_SECURE`（`true` / `false`）で切替できる。`SameSite=None` のときは自動で `Secure=true` になる。
+Cookie は `Secure=true` のとき `__Host-session`、`Secure=false` のとき互換用の `session` を使う。Cookie 属性は `wrangler.jsonc` の `vars.COOKIE_SAME_SITE`（`Lax` / `Strict` / `None`）と `vars.COOKIE_SECURE`（`true` / `false`）で切替できる。`SameSite=None` のときは自動で `Secure=true` になる。
 
 ### CSRF について
 
-`/api/*` の変更系メソッド（POST/PUT/PATCH/DELETE）で、`session` Cookie が付いている場合は `Origin` または `Referer` が許可済みオリジンと一致することを必須にしている。
+`/api/*` の変更系メソッド（POST/PUT/PATCH/DELETE）で、認証 Cookie（`__Host-session` / `session`）が付いている場合は `Origin` または `Referer` が許可済みオリジンと一致することを必須にしている。
 
 ### セッション掃除（Cron）
 
 `wrangler.jsonc` の Cron Trigger（デフォルト: 15分ごと）で期限切れセッションを自動削除する。`sessions.expires_at` にはインデックスを貼ってあるため、件数が増えても掃除が重くなりにくい。
+
+### ログについて
+
+`login success/fail`、`rate limit hit`、`csrf reject`、`session purge` は構造化 JSON ログで出力する。Cloudflare Logs での絞り込みやすさを優先している。
 
 ### `dev:split` について
 
@@ -193,6 +199,7 @@ const app = new Hono<{ Bindings: Env }>()
 - [ ] `wrangler.jsonc` の `database_id` / KV `id` を実際の値に置換
 - [ ] `wrangler.jsonc` の `vars.CORS_ORIGIN` を本番ドメインに変更（複数はカンマ区切り）
 - [ ] `wrangler.jsonc` の `vars.COOKIE_SAME_SITE` / `vars.COOKIE_SECURE` を配信形態に合わせて調整
+- [ ] `wrangler.jsonc` の Durable Object binding / migration を変更した場合は tag を進める
 - [ ] 認証 Cookie を使う場合、フロントの API 呼び出しが `credentials: include` になっているか確認
 - [ ] Cron を使わない構成にする場合は `wrangler.jsonc` の `triggers.crons` を調整
 - [ ] auth レート制限（`src/routes/auth.ts`）の閾値を要件に合わせて調整

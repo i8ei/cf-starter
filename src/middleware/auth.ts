@@ -1,9 +1,9 @@
 import { createMiddleware } from "hono/factory";
-import { getCookie } from "hono/cookie";
 import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import { sessions } from "../db/schema";
 import type { Env } from "../types";
+import { getSessionCookie } from "../lib/session";
 
 type AuthEnv = {
   Bindings: Env;
@@ -11,7 +11,7 @@ type AuthEnv = {
 };
 
 export const requireAuth = createMiddleware<AuthEnv>(async (c, next) => {
-  const sessionId = getCookie(c, "session");
+  const sessionId = getSessionCookie(c);
   if (!sessionId) return c.json({ error: "unauthorized" }, 401);
 
   const db = drizzle(c.env.DB);
