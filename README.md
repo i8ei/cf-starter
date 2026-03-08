@@ -1,55 +1,92 @@
 # cf-starter
 
-Cloudflare ネイティブなフルスタック開発を、最短で始めるためのスターターテンプレート。
+Cloudflare Workers 上で、小規模から中規模の業務アプリを安定して立ち上げるためのスターターです。
 
-cp して即開発。DB・ストレージ・キャッシュ・API・認証・フロントが全部入り。
+目的は `1つのアプリを育てること` ではなく、`複数のアプリを安全に始められる土台を揃えること` です。
+
+このリポジトリは 2 層で考えます。
+
+- Starter Core: 認証、セッション、権限、organization context、API 契約、DB、ログ、テスト、Cloudflare bindings
+- Example Features: `items`、`kv`、`upload` のような最小サンプル
+
+設計の詳細は [ARCHITECTURE.md](/tmp/cf-starter-clean/ARCHITECTURE.md)、今後の進行は [ROADMAP.md](/tmp/cf-starter-clean/ROADMAP.md) を参照してください。
+
+## 何が入っているか
+
+現在の core は次を提供します。
+
+- React + TypeScript + Tailwind CSS v4
+- Hono on Cloudflare Workers
+- D1 + Drizzle ORM
+- Zod による shared schema
+- Hono RPC client による型付き API 呼び出し
+- D1 session + HttpOnly Cookie 認証
+- PBKDF2-SHA256 パスワードハッシュ
+- CSRF 保護
+- request id
+- 構造化 JSON ログ
+- 統一 API エラー形式
+- Durable Object ベースの auth rate limit
+- audit log
+- Cloudflare Queue sample jobs
+- organization / membership / current organization context
+- Vitest ベースの自動テスト
+
+## 向いている用途
+
+- 地域向け業務ツール
+- 会員制サービス
+- 予約、台帳、在庫、配車、マッチング
+- 1人から少人数で運用する Cloudflare ネイティブな Web アプリ
+
+## 向いていない用途
+
+- 巨大 SaaS 向けの複雑なマイクロサービス構成
+- 重いリアルタイム同期が中心のシステム
+- GPU 前提の AI ワークロード
 
 ## スタック
 
 | レイヤー | 技術 |
 |---|---|
-| Frontend | React + TypeScript + Tailwind CSS v4 + TanStack Query |
+| Frontend | React + TypeScript + Tailwind CSS + TanStack Query |
 | Backend | Hono on Cloudflare Workers |
-| DB | D1 (SQLite) + Drizzle ORM |
-| Storage | R2 (オブジェクトストレージ) |
-| Cache | KV (キーバリューストア) |
-| Rate Limit | Durable Object |
-| Async Jobs | Cloudflare Queues |
-| Validation | Zod (フロント・バック共有) |
-| Build | `@cloudflare/vite-plugin` (統合ビルド) |
+| Database | D1 (SQLite) + Drizzle ORM |
+| Storage | R2 |
+| Cache | KV |
+| Rate limit | Durable Object |
+| Async jobs | Cloudflare Queues |
+| Validation | Zod |
+| Build | Vite + `@cloudflare/vite-plugin` |
+| Testing | Vitest |
 
-## 使い方
+## クイックスタート
 
 ### 前提
 
 - Node.js 20+
 - npm
-- Wrangler CLI にログイン済み (`npx wrangler login`)
+- Wrangler CLI
 
-### 新プロジェクトを始める
+### ローカル開発
 
 ```bash
-cp -r cf-starter my-app
-cd my-app
-git init
 npm install
+npm run db:migrate
 npm run dev
 ```
 
-### Cloudflare にデプロイする
+### Cloudflare へデプロイ
 
 ```bash
-# 1. リソース作成（初回のみ）
+# 1. リソース作成
 wrangler d1 create my-app-db
 wrangler kv namespace create KV
 wrangler r2 bucket create my-app-bucket
 wrangler queues create my-app-jobs
 
-# 2. wrangler.jsonc の bindings に返ってきた ID / name を記入
-#    CORS_ORIGIN も本番ドメインに設定（例: https://app.example.com）
-#    必要なら COOKIE_SAME_SITE / COOKIE_SECURE も運用に合わせて設定
-
-# 3. リモート DB にテーブル作成
+# 2. wrangler.jsonc の bindings / ids を更新
+# 3. リモート DB へ migration 適用
 npm run db:migrate:remote
 
 # 4. デプロイ
@@ -58,246 +95,140 @@ npm run deploy
 
 ## コマンド
 
-| コマンド                        | 内容                                 |
-| --------------------------- | ---------------------------------- |
-| `npm run dev`               | ローカル開発（統合モード: Vite + workerd）      |
-| `npm run dev:split`         | ローカル開発（分離モード: Vite + wrangler 別起動） |
-| `npm run build`             | ビルド                                |
-| `npm run preview`           | ビルド後プレビュー                          |
-| `npm run deploy`            | Cloudflare にデプロイ                   |
-| `npm run test`              | Vitest による自動テスト                    |
-| `npm run db:generate`       | Drizzle スキーマからマイグレーション SQL 生成      |
-| `npm run db:migrate`        | D1 ローカルマイグレーション                    |
-| `npm run db:migrate:remote` | D1 リモートマイグレーション                    |
-
-GitHub Actions の CI で `npm test` と `npm run build` を毎回実行する。
+| コマンド | 内容 |
+|---|---|
+| `npm run dev` | 統合開発モード |
+| `npm run dev:split` | Wrangler と Vite を分離起動 |
+| `npm run build` | ビルド |
+| `npm run preview` | ビルド後プレビュー |
+| `npm run deploy` | Cloudflare にデプロイ |
+| `npm test` | 自動テスト |
+| `npm run test:watch` | テスト watch |
+| `npm run db:generate` | Drizzle から migration 生成 |
+| `npm run db:migrate` | ローカル D1 に migration 適用 |
+| `npm run db:migrate:remote` | リモート D1 に migration 適用 |
 
 ## ディレクトリ構成
 
 ```text
 cf-starter/
-├── app/                    ← React フロントエンド
-│   ├── hooks/              ← TanStack Query カスタムフック
-│   ├── lib/api.ts          ← Hono RPC クライアント（型付き）
-│   ├── App.tsx
-│   └── main.tsx
-├── shared/                 ← フロント・バック共有
-│   └── schemas/            ← Zod バリデーションスキーマ
-├── src/                    ← Hono バックエンド (Worker)
-│   ├── db/schema.ts        ← Drizzle テーブル定義
-│   ├── routes/             ← API ルート
-│   ├── types.ts            ← Env バインディング型
-│   └── index.ts            ← エントリーポイント
-├── migrations/             ← D1 マイグレーション
-├── vite.config.ts
-├── wrangler.jsonc
-└── index.html
+├── app/                    React UI
+│   ├── hooks/              TanStack Query hooks
+│   └── lib/api.ts          型付き Hono RPC client
+├── shared/                 フロント・バック共有契約
+│   └── schemas/            Zod schema
+├── src/                    Worker backend
+│   ├── db/                 Drizzle schema
+│   ├── durable-objects/    rate limiter
+│   ├── lib/                auth, session, audit, organizations など
+│   ├── middleware/         auth, csrf, role, request-id
+│   ├── queues/             queue producer / consumer
+│   ├── routes/             API routes
+│   └── index.ts            Worker entrypoint
+├── migrations/             D1 migrations
+├── scripts/                補助スクリプト
+├── test/                   unit / integration tests
+├── ARCHITECTURE.md
+├── ROADMAP.md
+└── README.md
 ```
 
-## 設計思想
+## Core API
 
-| ディレクトリ    | 役割                      |
-| --------- | ----------------------- |
-| `app/`    | UI とクライアントロジック          |
-| `src/`    | Worker 上で動くサーバーロジック     |
-| `shared/` | 両方が読む「契約」（バリデーションスキーマ等） |
+| エンドポイント | 内容 |
+|---|---|
+| `GET /api/health` | DB / KV / R2 / Env の基本チェック |
+| `GET /api/items` | item 一覧 |
+| `POST /api/items` | item 作成 |
+| `GET /api/upload` | R2 ファイル一覧取得 |
+| `POST /api/upload` | R2 アップロード |
+| `GET /api/kv/:key` | KV 読み取り |
+| `PUT /api/kv/:key` | KV 書き込み |
+| `GET /api/orgs` | 所属 organization 一覧と current organization |
+| `POST /api/orgs` | organization 作成 + current organization 切替 |
+| `POST /api/auth/signup` | ユーザー登録 |
+| `POST /api/auth/login` | ログイン |
+| `POST /api/auth/logout` | ログアウト |
+| `POST /api/auth/switch-org` | current organization 切替 |
+| `GET /api/auth/me` | 現在のユーザー取得 |
 
-フロントとバックが `shared/` を介して型とバリデーションを共有することで、API の変更が即座にコンパイルエラーとして検出される。片方だけ変えて齟齬が生まれる事故を防ぐ。
+## Security Invariants
 
-## サンプル API
+現在の core で維持している前提です。
 
-| エンドポイント                 | 内容                            |
-| ----------------------- | ----------------------------- |
-| `GET /api/health`       | D1 / KV / R2 / Env の接続・設定チェック |
-| `GET /api/items`        | D1 からアイテム一覧取得                 |
-| `POST /api/items`       | D1 にアイテム追加（Zod バリデーション付き）     |
-| `GET /api/upload`       | R2 ファイル一覧取得（要認証）              |
-| `POST /api/upload`      | R2 へアップロード（要認証, 10MB制限）      |
-| `GET /api/orgs`         | 所属組織一覧と current org 取得（要認証）   |
-| `POST /api/orgs`        | 組織作成 + current org 切替（要認証）      |
-| `GET /api/kv/:key`      | KV 読み取り（要認証, admin ロール必須）       |
-| `PUT /api/kv/:key`      | KV 書き込み（要認証, admin ロール必須）       |
-| `POST /api/auth/signup` | ユーザー登録 → セッション発行              |
-| `POST /api/auth/login`  | ログイン → セッション発行                |
-| `POST /api/auth/logout` | ログアウト（要認証）                    |
-| `POST /api/auth/switch-org` | current org 切替（要認証）       |
-| `GET /api/auth/me`      | 現在のユーザーとロール取得（要認証）          |
+- session cookie は HttpOnly
+- パスワードは PBKDF2 で保存
+- 旧 `salt:sha256` 形式は login 時に upgrade
+- write 系 API は CSRF 保護
+- auth API は rate limit 付き
+- すべてのエラーは `{ error: { code, message, requestId, details? } }`
+- 監査ログは `audit_logs` に保存
+- `X-Request-Id` をレスポンスとログに載せる
+- organization context は `memberships` と `sessions.current_org_id` で解決
 
-### エラー契約について
+## Organization Context
 
-エラー応答は `{ error: { code, message, requestId, details? } }` に統一している。バリデーションエラーも同じ形で返るので、フロント側で共通処理しやすい。
+`cf-starter` は user 単体ではなく、`organization の中の user` を扱えるようにしています。
 
-### 認証について
+- `organizations`
+- `memberships`
+- `sessions.current_org_id`
 
-D1 セッション + HttpOnly Cookie によるシンプルな実装。パスワードは PBKDF2 でハッシュ化。旧形式（`salt:sha256`）が残っていても、ログイン成功時に自動で PBKDF2 形式へ再ハッシュされる。
+signup / login 時には personal workspace を自動作成し、session に current organization を持たせます。
 
-`/api/auth/signup` と `/api/auth/login` には Durable Object ベースのレート制限（1分窓）を適用。ログイン成功時は既存セッションを失効して新しい1本に更新する。
+認証後の context では次が使えます。
 
-Cookie は `Secure=true` のとき `__Host-session`、`Secure=false` のとき互換用の `session` を使う。Cookie 属性は `wrangler.jsonc` の `vars.COOKIE_SAME_SITE`（`Lax` / `Strict` / `None`）と `vars.COOKIE_SECURE`（`true` / `false`）で切替できる。`SameSite=None` のときは自動で `Secure=true` になる。
+- `c.get("orgId")`
+- `c.get("orgRole")`
+- `c.get("memberships")`
 
-### CSRF について
+新しい業務テーブルを multi-tenant にする場合は、`organization_id` を持たせてここで絞ってください。
 
-`/api/*` の変更系メソッド（POST/PUT/PATCH/DELETE）で、認証 Cookie（`__Host-session` / `session`）が付いている場合は `Origin` または `Referer` が許可済みオリジンと一致することを必須にしている。
+## Queue
 
-### RBAC について
+`JOBS` Queue binding を持ち、現在は sample job として次を enqueue します。
 
-`roles` / `user_roles` テーブルを持ち、`member` と `admin` を seed する。新規 signup ユーザーには自動で `member` を付与する。サンプルでは `KV` ルートを `admin` 限定にして `requireRole()` の使い方を示している。
+- `user.welcome`
+- `upload.process`
 
-### Organization について
-
-`organizations` / `memberships` / `sessions.current_org_id` を持ち、signup 時に personal workspace を自動作成する。認証後の context には current org と membership role が入り、`/api/auth/switch-org` や `/api/orgs` で切り替え・作成できる。
-
-### 監査ログについて
-
-`audit_logs` テーブルに `who did what` を残す共通 helper を入れてある。`signup/login/logout`、`switch-org`、`organization.create`、`item.create`、`kv.put`、`upload.create`、権限不足拒否が監査対象。
-
-### Queue について
-
-`JOBS` Queue binding を用意し、`signup` 時の `user.welcome` と `upload` 時の `upload.process` を sample job として enqueue する。consumer 側は Worker module の `queue()` handler で処理する。
-
-### セッション掃除（Cron）
-
-`wrangler.jsonc` の Cron Trigger（デフォルト: 15分ごと）で期限切れセッションを自動削除する。`sessions.expires_at` にはインデックスを貼ってあるため、件数が増えても掃除が重くなりにくい。
-
-### ログについて
-
-`login success/fail`、`rate limit hit`、`csrf reject`、`session purge` は構造化 JSON ログで出力する。Cloudflare Logs での絞り込みやすさを優先している。すべてのレスポンスには `X-Request-Id` を付け、同じ ID をログにも載せる。
-
-### 設定検証について
-
-`CORS_ORIGIN`、`COOKIE_SAME_SITE`、`COOKIE_SECURE` は実行時に Zod で検証する。`CORS_ORIGIN` に path 付き URL など不正値が入っている場合は早めに検出できる。
-
-### `dev:split` について
-
-`@cloudflare/vite-plugin` の統合モードで Cookie / セッションまわりの挙動が不安定な場合は `npm run dev:split` を使う。Vite と Wrangler が分離起動し、`/api/*` はプロキシされる。ビルド・デプロイは統合プラグインのままなので、本番には影響しない。
-
-## 型安全チェーン
-
-バックエンドからフロントエンドまで型が貫通する。
-
-```text
-Zod スキーマ (shared/)
-    ↓
-@hono/zod-validator（リクエスト検証）
-    ↓
-Drizzle ORM → D1（DB アクセス）
-    ↓
-Hono ルート → export type AppType
-    ↓
-hc<AppType>（型付き RPC クライアント）
-    ↓
-TanStack Query（フロントエンド）
-```
-
-API の引数や戻り値を変えると、フロント側でコンパイルエラーになる。バグが本番に行く前に気づける。
+consumer は Worker module の `queue()` handler で処理します。
 
 ## 開発の流れ
 
 ### API を追加する
 
-1. `src/routes/` にファイル追加
+1. `src/routes/` に route を追加
 2. `src/index.ts` で `.route()` 登録
-3. フロントから `client.api.xxx.$get()` で呼ぶ
+3. `app/lib/api.ts` 経由でフロントから呼ぶ
 
 ### テーブルを追加する
 
-1. `src/db/schema.ts` にテーブル定義
-2. `npm run db:generate` でマイグレーション SQL 生成
-3. `npm run db:migrate` でローカル DB に適用
+1. `src/db/schema.ts` にテーブル定義を追加
+2. `npm run db:generate`
+3. `npm run db:migrate`
 
-### 組織を current org に紐づける
+### organization-aware にする
 
-新しい業務データを multi-tenant にする場合は、テーブルに `organization_id` を持たせて `c.get("orgId")` で read/write を絞る。
-
-### ルートを認証必須にする
-
-`requireAuth` ミドルウェアを挟むだけ。
-
-```ts
-import { requireAuth } from "../middleware/auth";
-
-const app = new Hono<{ Bindings: Env }>()
-  .get("/", requireAuth, async (c) => {
-    const userId = c.get("userId");
-    // ...
-  });
-```
-
-### ルートをロール必須にする
-
-`requireRole("admin")` のように挟むだけ。
-
-```ts
-import { requireAuth } from "../middleware/auth";
-import { requireRole } from "../middleware/require-role";
-
-const app = new Hono<AppContextEnv>()
-  .get("/", requireAuth, requireRole("admin"), async (c) => {
-    return c.json({ ok: true });
-  });
-```
-
-### バリデーションを共有する
-
-- `shared/schemas/` に Zod スキーマ定義
-- バックエンド: `zValidator("json", schema)` で使う
-- フロントエンド: 同じスキーマで入力チェック
+1. テーブルに `organization_id` を追加
+2. 認証済み route で `c.get("orgId")` を使って絞る
+3. 必要なら membership role で認可する
 
 ## 本番チェックリスト
 
-- [ ] `wrangler.jsonc` の `database_id` / KV `id` を実際の値に置換
-- [ ] `wrangler.jsonc` の `vars.CORS_ORIGIN` を本番ドメインに変更（複数はカンマ区切り）
-- [ ] `wrangler.jsonc` の `vars.COOKIE_SAME_SITE` / `vars.COOKIE_SECURE` を配信形態に合わせて調整
-- [ ] `wrangler.jsonc` の Durable Object binding / migration を変更した場合は tag を進める
-- [ ] Queue 名をアプリ用に変更した場合は `wrangler.jsonc` の producer / consumer を揃える
-- [ ] 認証 Cookie を使う場合、フロントの API 呼び出しが `credentials: include` になっているか確認
-- [ ] Cron を使わない構成にする場合は `wrangler.jsonc` の `triggers.crons` を調整
-- [ ] auth レート制限（`src/routes/auth.ts`）の閾値を要件に合わせて調整
-- [ ] `CORS_ORIGIN` に origin だけを入れる（path / query / hash は入れない）
+- [ ] `wrangler.jsonc` の `database_id` / KV / R2 / Queue binding を実値にする
+- [ ] `CORS_ORIGIN` を本番 origin にする
+- [ ] `COOKIE_SAME_SITE` / `COOKIE_SECURE` を運用に合わせる
+- [ ] Durable Object migration tag を必要に応じて更新する
+- [ ] Queue 名を変更した場合は producer / consumer を揃える
+- [ ] auth rate limit の閾値を要件に合わせる
 
-## スケールするとき
+## 現在の不足
 
-ルートやフックが増えてきたら、機能単位のディレクトリに移行する。
+まだ入っていないものです。
 
-```text
-features/
-  items/
-    api.ts
-    schema.ts
-    hooks.ts
-    components/
-```
-
-小さいうちは今の flat 構成で十分。育ったら移行。
-
-## このテンプレで作れるもの
-
-- ボランティアタクシー配車
-- 集会所・施設予約
-- 農作業・栽培記録
-- 地域イベント管理
-- 漁業ダッシュボード
-- 会員限定の業務ツール
-- 小規模マッチングサービス
-- 在庫・出荷管理
-- アンケート・投票システム
-- 地域通貨・ポイント管理
-
-## 向いているもの / 向いていないもの
-
-### 向いているもの
-
-- 小規模〜中規模の業務ツール
-- 地域向け Web アプリ
-- 会員限定ツール
-- ダッシュボード / CRUD / 予約 / 配車
-
-### 向いていないもの
-
-- 超高トラフィックなリアルタイムゲーム
-- GPU 前提の AI 処理
-- 複雑すぎる大規模 SaaS 基盤
-
-## License
-
-MIT
+- organization invite lifecycle
+- organization admin UI
+- password reset
+- email verification
+- feature-based structure への整理
+- optional module install plan の導入
