@@ -4,9 +4,9 @@ import { drizzle } from "drizzle-orm/d1";
 import { items } from "../db/schema";
 import { desc } from "drizzle-orm";
 import { createItemSchema } from "../../shared/schemas/items";
-import type { Env } from "../types";
+import type { AppContextEnv } from "../types";
 
-const app = new Hono<{ Bindings: Env }>()
+const app = new Hono<AppContextEnv>()
   .get("/", async (c) => {
     const db = drizzle(c.env.DB);
     const rows = await db.select().from(items).orderBy(desc(items.createdAt));

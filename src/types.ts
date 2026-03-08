@@ -8,3 +8,13 @@ export interface Env {
   COOKIE_SAME_SITE?: string;
   COOKIE_SECURE?: string;
 }
+
+export interface AppVariables {
+  requestId: string;
+  userId?: number;
+}
+
+export type AppContextEnv = {
+  Bindings: Env;
+  Variables: AppVariables;
+};

@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
-import type { Env } from "./types";
+import type { AppContextEnv, Env } from "./types";
 import health from "./routes/health";
 import items from "./routes/items";
 import kv from "./routes/kv";
@@ -13,8 +13,10 @@ import { csrfProtection } from "./middleware/csrf";
 import { resolveCorsOrigins } from "./lib/cors";
 import { logEvent } from "./lib/logging";
 import { RateLimiter } from "./durable-objects/rate-limiter";
+import { requestId } from "./middleware/request-id";
 
-export const app = new Hono<{ Bindings: Env }>()
+export const app = new Hono<AppContextEnv>()
+  .use("*", requestId)
   .use("*", logger())
   .use(
     "*",
@@ -28,7 +30,7 @@ export const app = new Hono<{ Bindings: Env }>()
     "/api/*",
     cors({
       origin: (origin, c) => {
-        const allowlist = resolveCorsOrigins(c.env.CORS_ORIGIN);
+        const allowlist = resolveCorsOrigins(c.env);
         if (!origin) return allowlist[0];
         return allowlist.includes(origin) ? origin : allowlist[0];
       },
@@ -43,8 +45,12 @@ export const app = new Hono<{ Bindings: Env }>()
       method: c.req.method,
       path: c.req.path,
       message: err.message,
+      requestId: c.get("requestId"),
     });
-    return c.json({ error: "Internal Server Error" }, 500);
+    return c.json(
+      { error: "Internal Server Error", requestId: c.get("requestId") },
+      500
+    );
   })
   .route("/api/health", health)
   .route("/api/items", items)

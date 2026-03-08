@@ -1,5 +1,5 @@
 import { createMiddleware } from "hono/factory";
-import type { Env } from "../types";
+import type { AppContextEnv } from "../types";
 import { getClientIp, logRequestEvent } from "../lib/logging";
 
 type RateLimitOptions = {
@@ -9,7 +9,7 @@ type RateLimitOptions = {
 };
 
 export function rateLimit(options: RateLimitOptions) {
-  return createMiddleware<{ Bindings: Env }>(async (c, next) => {
+  return createMiddleware<AppContextEnv>(async (c, next) => {
     const ip = getClientIp(c.req.raw.headers);
     const windowMs = options.windowSeconds * 1000;
     const bucket = Math.floor(Date.now() / windowMs);

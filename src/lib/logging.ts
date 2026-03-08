@@ -41,10 +41,16 @@ export function logRequestEvent(
   c: Context,
   fields: Record<string, unknown> = {}
 ) {
+  const requestId =
+    "get" in c && typeof c.get === "function"
+      ? (c.get("requestId") as string | undefined)
+      : undefined;
+
   logEvent(level, event, {
     method: c.req.method,
     path: c.req.path,
     ip: getClientIp(c.req.raw.headers),
+    requestId: requestId ?? null,
     ...fields,
   });
 }

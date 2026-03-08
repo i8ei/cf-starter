@@ -20,6 +20,7 @@ describe("app security", () => {
       "http://localhost:5173"
     );
     expect(res.headers.get("Access-Control-Allow-Credentials")).toBe("true");
+    expect(res.headers.get("X-Request-Id")).toBeTruthy();
   });
 
   it("rejects cross-site mutating requests with a session cookie", async () => {
@@ -35,6 +36,7 @@ describe("app security", () => {
     );
 
     expect(res.status).toBe(403);
+    expect(res.headers.get("X-Request-Id")).toBeTruthy();
     expect(await res.json()).toEqual({ error: "forbidden (csrf)" });
   });
 
@@ -61,5 +63,6 @@ describe("app security", () => {
     const blocked = await request();
     expect(blocked.status).toBe(429);
     expect(blocked.headers.get("Retry-After")).toBeTruthy();
+    expect(blocked.headers.get("X-Request-Id")).toBeTruthy();
   });
 });

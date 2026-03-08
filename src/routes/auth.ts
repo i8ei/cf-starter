@@ -7,7 +7,7 @@ import { users, sessions } from "../db/schema";
 import { loginSchema, signupSchema } from "../../shared/schemas/auth";
 import { requireAuth } from "../middleware/auth";
 import { rateLimit } from "../middleware/rate-limit";
-import type { Env } from "../types";
+import type { AppContextEnv, Env } from "../types";
 import {
   HOST_SESSION_COOKIE_NAME,
   LEGACY_SESSION_COOKIE_NAME,
@@ -124,7 +124,7 @@ async function issueSession(c: any, env: Env, db: ReturnType<typeof drizzle>, us
   setSessionCookie(c, env, session.id);
 }
 
-const app = new Hono<{ Bindings: Env }>()
+const app = new Hono<AppContextEnv>()
   .post(
     "/signup",
     rateLimit({ namespace: "auth-signup", maxRequests: 5, windowSeconds: 60 }),
@@ -192,6 +192,7 @@ const app = new Hono<{ Bindings: Env }>()
   .post("/logout", requireAuth, async (c) => {
     const db = drizzle(c.env.DB);
     const userId = c.get("userId");
+    if (!userId) return c.json({ error: "unauthorized" }, 401);
     const { sameSite, secure } = resolveCookieOptions(c.env);
 
     await db.delete(sessions).where(eq(sessions.userId, userId));
@@ -206,6 +207,7 @@ const app = new Hono<{ Bindings: Env }>()
   .get("/me", requireAuth, async (c) => {
     const db = drizzle(c.env.DB);
     const userId = c.get("userId");
+    if (!userId) return c.json({ error: "unauthorized" }, 401);
 
     const [user] = await db
       .select({

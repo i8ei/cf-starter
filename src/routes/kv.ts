@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth";
-import type { Env } from "../types";
+import type { AppContextEnv } from "../types";
 
 const keySchema = z.object({
   key: z
@@ -12,7 +12,7 @@ const keySchema = z.object({
     .regex(/^[a-zA-Z0-9._:-]+$/, "invalid key characters"),
 });
 
-const app = new Hono<{ Bindings: Env; Variables: { userId: number } }>()
+const app = new Hono<AppContextEnv>()
   .use("*", requireAuth)
   .get("/:key", zValidator("param", keySchema), async (c) => {
     const { key } = c.req.valid("param");

@@ -1,7 +1,9 @@
 import { Hono } from "hono";
-import type { Env } from "../types";
+import { ZodError } from "zod";
+import type { AppContextEnv } from "../types";
+import { getAppConfig } from "../lib/config";
 
-const app = new Hono<{ Bindings: Env }>().get("/", async (c) => {
+const app = new Hono<AppContextEnv>().get("/", async (c) => {
   const checks: Record<string, string> = {};
 
   // Bindings check
@@ -35,6 +37,13 @@ const app = new Hono<{ Bindings: Env }>().get("/", async (c) => {
     checks.rateLimiter = res.ok ? "ok" : "error";
   } catch {
     checks.rateLimiter = "error";
+  }
+
+  try {
+    getAppConfig(c.env);
+    checks.config = "ok";
+  } catch (error) {
+    checks.config = error instanceof ZodError ? "invalid" : "error";
   }
 
   const status = Object.values(checks).every((v) => v === "ok") ? "ok" : "degraded";

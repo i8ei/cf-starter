@@ -68,6 +68,8 @@ npm run deploy
 | `npm run db:migrate`        | D1 ローカルマイグレーション                    |
 | `npm run db:migrate:remote` | D1 リモートマイグレーション                    |
 
+GitHub Actions の CI で `npm test` と `npm run build` を毎回実行する。
+
 ## ディレクトリ構成
 
 ```text
@@ -134,7 +136,11 @@ Cookie は `Secure=true` のとき `__Host-session`、`Secure=false` のとき�
 
 ### ログについて
 
-`login success/fail`、`rate limit hit`、`csrf reject`、`session purge` は構造化 JSON ログで出力する。Cloudflare Logs での絞り込みやすさを優先している。
+`login success/fail`、`rate limit hit`、`csrf reject`、`session purge` は構造化 JSON ログで出力する。Cloudflare Logs での絞り込みやすさを優先している。すべてのレスポンスには `X-Request-Id` を付け、同じ ID をログにも載せる。
+
+### 設定検証について
+
+`CORS_ORIGIN`、`COOKIE_SAME_SITE`、`COOKIE_SECURE` は実行時に Zod で検証する。`CORS_ORIGIN` に path 付き URL など不正値が入っている場合は早めに検出できる。
 
 ### `dev:split` について
 
@@ -203,6 +209,7 @@ const app = new Hono<{ Bindings: Env }>()
 - [ ] 認証 Cookie を使う場合、フロントの API 呼び出しが `credentials: include` になっているか確認
 - [ ] Cron を使わない構成にする場合は `wrangler.jsonc` の `triggers.crons` を調整
 - [ ] auth レート制限（`src/routes/auth.ts`）の閾値を要件に合わせて調整
+- [ ] `CORS_ORIGIN` に origin だけを入れる（path / query / hash は入れない）
 
 ## スケールするとき
 

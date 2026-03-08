@@ -1,10 +1,6 @@
-const DEFAULT_ORIGINS = ["http://localhost:5173"];
+import type { Env } from "../types";
+import { getAppConfig } from "./config";
 
-export function resolveCorsOrigins(raw?: string): string[] {
-  if (!raw) return DEFAULT_ORIGINS;
-  const origins = raw
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-  return origins.length > 0 ? origins : DEFAULT_ORIGINS;
+export function resolveCorsOrigins(env: Env): string[] {
+  return getAppConfig(env).corsOrigins;
 }
