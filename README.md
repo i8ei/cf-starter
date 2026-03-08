@@ -103,6 +103,8 @@ cf-starter/
 | `POST /api/auth/logout` | ログアウト（要認証） |
 | `GET /api/auth/me` | 現在のユーザー取得（要認証） |
 
+> **認証について:** D1 セッション + HttpOnly Cookie によるシンプルな実装。小規模業務ツール（~100ユーザー）向け。大規模 SaaS には向かない。さらに外側の門が必要な場合は [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/) を前段に置くこともできる。
+
 ## 型安全チェーン
 
 バックエンドからフロントエンドまで型が貫通する。
