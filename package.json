@@ -3,14 +3,34 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler pages dev ./frontend/dist --compatibility-date 2024-01-01 --d1 DB --kv KV --r2 BUCKET -- npm run dev:frontend",
-    "dev:frontend": "cd frontend && npm run dev",
-    "build": "cd frontend && npm run build",
-    "deploy": "npm run build && wrangler pages deploy ./frontend/dist",
-    "db:migrate": "wrangler d1 execute DB --local --file=./migrations/0001_init.sql",
-    "db:migrate:remote": "wrangler d1 execute DB --remote --file=./migrations/0001_init.sql"
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "npm run build && vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "wrangler d1 migrations apply cf-starter-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply cf-starter-db --remote"
+  },
+  "dependencies": {
+    "hono": "^4",
+    "drizzle-orm": "^0.43",
+    "zod": "^3",
+    "react": "^19",
+    "react-dom": "^19",
+    "@tanstack/react-query": "^5",
+    "@hono/zod-validator": "^0.5"
   },
   "devDependencies": {
-    "wrangler": "^4.71.0"
+    "@cloudflare/vite-plugin": "^1",
+    "@cloudflare/workers-types": "^4",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4",
+    "drizzle-kit": "^0.31",
+    "tailwindcss": "^4",
+    "@tailwindcss/vite": "^4",
+    "typescript": "^5",
+    "vite": "^6",
+    "wrangler": "^4"
   }
 }

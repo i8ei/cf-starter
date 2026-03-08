@@ -1,0 +1,29 @@
+{
+  "name": "cf-starter",
+  "compatibility_date": "2025-01-01",
+  "main": "./src/index.ts",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cf-starter-db",
+      "database_id": "TODO",
+      "migrations_dir": "./migrations"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "TODO"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "cf-starter-bucket"
+    }
+  ],
+  // Static assets (React SPA)
+  "assets": {
+    "directory": "./dist/client"
+  }
+}
