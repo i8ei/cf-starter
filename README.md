@@ -1,8 +1,8 @@
 # cf-starter
 
-Cloudflare フルスタック スターターテンプレート。
+Cloudflare ネイティブなフルスタック開発を、最短で始めるためのスターターテンプレート。
 
-`cp` して即開発。DB・ストレージ・キャッシュ・API・フロントが全部入り。
+`cp` して即開発。DB・ストレージ・キャッシュ・API・認証・フロントが全部入り。
 
 ## スタック
 
@@ -17,6 +17,12 @@ Cloudflare フルスタック スターターテンプレート。
 | Build | @cloudflare/vite-plugin (統合ビルド) |
 
 ## 使い方
+
+### 前提
+
+- Node.js 20+
+- npm
+- Wrangler CLI にログイン済み (`npx wrangler login`)
 
 ### 新プロジェクトを始める
 
@@ -36,7 +42,7 @@ wrangler d1 create my-app-db
 wrangler kv namespace create KV
 wrangler r2 bucket create my-app-bucket
 
-# 2. wrangler.jsonc に返ってきた ID を記入
+# 2. wrangler.jsonc の bindings に返ってきた ID / name を記入
 
 # 3. リモート DB にテーブル作成
 npm run db:migrate:remote
@@ -139,9 +145,9 @@ API の引数や戻り値を変えると、フロント側でコンパイルエ�
 2. `npm run db:generate` でマイグレーション SQL 生成
 3. `npm run db:migrate` でローカル DB に適用
 
-**認証を追加する:**
+**ルートを認証必須にする:**
 
-ルートに `requireAuth` ミドルウェアを挟むだけ。
+`requireAuth` ミドルウェアを挟むだけ。
 
 ```typescript
 import { requireAuth } from "../middleware/auth";
@@ -192,6 +198,17 @@ features/
 - 在庫・出荷管理
 - アンケート・投票システム
 - 地域通貨・ポイント管理
+
+## 向いているもの / 向いていないもの
+
+**向いているもの:**
+- 小規模〜中規模の業務ツール、地域向けWebアプリ
+- 会員限定ツール、ダッシュボード、CRUD、予約、配車
+
+**向いていないもの:**
+- 超高トラフィックなリアルタイムゲーム
+- GPU 前提の AI 処理
+- 複雑すぎる大規模 SaaS 基盤
 
 ## License
 
