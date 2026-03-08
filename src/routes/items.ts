@@ -5,6 +5,7 @@ import { items } from "../db/schema";
 import { desc } from "drizzle-orm";
 import { createItemSchema } from "../../shared/schemas/items";
 import type { AppContextEnv } from "../types";
+import { writeAuditLog } from "../lib/audit";
 
 const app = new Hono<AppContextEnv>()
   .get("/", async (c) => {
@@ -19,6 +20,14 @@ const app = new Hono<AppContextEnv>()
       const db = drizzle(c.env.DB);
       const { name } = c.req.valid("json");
       const [row] = await db.insert(items).values({ name }).returning();
+      await writeAuditLog(c.env.DB, c, {
+        actorUserId: c.get("userId") ?? null,
+        action: "item.create",
+        resourceType: "item",
+        resourceId: String(row.id),
+        status: 201,
+        metadata: { name: row.name },
+      });
       return c.json(row, 201);
     }
   );

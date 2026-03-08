@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { sessions } from "../db/schema";
 import type { AppContextEnv } from "../types";
 import { getSessionCookie } from "../lib/session";
+import { getUserRoleNames } from "../lib/rbac";
 
 export const requireAuth = createMiddleware<AppContextEnv>(async (c, next) => {
   const sessionId = getSessionCookie(c);
@@ -20,6 +21,8 @@ export const requireAuth = createMiddleware<AppContextEnv>(async (c, next) => {
     return c.json({ error: "unauthorized" }, 401);
   }
 
+  const roles = await getUserRoleNames(db, session.userId);
   c.set("userId", session.userId);
+  c.set("roles", roles);
   await next();
 });

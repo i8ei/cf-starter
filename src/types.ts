@@ -12,6 +12,7 @@ export interface Env {
 export interface AppVariables {
   requestId: string;
   userId?: number;
+  roles?: string[];
 }
 
 export type AppContextEnv = {

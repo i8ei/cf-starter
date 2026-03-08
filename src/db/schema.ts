@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, primaryKey } from "drizzle-orm/sqlite-core";
 
 export const items = sqliteTable("items", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -20,4 +20,39 @@ export const sessions = sqliteTable("sessions", {
     .notNull()
     .references(() => users.id),
   expiresAt: text("expires_at").notNull(),
+});
+
+export const roles = sqliteTable("roles", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull().unique(),
+  createdAt: text("created_at").notNull().default("(datetime('now'))"),
+});
+
+export const userRoles = sqliteTable(
+  "user_roles",
+  {
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    roleId: integer("role_id")
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    assignedAt: text("assigned_at").notNull().default("(datetime('now'))"),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.roleId] })]
+);
+
+export const auditLogs = sqliteTable("audit_logs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  actorUserId: integer("actor_user_id").references(() => users.id),
+  action: text("action").notNull(),
+  resourceType: text("resource_type").notNull(),
+  resourceId: text("resource_id"),
+  requestId: text("request_id").notNull(),
+  method: text("method").notNull(),
+  path: text("path").notNull(),
+  ip: text("ip"),
+  status: integer("status").notNull(),
+  metadataJson: text("metadata_json"),
+  createdAt: text("created_at").notNull().default("(datetime('now'))"),
 });

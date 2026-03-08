@@ -111,12 +111,12 @@ cf-starter/
 | `POST /api/items`       | D1 にアイテム追加（Zod バリデーション付き）     |
 | `GET /api/upload`       | R2 ファイル一覧取得（要認証）              |
 | `POST /api/upload`      | R2 へアップロード（要認証, 10MB制限）      |
-| `GET /api/kv/:key`      | KV 読み取り（要認証, キーバリデーション付き）    |
-| `PUT /api/kv/:key`      | KV 書き込み（要認証, キーバリデーション付き）    |
+| `GET /api/kv/:key`      | KV 読み取り（要認証, admin ロール必須）       |
+| `PUT /api/kv/:key`      | KV 書き込み（要認証, admin ロール必須）       |
 | `POST /api/auth/signup` | ユーザー登録 → セッション発行              |
 | `POST /api/auth/login`  | ログイン → セッション発行                |
 | `POST /api/auth/logout` | ログアウト（要認証）                    |
-| `GET /api/auth/me`      | 現在のユーザー取得（要認証）                |
+| `GET /api/auth/me`      | 現在のユーザーとロール取得（要認証）          |
 
 ### 認証について
 
@@ -129,6 +129,14 @@ Cookie は `Secure=true` のとき `__Host-session`、`Secure=false` のとき�
 ### CSRF について
 
 `/api/*` の変更系メソッド（POST/PUT/PATCH/DELETE）で、認証 Cookie（`__Host-session` / `session`）が付いている場合は `Origin` または `Referer` が許可済みオリジンと一致することを必須にしている。
+
+### RBAC について
+
+`roles` / `user_roles` テーブルを持ち、`member` と `admin` を seed する。新規 signup ユーザーには自動で `member` を付与する。サンプルでは `KV` ルートを `admin` 限定にして `requireRole()` の使い方を示している。
+
+### 監査ログについて
+
+`audit_logs` テーブルに `who did what` を残す共通 helper を入れてある。`signup/login/logout`、`item.create`、`kv.put`、`upload.create`、権限不足拒否が監査対象。
 
 ### セッション掃除（Cron）
 
@@ -191,6 +199,20 @@ const app = new Hono<{ Bindings: Env }>()
   .get("/", requireAuth, async (c) => {
     const userId = c.get("userId");
     // ...
+  });
+```
+
+### ルートをロール必須にする
+
+`requireRole("admin")` のように挟むだけ。
+
+```ts
+import { requireAuth } from "../middleware/auth";
+import { requireRole } from "../middleware/require-role";
+
+const app = new Hono<AppContextEnv>()
+  .get("/", requireAuth, requireRole("admin"), async (c) => {
+    return c.json({ ok: true });
   });
 ```
 

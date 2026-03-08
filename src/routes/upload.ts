@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { requireAuth } from "../middleware/auth";
 import type { AppContextEnv } from "../types";
+import { writeAuditLog } from "../lib/audit";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -30,6 +31,14 @@ const app = new Hono<AppContextEnv>()
     const key = `uploads/${Date.now()}_${safeName}`;
     await c.env.BUCKET.put(key, file.stream(), {
       httpMetadata: { contentType: file.type },
+    });
+    await writeAuditLog(c.env.DB, c, {
+      actorUserId: c.get("userId") ?? null,
+      action: "upload.create",
+      resourceType: "r2",
+      resourceId: key,
+      status: 201,
+      metadata: { size: file.size, contentType: file.type || null },
     });
     return c.json({ key, size: file.size }, 201);
   });

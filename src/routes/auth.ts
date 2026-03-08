@@ -16,7 +16,9 @@ import {
   rotateSession,
   SESSION_MAX_AGE_SECONDS,
 } from "../lib/session";
+import { writeAuditLog } from "../lib/audit";
 import { logRequestEvent } from "../lib/logging";
+import { ensureDefaultUserRole } from "../lib/rbac";
 
 const PBKDF2_ITERATIONS = 310000;
 const PBKDF2_KEY_LENGTH = 32;
@@ -150,9 +152,18 @@ const app = new Hono<AppContextEnv>()
         .values({ email, passwordHash, name })
         .returning();
 
+      const roles = await ensureDefaultUserRole(db, user.id);
       await issueSession(c, c.env, db, user.id);
       logRequestEvent("info", "auth.signup_success", c, { userId: user.id });
-      return c.json({ id: user.id, email: user.email, name: user.name }, 201);
+      await writeAuditLog(c.env.DB, c, {
+        actorUserId: user.id,
+        action: "auth.signup",
+        resourceType: "user",
+        resourceId: String(user.id),
+        status: 201,
+        metadata: { roles },
+      });
+      return c.json({ id: user.id, email: user.email, name: user.name, roles }, 201);
     }
   )
   .post(
@@ -173,6 +184,12 @@ const app = new Hono<AppContextEnv>()
         logRequestEvent("warn", "auth.login_failed", c, {
           reason: "invalid_credentials",
         });
+        await writeAuditLog(c.env.DB, c, {
+          action: "auth.login_failed",
+          resourceType: "session",
+          status: 401,
+          metadata: { email },
+        });
         return c.json({ error: "invalid email or password" }, 401);
       }
 
@@ -184,9 +201,17 @@ const app = new Hono<AppContextEnv>()
           .where(eq(users.id, user.id));
       }
 
+      const roles = await ensureDefaultUserRole(db, user.id);
       await issueSession(c, c.env, db, user.id);
       logRequestEvent("info", "auth.login_success", c, { userId: user.id });
-      return c.json({ id: user.id, email: user.email, name: user.name });
+      await writeAuditLog(c.env.DB, c, {
+        actorUserId: user.id,
+        action: "auth.login",
+        resourceType: "session",
+        status: 200,
+        metadata: { roles },
+      });
+      return c.json({ id: user.id, email: user.email, name: user.name, roles });
     }
   )
   .post("/logout", requireAuth, async (c) => {
@@ -202,12 +227,19 @@ const app = new Hono<AppContextEnv>()
       secure: true,
     });
     deleteCookie(c, LEGACY_SESSION_COOKIE_NAME, { path: "/", sameSite, secure });
+    await writeAuditLog(c.env.DB, c, {
+      actorUserId: userId,
+      action: "auth.logout",
+      resourceType: "session",
+      status: 200,
+    });
     return c.json({ ok: true });
   })
   .get("/me", requireAuth, async (c) => {
     const db = drizzle(c.env.DB);
     const userId = c.get("userId");
     if (!userId) return c.json({ error: "unauthorized" }, 401);
+    const roles = c.get("roles") ?? [];
 
     const [user] = await db
       .select({
@@ -224,7 +256,7 @@ const app = new Hono<AppContextEnv>()
       return c.json({ error: "user not found" }, 404);
     }
 
-    return c.json(user);
+    return c.json({ ...user, roles });
   });
 
 export default app;
