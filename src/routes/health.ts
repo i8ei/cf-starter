@@ -4,6 +4,9 @@ import type { Env } from "../types";
 const app = new Hono<{ Bindings: Env }>().get("/", async (c) => {
   const checks: Record<string, string> = {};
 
+  // Bindings check
+  checks.env = c.env.DB && c.env.KV && c.env.BUCKET ? "ok" : "missing";
+
   try {
     await c.env.DB.prepare("SELECT 1").first();
     checks.d1 = "ok";
@@ -25,7 +28,8 @@ const app = new Hono<{ Bindings: Env }>().get("/", async (c) => {
     checks.r2 = "error";
   }
 
-  return c.json({ status: "ok", checks });
+  const status = Object.values(checks).every((v) => v === "ok") ? "ok" : "degraded";
+  return c.json({ status, checks });
 });
 
 export default app;

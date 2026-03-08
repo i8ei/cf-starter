@@ -26,10 +26,12 @@ cf-starter/
 ├── src/                    ← Hono バックエンド (Worker)
 │   ├── db/schema.ts        ← Drizzle スキーマ
 │   ├── routes/             ← API ルート
+│   │   ├── auth.ts         POST signup/login/logout, GET me
 │   │   ├── health.ts       GET /api/health
 │   │   ├── items.ts        GET/POST /api/items (D1)
 │   │   ├── upload.ts       GET/POST /api/upload (R2)
 │   │   └── kv.ts           GET/PUT /api/kv/:key (KV)
+│   ├── middleware/auth.ts   ← requireAuth ミドルウェア
 │   ├── types.ts            ← Env バインディング型
 │   └── index.ts            ← エントリーポイント（ルート集約 + エラーハンドラ）
 ├── migrations/             ← D1 マイグレーション

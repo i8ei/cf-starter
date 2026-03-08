@@ -79,15 +79,29 @@ cf-starter/
 └── index.html
 ```
 
+## 設計思想
+
+| ディレクトリ | 役割 |
+|---|---|
+| `app/` | UI とクライアントロジック |
+| `src/` | Worker 上で動くサーバーロジック |
+| `shared/` | 両方が読む「契約」（バリデーションスキーマ等） |
+
+フロントとバックが `shared/` を介して型とバリデーションを共有することで、API の変更が即座にコンパイルエラーとして検出される。片方だけ変えて齟齬が生まれる事故を防ぐ。
+
 ## サンプル API
 
 | エンドポイント | 内容 |
 |---|---|
-| `GET /api/health` | D1 / KV / R2 の接続チェック |
+| `GET /api/health` | D1 / KV / R2 / Env の接続・設定チェック |
 | `GET /api/items` | D1 からアイテム一覧取得 |
 | `POST /api/items` | D1 にアイテム追加（Zod バリデーション付き） |
-| `GET/POST /api/upload` | R2 ファイル一覧 / アップロード |
-| `GET/PUT /api/kv/:key` | KV 読み書き |
+| `GET/POST /api/upload` | R2 ファイル一覧 / アップロード（10MB制限） |
+| `GET/PUT /api/kv/:key` | KV 読み書き（キーバリデーション付き） |
+| `POST /api/auth/signup` | ユーザー登録 → セッション発行 |
+| `POST /api/auth/login` | ログイン → セッション発行 |
+| `POST /api/auth/logout` | ログアウト（要認証） |
+| `GET /api/auth/me` | 現在のユーザー取得（要認証） |
 
 ## 型安全チェーン
 
@@ -123,6 +137,20 @@ API の引数や戻り値を変えると、フロント側でコンパイルエ�
 2. `npm run db:generate` でマイグレーション SQL 生成
 3. `npm run db:migrate` でローカル DB に適用
 
+**認証を追加する:**
+
+ルートに `requireAuth` ミドルウェアを挟むだけ。
+
+```typescript
+import { requireAuth } from "../middleware/auth";
+
+const app = new Hono<{ Bindings: Env }>()
+  .get("/", requireAuth, async (c) => {
+    const userId = c.get("userId");
+    // ...
+  });
+```
+
 **バリデーションを共有する:**
 
 1. `shared/schemas/` に Zod スキーマ定義
@@ -133,7 +161,35 @@ API の引数や戻り値を変えると、フロント側でコンパイルエ�
 
 - [ ] `wrangler.jsonc` の `database_id` / KV `id` を実際の値に置換
 - [ ] CORS の origin を自ドメインに制限（`src/index.ts`）
-- [ ] 必要に応じて認証を追加
+- [ ] 認証が不要なルートから `requireAuth` を外す（デフォルトは認証なし）
+
+## スケールするとき
+
+ルートやフックが増えてきたら、機能単位のディレクトリに移行する。
+
+```
+features/
+  items/
+    api.ts
+    schema.ts
+    hooks.ts
+    components/
+```
+
+小さいうちは今の flat 構成で十分。育ったら移行。
+
+## このテンプレで作れるもの
+
+- ボランティアタクシー配車
+- 集会所・施設予約
+- 農作業・栽培記録
+- 地域イベント管理
+- 漁業ダッシュボード
+- 会員限定の業務ツール
+- 小規模マッチングサービス
+- 在庫・出荷管理
+- アンケート・投票システム
+- 地域通貨・ポイント管理
 
 ## License
 

@@ -6,13 +6,14 @@ import health from "./routes/health";
 import items from "./routes/items";
 import kv from "./routes/kv";
 import upload from "./routes/upload";
+import auth from "./routes/auth";
 
 const app = new Hono<{ Bindings: Env }>()
   .use("*", logger())
   .use(
     "/api/*",
     cors({
-      origin: (origin) => origin, // 開発時は全許可。本番では固定ドメインに変更
+      origin: ["http://localhost:5173"], // 本番では自ドメインに変更
       allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       allowHeaders: ["Content-Type"],
     })
@@ -24,7 +25,8 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/api/health", health)
   .route("/api/items", items)
   .route("/api/kv", kv)
-  .route("/api/upload", upload);
+  .route("/api/upload", upload)
+  .route("/api/auth", auth);
 
 export type AppType = typeof app;
 export default app;
