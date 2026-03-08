@@ -43,6 +43,7 @@ wrangler kv namespace create KV
 wrangler r2 bucket create my-app-bucket
 
 # 2. wrangler.jsonc の bindings に返ってきた ID / name を記入
+#    CORS_ORIGIN も本番ドメインに設定（例: https://app.example.com）
 
 # 3. リモート DB にテーブル作成
 npm run db:migrate:remote
@@ -103,10 +104,10 @@ cf-starter/
 | `GET /api/health`       | D1 / KV / R2 / Env の接続・設定チェック |
 | `GET /api/items`        | D1 からアイテム一覧取得                 |
 | `POST /api/items`       | D1 にアイテム追加（Zod バリデーション付き）     |
-| `GET /api/upload`       | R2 ファイル一覧取得                   |
-| `POST /api/upload`      | R2 へアップロード（10MB制限）            |
-| `GET /api/kv/:key`      | KV 読み取り（キーバリデーション付き）          |
-| `PUT /api/kv/:key`      | KV 書き込み（キーバリデーション付き）          |
+| `GET /api/upload`       | R2 ファイル一覧取得（要認証）              |
+| `POST /api/upload`      | R2 へアップロード（要認証, 10MB制限）      |
+| `GET /api/kv/:key`      | KV 読み取り（要認証, キーバリデーション付き）    |
+| `PUT /api/kv/:key`      | KV 書き込み（要認証, キーバリデーション付き）    |
 | `POST /api/auth/signup` | ユーザー登録 → セッション発行              |
 | `POST /api/auth/login`  | ログイン → セッション発行                |
 | `POST /api/auth/logout` | ログアウト（要認証）                    |
@@ -114,7 +115,7 @@ cf-starter/
 
 ### 認証について
 
-D1 セッション + HttpOnly Cookie によるシンプルな実装。小規模業務ツール（~100ユーザー）向け。大規模 SaaS には向かない。さらに外側の門が必要な場合は、Cloudflare Access を前段に置くこともできる。
+D1 セッション + HttpOnly Cookie によるシンプルな実装。パスワードは PBKDF2 でハッシュ化。小規模業務ツール（~100ユーザー）向け。大規模 SaaS には向かない。さらに外側の門が必要な場合は、Cloudflare Access を前段に置くこともできる。
 
 ### `dev:split` について
 
@@ -177,8 +178,8 @@ const app = new Hono<{ Bindings: Env }>()
 ## 本番チェックリスト
 
 - [ ] `wrangler.jsonc` の `database_id` / KV `id` を実際の値に置換
-- [ ] CORS の `origin` を自ドメインに制限（`src/index.ts`）
-- [ ] 認証が必要なルートにだけ `requireAuth` を付ける（デフォルトは認証なし）
+- [ ] `wrangler.jsonc` の `vars.CORS_ORIGIN` を本番ドメインに変更（複数はカンマ区切り）
+- [ ] 認証 Cookie を使う場合、フロントの API 呼び出しが `credentials: include` になっているか確認
 
 ## スケールするとき
 

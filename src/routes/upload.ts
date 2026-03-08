@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { requireAuth } from "../middleware/auth";
 import type { Env } from "../types";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -6,7 +7,8 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const sanitizeFilename = (name: string): string =>
   name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 200);
 
-const app = new Hono<{ Bindings: Env }>()
+const app = new Hono<{ Bindings: Env; Variables: { userId: number } }>()
+  .use("*", requireAuth)
   .get("/", async (c) => {
     const list = await c.env.BUCKET.list({ prefix: "uploads/" });
     const files = list.objects.map((o) => ({

@@ -8,14 +8,30 @@ import kv from "./routes/kv";
 import upload from "./routes/upload";
 import auth from "./routes/auth";
 
+const DEFAULT_ORIGINS = ["http://localhost:5173"];
+
+function resolveCorsOrigins(raw?: string): string[] {
+  if (!raw) return DEFAULT_ORIGINS;
+  const origins = raw
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  return origins.length > 0 ? origins : DEFAULT_ORIGINS;
+}
+
 const app = new Hono<{ Bindings: Env }>()
   .use("*", logger())
   .use(
     "/api/*",
     cors({
-      origin: ["http://localhost:5173"], // 本番では自ドメインに変更
+      origin: (origin, c) => {
+        const allowlist = resolveCorsOrigins(c.env.CORS_ORIGIN);
+        if (!origin) return allowlist[0];
+        return allowlist.includes(origin) ? origin : allowlist[0];
+      },
+      credentials: true,
       allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowHeaders: ["Content-Type"],
+      allowHeaders: ["Content-Type", "Authorization"],
     })
   )
   .onError((err, c) => {

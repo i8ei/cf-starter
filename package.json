@@ -9,8 +9,8 @@
     "preview": "npm run build && vite preview",
     "deploy": "npm run build && wrangler deploy",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "wrangler d1 migrations apply cf-starter-db --local",
-    "db:migrate:remote": "wrangler d1 migrations apply cf-starter-db --remote"
+    "db:migrate": "node scripts/d1-migrate.mjs",
+    "db:migrate:remote": "node scripts/d1-migrate.mjs remote"
   },
   "dependencies": {
     "hono": "^4",

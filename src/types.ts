@@ -3,4 +3,5 @@ export interface Env {
   KV: KVNamespace;
   BUCKET: R2Bucket;
   ASSETS: Fetcher;
+  CORS_ORIGIN?: string;
 }
