@@ -141,6 +141,14 @@ const app = new Hono<{ Bindings: Env }>()
       return c.json({ error: "invalid email or password" }, 401);
     }
 
+    if (user.passwordHash.includes(":")) {
+      const upgradedHash = await hashPassword(password);
+      await db
+        .update(users)
+        .set({ passwordHash: upgradedHash })
+        .where(eq(users.id, user.id));
+    }
+
     const sessionId = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + SEVEN_DAYS * 1000).toISOString();
     await db.insert(sessions).values({ id: sessionId, userId: user.id, expiresAt });

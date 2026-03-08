@@ -25,6 +25,9 @@
   "vars": {
     "CORS_ORIGIN": "http://localhost:5173"
   },
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  },
   // Static assets (React SPA)
   "assets": {
     "directory": "./dist/client",

@@ -115,7 +115,11 @@ cf-starter/
 
 ### 認証について
 
-D1 セッション + HttpOnly Cookie によるシンプルな実装。パスワードは PBKDF2 でハッシュ化。小規模業務ツール（~100ユーザー）向け。大規模 SaaS には向かない。さらに外側の門が必要な場合は、Cloudflare Access を前段に置くこともできる。
+D1 セッション + HttpOnly Cookie によるシンプルな実装。パスワードは PBKDF2 でハッシュ化。旧形式（`salt:sha256`）が残っていても、ログイン成功時に自動で PBKDF2 形式へ再ハッシュされる。
+
+### セッション掃除（Cron）
+
+`wrangler.jsonc` の Cron Trigger（デフォルト: 15分ごと）で期限切れセッションを自動削除する。`sessions.expires_at` にはインデックスを貼ってあるため、件数が増えても掃除が重くなりにくい。
 
 ### `dev:split` について
 
@@ -180,6 +184,7 @@ const app = new Hono<{ Bindings: Env }>()
 - [ ] `wrangler.jsonc` の `database_id` / KV `id` を実際の値に置換
 - [ ] `wrangler.jsonc` の `vars.CORS_ORIGIN` を本番ドメインに変更（複数はカンマ区切り）
 - [ ] 認証 Cookie を使う場合、フロントの API 呼び出しが `credentials: include` になっているか確認
+- [ ] Cron を使わない構成にする場合は `wrangler.jsonc` の `triggers.crons` を調整
 
 ## スケールするとき
 
