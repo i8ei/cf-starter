@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { z } from "zod";
 import { drizzle } from "drizzle-orm/d1";
 import { items } from "../db/schema";
 import { desc } from "drizzle-orm";
+import { createItemSchema } from "../../shared/schemas/items";
 import type { Env } from "../types";
 
 const app = new Hono<{ Bindings: Env }>()
@@ -14,12 +14,7 @@ const app = new Hono<{ Bindings: Env }>()
   })
   .post(
     "/",
-    zValidator(
-      "json",
-      z.object({
-        name: z.string().min(1).max(200),
-      })
-    ),
+    zValidator("json", createItemSchema),
     async (c) => {
       const db = drizzle(c.env.DB);
       const { name } = c.req.valid("json");

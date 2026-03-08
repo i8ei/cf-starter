@@ -21,6 +21,8 @@ cf-starter/
 │   ├── App.tsx
 │   ├── main.tsx
 │   └── index.css
+├── shared/                 ← フロント・バック共有
+│   └── schemas/            ← Zod バリデーションスキーマ
 ├── src/                    ← Hono バックエンド (Worker)
 │   ├── db/schema.ts        ← Drizzle スキーマ
 │   ├── routes/             ← API ルート
@@ -29,7 +31,7 @@ cf-starter/
 │   │   ├── upload.ts       GET/POST /api/upload (R2)
 │   │   └── kv.ts           GET/PUT /api/kv/:key (KV)
 │   ├── types.ts            ← Env バインディング型
-│   └── index.ts            ← エントリーポイント（ルート集約）
+│   └── index.ts            ← エントリーポイント（ルート集約 + エラーハンドラ）
 ├── migrations/             ← D1 マイグレーション
 ├── drizzle.config.ts
 ├── vite.config.ts
@@ -77,4 +79,5 @@ hc<AppType> → TanStack Query（フロントエンド）
 - Env バインディングの型は `src/types.ts` に集約
 - DB スキーマは `src/db/schema.ts` に定義（Drizzle）
 - フロントの API 呼び出しは `hc<AppType>` + TanStack Query
-- バリデーションは Zod で定義し、フロント・バック共有可能
+- バリデーションは Zod で定義し `shared/schemas/` に置く（フロント・バック共有）
+- パスエイリアス: `~/` → app, `@server/` → src, `@shared/` → shared

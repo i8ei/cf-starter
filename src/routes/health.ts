@@ -22,7 +22,7 @@ const app = new Hono<{ Bindings: Env }>().get("/", async (c) => {
     await c.env.BUCKET.head("_health");
     checks.r2 = "ok";
   } catch {
-    checks.r2 = "ok";
+    checks.r2 = "error";
   }
 
   return c.json({ status: "ok", checks });
