@@ -44,7 +44,8 @@ cf-starter/
 ## コマンド
 
 ```bash
-npm run dev              # ローカル開発（Vite + workerd 統合）
+npm run dev              # ローカル開発（統合モード: Vite + workerd）
+npm run dev:split        # ローカル開発（分離モード: Vite + wrangler 別起動）
 npm run build            # ビルド
 npm run preview          # ビルド後プレビュー
 npm run deploy           # Cloudflare にデプロイ
@@ -74,6 +75,15 @@ hc<AppType> → TanStack Query（フロントエンド）
 ```
 
 バックエンドからフロントエンドまで型が貫通する。
+
+## dev:split モード（認証フリッカー回避）
+
+`@cloudflare/vite-plugin` の統合 dev モードで、Cookie ベースの認証フローがフリッカー（画面チラつき・無限リロード）する場合がある。原因はプラグインのリクエスト処理順。
+
+`npm run dev:split` を使うと Vite と wrangler が分離起動し、`/api/*` はプロキシで中継される（`vite.config.split.ts`）。ビルド・デプロイは統合プラグインのままなので本番に影響はない。
+
+- 通常: `npm run dev`（シンプル、認証なしなら問題なし）
+- 認証あり: `npm run dev:split`（フリッカーする場合はこちら）
 
 ## 規約
 
