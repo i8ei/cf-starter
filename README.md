@@ -2,7 +2,7 @@
 
 Cloudflare ネイティブなフルスタック開発を、最短で始めるためのスターターテンプレート。
 
-`cp` して即開発。DB・ストレージ・キャッシュ・API・認証・フロントが全部入り。
+cp して即開発。DB・ストレージ・キャッシュ・API・認証・フロントが全部入り。
 
 ## スタック
 
@@ -14,7 +14,7 @@ Cloudflare ネイティブなフルスタック開発を、最短で始めるた
 | Storage | R2 (オブジェクトストレージ) |
 | Cache | KV (キーバリューストア) |
 | Validation | Zod (フロント・バック共有) |
-| Build | @cloudflare/vite-plugin (統合ビルド) |
+| Build | `@cloudflare/vite-plugin` (統合ビルド) |
 
 ## 使い方
 
@@ -53,20 +53,20 @@ npm run deploy
 
 ## コマンド
 
-| コマンド | 内容 |
-|---|---|
-| `npm run dev` | ローカル開発（統合モード: Vite + workerd） |
-| `npm run dev:split` | ローカル開発（分離モード: Vite + wrangler 別起動） |
-| `npm run build` | ビルド |
-| `npm run preview` | ビルド後プレビュー |
-| `npm run deploy` | Cloudflare にデプロイ |
-| `npm run db:generate` | Drizzle スキーマからマイグレーション SQL 生成 |
-| `npm run db:migrate` | D1 ローカルマイグレーション |
-| `npm run db:migrate:remote` | D1 リモートマイグレーション |
+| コマンド                        | 内容                                 |
+| --------------------------- | ---------------------------------- |
+| `npm run dev`               | ローカル開発（統合モード: Vite + workerd）      |
+| `npm run dev:split`         | ローカル開発（分離モード: Vite + wrangler 別起動） |
+| `npm run build`             | ビルド                                |
+| `npm run preview`           | ビルド後プレビュー                          |
+| `npm run deploy`            | Cloudflare にデプロイ                   |
+| `npm run db:generate`       | Drizzle スキーマからマイグレーション SQL 生成      |
+| `npm run db:migrate`        | D1 ローカルマイグレーション                    |
+| `npm run db:migrate:remote` | D1 リモートマイグレーション                    |
 
 ## ディレクトリ構成
 
-```
+```text
 cf-starter/
 ├── app/                    ← React フロントエンド
 │   ├── hooks/              ← TanStack Query カスタムフック
@@ -88,37 +88,43 @@ cf-starter/
 
 ## 設計思想
 
-| ディレクトリ | 役割 |
-|---|---|
-| `app/` | UI とクライアントロジック |
-| `src/` | Worker 上で動くサーバーロジック |
+| ディレクトリ    | 役割                      |
+| --------- | ----------------------- |
+| `app/`    | UI とクライアントロジック          |
+| `src/`    | Worker 上で動くサーバーロジック     |
 | `shared/` | 両方が読む「契約」（バリデーションスキーマ等） |
 
 フロントとバックが `shared/` を介して型とバリデーションを共有することで、API の変更が即座にコンパイルエラーとして検出される。片方だけ変えて齟齬が生まれる事故を防ぐ。
 
 ## サンプル API
 
-| エンドポイント | 内容 |
-|---|---|
-| `GET /api/health` | D1 / KV / R2 / Env の接続・設定チェック |
-| `GET /api/items` | D1 からアイテム一覧取得 |
-| `POST /api/items` | D1 にアイテム追加（Zod バリデーション付き） |
-| `GET/POST /api/upload` | R2 ファイル一覧 / アップロード（10MB制限） |
-| `GET/PUT /api/kv/:key` | KV 読み書き（キーバリデーション付き） |
-| `POST /api/auth/signup` | ユーザー登録 → セッション発行 |
-| `POST /api/auth/login` | ログイン → セッション発行 |
-| `POST /api/auth/logout` | ログアウト（要認証） |
-| `GET /api/auth/me` | 現在のユーザー取得（要認証） |
+| エンドポイント                 | 内容                            |
+| ----------------------- | ----------------------------- |
+| `GET /api/health`       | D1 / KV / R2 / Env の接続・設定チェック |
+| `GET /api/items`        | D1 からアイテム一覧取得                 |
+| `POST /api/items`       | D1 にアイテム追加（Zod バリデーション付き）     |
+| `GET /api/upload`       | R2 ファイル一覧取得                   |
+| `POST /api/upload`      | R2 へアップロード（10MB制限）            |
+| `GET /api/kv/:key`      | KV 読み取り（キーバリデーション付き）          |
+| `PUT /api/kv/:key`      | KV 書き込み（キーバリデーション付き）          |
+| `POST /api/auth/signup` | ユーザー登録 → セッション発行              |
+| `POST /api/auth/login`  | ログイン → セッション発行                |
+| `POST /api/auth/logout` | ログアウト（要認証）                    |
+| `GET /api/auth/me`      | 現在のユーザー取得（要認証）                |
 
-> **認証について:** D1 セッション + HttpOnly Cookie によるシンプルな実装。小規模業務ツール（~100ユーザー）向け。大規模 SaaS には向かない。さらに外側の門が必要な場合は [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/) を前段に置くこともできる。
+### 認証について
 
-> **dev:split について:** `@cloudflare/vite-plugin` の統合モードで認証フロー（Cookie/セッション）がフリッカーする場合は `npm run dev:split` を使う。Vite と wrangler が分離起動し、`/api/*` はプロキシされる。ビルド・デプロイは統合プラグインのままなので本番に影響はない。
+D1 セッション + HttpOnly Cookie によるシンプルな実装。小規模業務ツール（~100ユーザー）向け。大規模 SaaS には向かない。さらに外側の門が必要な場合は、Cloudflare Access を前段に置くこともできる。
+
+### `dev:split` について
+
+`@cloudflare/vite-plugin` の統合モードで Cookie / セッションまわりの挙動が不安定な場合は `npm run dev:split` を使う。Vite と Wrangler が分離起動し、`/api/*` はプロキシされる。ビルド・デプロイは統合プラグインのままなので、本番には影響しない。
 
 ## 型安全チェーン
 
 バックエンドからフロントエンドまで型が貫通する。
 
-```
+```text
 Zod スキーマ (shared/)
     ↓
 @hono/zod-validator（リクエスト検証）
@@ -136,23 +142,23 @@ API の引数や戻り値を変えると、フロント側でコンパイルエ�
 
 ## 開発の流れ
 
-**API を追加する:**
+### API を追加する
 
 1. `src/routes/` にファイル追加
 2. `src/index.ts` で `.route()` 登録
 3. フロントから `client.api.xxx.$get()` で呼ぶ
 
-**テーブルを追加する:**
+### テーブルを追加する
 
 1. `src/db/schema.ts` にテーブル定義
 2. `npm run db:generate` でマイグレーション SQL 生成
 3. `npm run db:migrate` でローカル DB に適用
 
-**ルートを認証必須にする:**
+### ルートを認証必須にする
 
 `requireAuth` ミドルウェアを挟むだけ。
 
-```typescript
+```ts
 import { requireAuth } from "../middleware/auth";
 
 const app = new Hono<{ Bindings: Env }>()
@@ -162,23 +168,23 @@ const app = new Hono<{ Bindings: Env }>()
   });
 ```
 
-**バリデーションを共有する:**
+### バリデーションを共有する
 
-1. `shared/schemas/` に Zod スキーマ定義
-2. バックエンド: `zValidator("json", schema)` で使う
-3. フロントエンド: 同じスキーマで入力チェック
+- `shared/schemas/` に Zod スキーマ定義
+- バックエンド: `zValidator("json", schema)` で使う
+- フロントエンド: 同じスキーマで入力チェック
 
 ## 本番チェックリスト
 
 - [ ] `wrangler.jsonc` の `database_id` / KV `id` を実際の値に置換
-- [ ] CORS の origin を自ドメインに制限（`src/index.ts`）
+- [ ] CORS の `origin` を自ドメインに制限（`src/index.ts`）
 - [ ] 認証が必要なルートにだけ `requireAuth` を付ける（デフォルトは認証なし）
 
 ## スケールするとき
 
 ルートやフックが増えてきたら、機能単位のディレクトリに移行する。
 
-```
+```text
 features/
   items/
     api.ts
