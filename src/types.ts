@@ -12,10 +12,21 @@ export interface Env {
   COOKIE_SECURE?: string;
 }
 
+export interface OrganizationMembershipSummary {
+  organizationId: number;
+  organizationName: string;
+  organizationSlug: string;
+  membershipRole: string;
+}
+
 export interface AppVariables {
   requestId: string;
+  sessionId?: string;
   userId?: number;
   roles?: string[];
+  orgId?: number;
+  orgRole?: string;
+  memberships?: OrganizationMembershipSummary[];
 }
 
 export type AppContextEnv = {

@@ -41,11 +41,12 @@ describe("session helpers", () => {
       },
     };
 
-    await rotateSession(repository, 7, Date.UTC(2026, 0, 1));
-    const rotated = await rotateSession(repository, 7, Date.UTC(2026, 0, 2));
+    await rotateSession(repository, 7, 10, Date.UTC(2026, 0, 1));
+    const rotated = await rotateSession(repository, 7, 11, Date.UTC(2026, 0, 2));
 
     expect(sessions.get(7)).toEqual([rotated]);
     expect(rotated.id).toBe("second-session");
+    expect(rotated.currentOrgId).toBe(11);
 
     uuidSpy.mockRestore();
   });

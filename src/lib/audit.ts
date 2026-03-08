@@ -8,6 +8,7 @@ type AuditLogInput = {
   resourceType: string;
   status: number;
   actorUserId?: number | null;
+  organizationId?: number | null;
   resourceId?: string | null;
   metadata?: Record<string, unknown> | null;
 };
@@ -17,9 +18,15 @@ export function buildAuditLogEntry(c: Context, input: AuditLogInput) {
     "get" in c && typeof c.get === "function"
       ? (c.get("requestId") as string | undefined)
       : undefined;
+  const organizationId =
+    input.organizationId ??
+    ("get" in c && typeof c.get === "function"
+      ? (c.get("orgId") as number | undefined)
+      : undefined);
 
   return {
     actorUserId: input.actorUserId ?? null,
+    organizationId: organizationId ?? null,
     action: input.action,
     resourceType: input.resourceType,
     resourceId: input.resourceId ?? null,

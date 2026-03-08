@@ -8,6 +8,7 @@ import items from "./routes/items";
 import kv from "./routes/kv";
 import upload from "./routes/upload";
 import auth from "./routes/auth";
+import orgs from "./routes/orgs";
 import { purgeExpiredSessions } from "./db/session-maintenance";
 import { csrfProtection } from "./middleware/csrf";
 import { resolveCorsOrigins } from "./lib/cors";
@@ -55,6 +56,7 @@ export const app = new Hono<AppContextEnv>()
   .route("/api/items", items)
   .route("/api/kv", kv)
   .route("/api/upload", upload)
+  .route("/api/orgs", orgs)
   .route("/api/auth", auth);
 
 export type AppType = typeof app;

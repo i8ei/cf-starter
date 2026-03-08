@@ -14,13 +14,36 @@ export const users = sqliteTable("users", {
   createdAt: text("created_at").notNull().default("(datetime('now'))"),
 });
 
+export const organizations = sqliteTable("organizations", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  createdAt: text("created_at").notNull().default("(datetime('now'))"),
+});
+
 export const sessions = sqliteTable("sessions", {
   id: text("id").primaryKey(),
   userId: integer("user_id")
     .notNull()
     .references(() => users.id),
+  currentOrgId: integer("current_org_id").references(() => organizations.id),
   expiresAt: text("expires_at").notNull(),
 });
+
+export const memberships = sqliteTable(
+  "memberships",
+  {
+    organizationId: integer("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull(),
+    joinedAt: text("joined_at").notNull().default("(datetime('now'))"),
+  },
+  (table) => [primaryKey({ columns: [table.organizationId, table.userId] })]
+);
 
 export const roles = sqliteTable("roles", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -45,6 +68,7 @@ export const userRoles = sqliteTable(
 export const auditLogs = sqliteTable("audit_logs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   actorUserId: integer("actor_user_id").references(() => users.id),
+  organizationId: integer("organization_id").references(() => organizations.id),
   action: text("action").notNull(),
   resourceType: text("resource_type").notNull(),
   resourceId: text("resource_id"),

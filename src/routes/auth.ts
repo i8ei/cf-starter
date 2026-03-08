@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import { users, sessions } from "../db/schema";
 import { loginSchema, signupSchema } from "../../shared/schemas/auth";
+import { switchOrganizationSchema } from "../../shared/schemas/orgs";
 import { requireAuth } from "../middleware/auth";
 import { rateLimit } from "../middleware/rate-limit";
 import type { AppContextEnv, Env } from "../types";
@@ -18,6 +19,11 @@ import {
 import { writeAuditLog } from "../lib/audit";
 import { jsonError } from "../lib/http";
 import { logRequestEvent } from "../lib/logging";
+import {
+  ensurePersonalOrganization,
+  getMembershipSummaries,
+  setSessionOrganization,
+} from "../lib/organizations";
 import { ensureDefaultUserRole } from "../lib/rbac";
 import { validator } from "../lib/validator";
 import { enqueueJob } from "../queues/jobs";
@@ -113,7 +119,13 @@ function setSessionCookie(c: any, env: Env, sessionId: string) {
   });
 }
 
-async function issueSession(c: any, env: Env, db: ReturnType<typeof drizzle>, userId: number) {
+async function issueSession(
+  c: any,
+  env: Env,
+  db: ReturnType<typeof drizzle>,
+  userId: number,
+  currentOrgId: number
+) {
   const session = await rotateSession(
     {
       deleteSessionsForUser: async (targetUserId) => {
@@ -123,7 +135,8 @@ async function issueSession(c: any, env: Env, db: ReturnType<typeof drizzle>, us
         await db.insert(sessions).values(record);
       },
     },
-    userId
+    userId,
+    currentOrgId
   );
   setSessionCookie(c, env, session.id);
 }
@@ -155,15 +168,17 @@ const app = new Hono<AppContextEnv>()
         .returning();
 
       const roles = await ensureDefaultUserRole(db, user.id);
-      await issueSession(c, c.env, db, user.id);
+      const organization = await ensurePersonalOrganization(db, user.id, user.name);
+      await issueSession(c, c.env, db, user.id, organization.organizationId);
       logRequestEvent("info", "auth.signup_success", c, { userId: user.id });
       await writeAuditLog(c.env.DB, c, {
         actorUserId: user.id,
+        organizationId: organization.organizationId,
         action: "auth.signup",
         resourceType: "user",
         resourceId: String(user.id),
         status: 201,
-        metadata: { roles },
+        metadata: { roles, organizationId: organization.organizationId },
       });
       await enqueueJob(c.env.JOBS, {
         type: "user.welcome",
@@ -174,7 +189,14 @@ const app = new Hono<AppContextEnv>()
           requestId: c.get("requestId"),
         },
       });
-      return c.json({ id: user.id, email: user.email, name: user.name, roles }, 201);
+      return c.json({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        roles,
+        currentOrganizationId: organization.organizationId,
+        organizations: [organization],
+      }, 201);
     }
   )
   .post(
@@ -213,16 +235,26 @@ const app = new Hono<AppContextEnv>()
       }
 
       const roles = await ensureDefaultUserRole(db, user.id);
-      await issueSession(c, c.env, db, user.id);
+      const organization = await ensurePersonalOrganization(db, user.id, user.name);
+      const organizations = await getMembershipSummaries(db, user.id);
+      await issueSession(c, c.env, db, user.id, organization.organizationId);
       logRequestEvent("info", "auth.login_success", c, { userId: user.id });
       await writeAuditLog(c.env.DB, c, {
         actorUserId: user.id,
+        organizationId: organization.organizationId,
         action: "auth.login",
         resourceType: "session",
         status: 200,
-        metadata: { roles },
+        metadata: { roles, organizationId: organization.organizationId },
       });
-      return c.json({ id: user.id, email: user.email, name: user.name, roles });
+      return c.json({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        roles,
+        currentOrganizationId: organization.organizationId,
+        organizations,
+      });
     }
   )
   .post("/logout", requireAuth, async (c) => {
@@ -242,12 +274,62 @@ const app = new Hono<AppContextEnv>()
     deleteCookie(c, LEGACY_SESSION_COOKIE_NAME, { path: "/", sameSite, secure });
     await writeAuditLog(c.env.DB, c, {
       actorUserId: userId,
+      organizationId: c.get("orgId") ?? null,
       action: "auth.logout",
       resourceType: "session",
       status: 200,
     });
     return c.json({ ok: true });
   })
+  .post(
+    "/switch-org",
+    requireAuth,
+    validator("json", switchOrganizationSchema),
+    async (c) => {
+      const db = drizzle(c.env.DB);
+      const sessionId = c.get("sessionId");
+      const userId = c.get("userId");
+      const memberships = c.get("memberships") ?? [];
+      const { organizationId } = c.req.valid("json");
+
+      if (!sessionId || !userId) {
+        return jsonError(c, 401, "unauthorized", "Authentication required");
+      }
+
+      const membership = memberships.find(
+        (item) => item.organizationId === organizationId
+      );
+
+      if (!membership) {
+        await writeAuditLog(c.env.DB, c, {
+          actorUserId: userId,
+          action: "auth.switch_org_denied",
+          resourceType: "organization",
+          resourceId: String(organizationId),
+          status: 403,
+        });
+        return jsonError(c, 403, "organization_access_denied", "Forbidden");
+      }
+
+      await setSessionOrganization(db, sessionId, organizationId);
+      await writeAuditLog(c.env.DB, c, {
+        actorUserId: userId,
+        organizationId,
+        action: "auth.switch_org",
+        resourceType: "organization",
+        resourceId: String(organizationId),
+        status: 200,
+      });
+
+      c.set("orgId", membership.organizationId);
+      c.set("orgRole", membership.membershipRole);
+      return c.json({
+        ok: true,
+        currentOrganizationId: membership.organizationId,
+        organizationRole: membership.membershipRole,
+      });
+    }
+  )
   .get("/me", requireAuth, async (c) => {
     const db = drizzle(c.env.DB);
     const userId = c.get("userId");
@@ -255,6 +337,9 @@ const app = new Hono<AppContextEnv>()
       return jsonError(c, 401, "unauthorized", "Authentication required");
     }
     const roles = c.get("roles") ?? [];
+    const memberships = c.get("memberships") ?? [];
+    const currentOrganizationId = c.get("orgId") ?? null;
+    const organizationRole = c.get("orgRole") ?? null;
 
     const [user] = await db
       .select({
@@ -271,7 +356,13 @@ const app = new Hono<AppContextEnv>()
       return jsonError(c, 404, "not_found", "User not found");
     }
 
-    return c.json({ ...user, roles });
+    return c.json({
+      ...user,
+      roles,
+      currentOrganizationId,
+      organizationRole,
+      organizations: memberships,
+    });
   });
 
 export default app;

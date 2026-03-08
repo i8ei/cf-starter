@@ -10,6 +10,7 @@ export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 export type SessionRecord = {
   id: string;
   userId: number;
+  currentOrgId: number | null;
   expiresAt: string;
 };
 
@@ -49,6 +50,7 @@ export function hasSessionCookie(cookieHeader: string): boolean {
 export async function rotateSession(
   repository: SessionRepository,
   userId: number,
+  currentOrgId: number | null,
   now = Date.now()
 ): Promise<SessionRecord> {
   await repository.deleteSessionsForUser(userId);
@@ -56,6 +58,7 @@ export async function rotateSession(
   const session = {
     id: crypto.randomUUID(),
     userId,
+    currentOrgId,
     expiresAt: new Date(now + SESSION_MAX_AGE_SECONDS * 1000).toISOString(),
   };
 

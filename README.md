@@ -113,11 +113,14 @@ cf-starter/
 | `POST /api/items`       | D1 にアイテム追加（Zod バリデーション付き）     |
 | `GET /api/upload`       | R2 ファイル一覧取得（要認証）              |
 | `POST /api/upload`      | R2 へアップロード（要認証, 10MB制限）      |
+| `GET /api/orgs`         | 所属組織一覧と current org 取得（要認証）   |
+| `POST /api/orgs`        | 組織作成 + current org 切替（要認証）      |
 | `GET /api/kv/:key`      | KV 読み取り（要認証, admin ロール必須）       |
 | `PUT /api/kv/:key`      | KV 書き込み（要認証, admin ロール必須）       |
 | `POST /api/auth/signup` | ユーザー登録 → セッション発行              |
 | `POST /api/auth/login`  | ログイン → セッション発行                |
 | `POST /api/auth/logout` | ログアウト（要認証）                    |
+| `POST /api/auth/switch-org` | current org 切替（要認証）       |
 | `GET /api/auth/me`      | 現在のユーザーとロール取得（要認証）          |
 
 ### エラー契約について
@@ -140,9 +143,13 @@ Cookie は `Secure=true` のとき `__Host-session`、`Secure=false` のとき�
 
 `roles` / `user_roles` テーブルを持ち、`member` と `admin` を seed する。新規 signup ユーザーには自動で `member` を付与する。サンプルでは `KV` ルートを `admin` 限定にして `requireRole()` の使い方を示している。
 
+### Organization について
+
+`organizations` / `memberships` / `sessions.current_org_id` を持ち、signup 時に personal workspace を自動作成する。認証後の context には current org と membership role が入り、`/api/auth/switch-org` や `/api/orgs` で切り替え・作成できる。
+
 ### 監査ログについて
 
-`audit_logs` テーブルに `who did what` を残す共通 helper を入れてある。`signup/login/logout`、`item.create`、`kv.put`、`upload.create`、権限不足拒否が監査対象。
+`audit_logs` テーブルに `who did what` を残す共通 helper を入れてある。`signup/login/logout`、`switch-org`、`organization.create`、`item.create`、`kv.put`、`upload.create`、権限不足拒否が監査対象。
 
 ### Queue について
 
@@ -197,6 +204,10 @@ API の引数や戻り値を変えると、フロント側でコンパイルエ�
 1. `src/db/schema.ts` にテーブル定義
 2. `npm run db:generate` でマイグレーション SQL 生成
 3. `npm run db:migrate` でローカル DB に適用
+
+### 組織を current org に紐づける
+
+新しい業務データを multi-tenant にする場合は、テーブルに `organization_id` を持たせて `c.get("orgId")` で read/write を絞る。
 
 ### ルートを認証必須にする
 
