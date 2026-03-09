@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useItems, useCreateItem } from "./hooks/useItems";
+import {
+  useItems,
+  useCreateItem,
+} from "./features/example/items/hooks/useItems";
 import { useHealth } from "./hooks/useHealth";
 import {
   useAcceptOrganizationInvite,
@@ -257,9 +260,9 @@ function Dashboard() {
   const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
   const [inviteToken, setInviteToken] = useState("");
   const [latestToken, setLatestToken] = useState<string | null>(null);
-  const { data: items = [], isLoading } = useItems();
   const { data: health } = useHealth();
   const { data: session, isLoading: isSessionLoading } = useSession();
+  const { data: items = [], isLoading } = useItems(!!session);
   const { data: organizations } = useOrganizations(!!session);
   const { data: invites } = useOrganizationInvites(!!session);
   const createItem = useCreateItem();

@@ -4,12 +4,16 @@ import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
 import type { AppContextEnv, Env } from "./types";
 import health from "./routes/health";
-import items from "./routes/items";
-import kv from "./routes/kv";
-import upload from "./routes/upload";
+import items from "./features/example/items/routes";
+import kv from "./features/example/kv/routes";
+import upload from "./features/example/upload/routes";
 import auth from "./routes/auth";
 import orgs from "./routes/orgs";
-import { purgeExpiredSessions } from "./db/session-maintenance";
+import modules from "./routes/modules";
+import {
+  purgeExpiredSessions,
+  purgeStaleAuthTokens,
+} from "./db/session-maintenance";
 import { csrfProtection } from "./middleware/csrf";
 import { resolveCorsOrigins } from "./lib/cors";
 import { logEvent } from "./lib/logging";
@@ -56,6 +60,7 @@ export const app = new Hono<AppContextEnv>()
   .route("/api/items", items)
   .route("/api/kv", kv)
   .route("/api/upload", upload)
+  .route("/api/modules", modules)
   .route("/api/orgs", orgs)
   .route("/api/auth", auth);
 
@@ -64,9 +69,14 @@ export { RateLimiter };
 export default {
   fetch: app.fetch,
   scheduled: async (_event: ScheduledEvent, env: Env) => {
-    const deleted = await purgeExpiredSessions(env.DB);
-    if (deleted > 0) {
-      logEvent("info", "sessions.purged", { deleted });
+    const deletedSessions = await purgeExpiredSessions(env.DB);
+    if (deletedSessions > 0) {
+      logEvent("info", "sessions.purged", { deleted: deletedSessions });
+    }
+
+    const deletedAuthTokens = await purgeStaleAuthTokens(env.DB);
+    if (deletedAuthTokens > 0) {
+      logEvent("info", "auth_tokens.purged", { deleted: deletedAuthTokens });
     }
   },
   queue: handleJobBatch,

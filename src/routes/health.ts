@@ -2,12 +2,14 @@ import { Hono } from "hono";
 import { ZodError } from "zod";
 import type { AppContextEnv } from "../types";
 import { getAppConfig } from "../lib/config";
+import { getRuntimeModuleStatuses } from "../lib/module-plan";
 
 const app = new Hono<AppContextEnv>().get("/", async (c) => {
   const checks: Record<string, string> = {};
+  const modules = getRuntimeModuleStatuses(c.env);
 
   // Bindings check
-  checks.env = c.env.DB && c.env.KV && c.env.BUCKET && c.env.RATE_LIMITER ? "ok" : "missing";
+  checks.env = c.env.DB && c.env.RATE_LIMITER && c.env.JOBS ? "ok" : "missing";
 
   try {
     await c.env.DB.prepare("SELECT 1").first();
@@ -47,7 +49,7 @@ const app = new Hono<AppContextEnv>().get("/", async (c) => {
   }
 
   const status = Object.values(checks).every((v) => v === "ok") ? "ok" : "degraded";
-  return c.json({ status, checks });
+  return c.json({ status, checks, modules });
 });
 
 export default app;

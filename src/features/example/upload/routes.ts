@@ -1,9 +1,13 @@
 import { Hono } from "hono";
-import { requireAuth } from "../middleware/auth";
-import type { AppContextEnv } from "../types";
-import { writeAuditLog } from "../lib/audit";
-import { jsonError } from "../lib/http";
-import { enqueueJob } from "../queues/jobs";
+import { requireAuth } from "../../../middleware/auth";
+import type { AppContextEnv } from "../../../types";
+import { writeAuditLog } from "../../../lib/audit";
+import { jsonError } from "../../../lib/http";
+import { enqueueJob } from "../../../queues/jobs";
+import {
+  getExampleUploadObjectKey,
+  getExampleUploadPrefix,
+} from "../lib/organization-scope";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -13,15 +17,34 @@ const sanitizeFilename = (name: string): string =>
 const app = new Hono<AppContextEnv>()
   .use("*", requireAuth)
   .get("/", async (c) => {
-    const list = await c.env.BUCKET.list({ prefix: "uploads/" });
+    const orgId = c.get("orgId");
+    if (!orgId) {
+      return jsonError(
+        c,
+        403,
+        "org_context_required",
+        "Current organization is required"
+      );
+    }
+    const list = await c.env.BUCKET.list({ prefix: getExampleUploadPrefix(orgId) });
     const files = list.objects.map((o) => ({
       key: o.key,
       size: o.size,
       uploaded: o.uploaded,
+      organizationId: orgId,
     }));
     return c.json(files);
   })
   .post("/", async (c) => {
+    const orgId = c.get("orgId");
+    if (!orgId) {
+      return jsonError(
+        c,
+        403,
+        "org_context_required",
+        "Current organization is required"
+      );
+    }
     const formData = await c.req.formData();
     const file = formData.get("file") as File | null;
     if (!file) {
@@ -34,12 +57,13 @@ const app = new Hono<AppContextEnv>()
     }
 
     const safeName = sanitizeFilename(file.name);
-    const key = `uploads/${Date.now()}_${safeName}`;
+    const key = getExampleUploadObjectKey(orgId, safeName);
     await c.env.BUCKET.put(key, file.stream(), {
       httpMetadata: { contentType: file.type },
     });
     await writeAuditLog(c.env.DB, c, {
       actorUserId: c.get("userId") ?? null,
+      organizationId: orgId,
       action: "upload.create",
       resourceType: "r2",
       resourceId: key,
@@ -50,12 +74,13 @@ const app = new Hono<AppContextEnv>()
       type: "upload.process",
       payload: {
         key,
+        organizationId: orgId,
         size: file.size,
         contentType: file.type || null,
         requestId: c.get("requestId"),
       },
     });
-    return c.json({ key, size: file.size }, 201);
+    return c.json({ key, size: file.size, organizationId: orgId }, 201);
   });
 
 export default app;

@@ -12,6 +12,7 @@ export type JobMessage =
       type: "upload.process";
       payload: {
         key: string;
+        organizationId: number;
         size: number;
         contentType: string | null;
         requestId: string;

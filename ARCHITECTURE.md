@@ -57,6 +57,14 @@
 - `upload`
 
 example feature は使い方の見本であり、すべての派生アプリに残す前提ではありません。
+ただし、見本であっても D1 テーブルは `organization_id` を持たせ、current organization で絞る形を優先します。
+KV と R2 のような binding ベースの example も、organization prefix を使って current organization ごとに分離します。
+
+現在の配置:
+
+- backend: `src/features/example/*/routes.ts`
+- frontend: `app/features/example/*`
+- shared contracts: `shared/features/example/*`
 
 ## 認証
 
@@ -75,6 +83,7 @@ example feature は使い方の見本であり、すべての派生アプリに�
 - user あたり 1 セッションに寄せる
 - logout で削除
 - Cron で期限切れを削除
+- password reset / email verification token も Cron で清掃する
 
 ## Organization Context
 
@@ -189,13 +198,23 @@ AI や開発者は、次を壊さないでください。
 
 現時点で未実装、または弱いものです。
 
-- optional module install plan
-- feature-based structure への整理
+- app generation path の整理
+- example feature の追加・削除をより自動化する install surface
 
 ## 次の方向
 
 次の優先は次です。
 
-1. password reset hardening
-2. optional module install plan
-3. docs と app generation path の整備
+1. docs と app generation path の継続改善
+2. example feature の整理
+3. optional module install surface の強化
+
+## App Generation Path
+
+新しいアプリへ派生するときは、いきなりコードを削るのではなく次の順で判断します。
+
+1. `npm run app:plan` か `npm run app:plan:json` で core と example feature を確認する
+2. `npm run modules:plan` か `npm run modules:plan:json` で binding の導入状況を確認する
+3. `npm run app:scaffold -- --target <dir> [--app-name <slug>] [--include items,kv] [--exclude upload]` で派生先を作る
+4. example feature を残すか、置き換えるか、削るかを決める
+5. 新しい業務テーブルは `organization_id` 前提で追加する

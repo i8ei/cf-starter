@@ -109,23 +109,33 @@ npm run deploy
 | `npm run db:generate` | Drizzle から migration 生成 |
 | `npm run db:migrate` | ローカル D1 に migration 適用 |
 | `npm run db:migrate:remote` | リモート D1 に migration 適用 |
+| `npm run modules:plan` | binding ベースの module 導入状況を確認 |
+| `npm run modules:plan:json` | module plan を JSON で出力 |
+| `npm run app:plan` | starter core と example feature の切り分けを確認 |
+| `npm run app:plan:core` | core-only で始めるときの削除対象を確認 |
+| `npm run app:plan:json` | app plan を JSON で出力 |
+| `npm run app:plan:core:json` | core-only app plan を JSON で出力 |
+| `npm run app:scaffold -- --target ../new-app` | 新しい app ディレクトリを scaffold |
 
 ## ディレクトリ構成
 
 ```text
 cf-starter/
 ├── app/                    React UI
-│   ├── hooks/              TanStack Query hooks
+│   ├── features/example/   example feature hooks
+│   ├── hooks/              core hooks
 │   └── lib/api.ts          型付き Hono RPC client
 ├── shared/                 フロント・バック共有契約
-│   └── schemas/            Zod schema
+│   ├── features/example/   example feature schema
+│   └── schemas/            core schema
 ├── src/                    Worker backend
 │   ├── db/                 Drizzle schema
 │   ├── durable-objects/    rate limiter
+│   ├── features/example/   example feature routes
 │   ├── lib/                auth, session, audit, organizations など
 │   ├── middleware/         auth, csrf, role, request-id
 │   ├── queues/             queue producer / consumer
-│   ├── routes/             API routes
+│   ├── routes/             core API routes
 │   └── index.ts            Worker entrypoint
 ├── migrations/             D1 migrations
 ├── scripts/                補助スクリプト
@@ -140,12 +150,7 @@ cf-starter/
 | エンドポイント | 内容 |
 |---|---|
 | `GET /api/health` | DB / KV / R2 / Env の基本チェック |
-| `GET /api/items` | item 一覧 |
-| `POST /api/items` | item 作成 |
-| `GET /api/upload` | R2 ファイル一覧取得 |
-| `POST /api/upload` | R2 アップロード |
-| `GET /api/kv/:key` | KV 読み取り |
-| `PUT /api/kv/:key` | KV 書き込み |
+| `GET /api/modules` | core / optional module の runtime status |
 | `GET /api/orgs` | 所属 organization 一覧と current organization |
 | `POST /api/orgs` | organization 作成 + current organization 切替 |
 | `GET /api/orgs/current/invites` | current organization の招待一覧 |
@@ -160,6 +165,17 @@ cf-starter/
 | `POST /api/auth/email-verification/request` | verification mail 再送 |
 | `POST /api/auth/email-verification/confirm` | email verification 完了 |
 | `GET /api/auth/me` | 現在のユーザー取得 |
+
+## Example Feature API
+
+| エンドポイント | 内容 |
+|---|---|
+| `GET /api/items` | current organization の item 一覧 |
+| `POST /api/items` | current organization に item 作成 |
+| `GET /api/upload` | current organization prefix の R2 ファイル一覧取得 |
+| `POST /api/upload` | current organization prefix に R2 アップロード |
+| `GET /api/kv/:key` | current organization scope の KV 読み取り |
+| `PUT /api/kv/:key` | current organization scope の KV 書き込み |
 
 ## Security Invariants
 
@@ -217,6 +233,54 @@ password reset request 時には `auth.password_reset_email` job も enqueue さ
 signup と verification 再送時には `auth.email_verification_email` job も enqueue されます。
 `EMAIL_PROVIDER=resend`、`RESEND_API_KEY`、`EMAIL_FROM` を設定すると Resend 経由で実送信します。未設定時は `log` fallback です。
 
+## Module Plan
+
+- runtime: `GET /api/modules`
+- runtime: `GET /api/health` の `modules`
+- CLI: `npm run modules:plan`
+- CLI: `npm run modules:plan:json`
+
+`modules:plan` は `wrangler.jsonc` を読み、core / optional module の導入状況を一覧表示します。
+`modules:plan:json` は同じ情報を機械可読な JSON で返します。
+
+## App Plan
+
+- CLI: `npm run app:plan`
+- CLI: `npm run app:plan:core`
+- CLI: `npm run app:plan:json`
+- CLI: `npm run app:plan:core:json`
+
+`app:plan` は、新しいアプリを切るときに `core として残す部分` と `example として置き換える部分` を一覧表示します。
+`app:plan:core` は example feature を外して core-only で始める前提の出力です。
+JSON variants は将来の scaffold や CI から plan を読むための出口です。
+
+## App Scaffold
+
+- `npm run app:scaffold -- --target ../new-app`
+- `npm run app:scaffold -- --target ../new-app --core-only`
+- `npm run app:scaffold -- --target ../new-app --app-name regional-ops`
+- `npm run app:scaffold -- --target ../new-app --exclude kv,upload`
+- `npm run app:scaffold -- --target ../new-app --include items`
+
+`app:scaffold` は現在の starter を別ディレクトリへコピーします。
+`--core-only` を付けると example feature を外し、`src/index.ts` と `app/App.tsx` を core-only 用に置き換えます。
+`--app-name` を付けると `package.json`、`wrangler.jsonc`、`README.md`、`app/App.tsx` の名前を生成先用に書き換えます。
+`--include` / `--exclude` を付けると example feature を選択して残せます。
+
+## Feature Structure
+
+`cf-starter` は段階的に feature-based structure へ寄せています。
+
+- core routes: `src/routes/`
+- example feature routes: `src/features/example/*/routes.ts`
+- core hooks: `app/hooks/`
+- example feature hooks: `app/features/example/*/hooks/`
+- core schema: `shared/schemas/`
+- example feature schema: `shared/features/example/`
+
+新しい業務機能を追加する場合は、まず `core` へ入れるべき共通機能か、`example` や派生アプリ固有の feature かを分けてから配置してください。
+example feature であっても、業務テーブルは `organization_id` を持たせて current organization で絞るのを基本にします。
+
 ## 開発の流れ
 
 ### API を追加する
@@ -245,10 +309,10 @@ signup と verification 再送時には `auth.email_verification_email` job も 
 - [ ] Durable Object migration tag を必要に応じて更新する
 - [ ] Queue 名を変更した場合は producer / consumer を揃える
 - [ ] auth rate limit の閾値を要件に合わせる
+- [ ] `scheduled` cleanup が本番でも動くことを確認する
 
 ## 現在の不足
 
 まだ入っていないものです。
 
 - feature-based structure への整理
-- optional module install plan の導入

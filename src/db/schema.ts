@@ -2,6 +2,9 @@ import { sqliteTable, text, integer, primaryKey } from "drizzle-orm/sqlite-core"
 
 export const items = sqliteTable("items", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  organizationId: integer("organization_id").references(() => organizations.id, {
+    onDelete: "cascade",
+  }),
   name: text("name").notNull(),
   createdAt: text("created_at").notNull().default("(datetime('now'))"),
 });

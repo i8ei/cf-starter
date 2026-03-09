@@ -41,11 +41,12 @@
 - Vitest
 - Queue sample jobs
 - Cron session cleanup
+- optional module install plan
 
 残り:
 
 - README / architecture docs の継続改善
-- optional module install plan
+- app generation path の整備
 
 ## Phase 3: Organization-Aware Core
 
@@ -67,11 +68,12 @@
 - `/api/auth/switch-org`
 - auth context への `orgId` / `orgRole` / `memberships` 追加
 - invite lifecycle
+- feature-based structure の最初の整理
 
 次:
 
-- password reset hardening
-- optional module install plan
+- reference features の拡張
+- app generation path の整備
 
 ## Phase 4: Real App Readiness
 
@@ -81,10 +83,10 @@
 
 次候補:
 
-1. password reset hardening
-2. optional module install plan
-3. reference features の拡張
-4. organization-aware feature examples
+1. reference features の拡張
+2. app generation path の整備
+3. organization-aware feature examples
+4. optional module install surface の強化
 
 ## Phase 5: App Factory Readiness
 
@@ -104,3 +106,11 @@
 - APP_FACTORY.md
 - generation playbook
 - install / bootstrap scripts の強化
+
+直近で追加済み:
+
+- `npm run app:plan`
+- `npm run app:plan:core`
+- `npm run app:plan:json`
+- `npm run modules:plan:json`
+- `npm run app:scaffold`

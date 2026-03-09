@@ -12,7 +12,14 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/d1-migrate.mjs",
-    "db:migrate:remote": "node scripts/d1-migrate.mjs remote"
+    "db:migrate:remote": "node scripts/d1-migrate.mjs remote",
+    "modules:plan": "node scripts/modules-plan.mjs",
+    "modules:plan:json": "node scripts/modules-plan.mjs --json",
+    "app:plan": "node scripts/app-plan.mjs",
+    "app:plan:core": "node scripts/app-plan.mjs --core-only",
+    "app:plan:json": "node scripts/app-plan.mjs --json",
+    "app:plan:core:json": "node scripts/app-plan.mjs --core-only --json",
+    "app:scaffold": "node scripts/scaffold-app.mjs"
   },
   "dependencies": {
     "hono": "^4",

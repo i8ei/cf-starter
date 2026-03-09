@@ -33,6 +33,7 @@ describe("jobs", () => {
               type: "upload.process",
               payload: {
                 key: "uploads/test.txt",
+                organizationId: 4,
                 size: 12,
                 contentType: "text/plain",
                 requestId: "req_456",

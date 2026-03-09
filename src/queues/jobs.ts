@@ -47,6 +47,7 @@ export async function handleJobBatch(
         case "upload.process":
           logEvent("info", "queue.upload_process", {
             key: message.body.payload.key,
+            organizationId: message.body.payload.organizationId,
             size: message.body.payload.size,
             requestId: message.body.payload.requestId,
           });
