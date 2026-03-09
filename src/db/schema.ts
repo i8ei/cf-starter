@@ -11,6 +11,7 @@ export const users = sqliteTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
+  emailVerifiedAt: text("email_verified_at"),
   createdAt: text("created_at").notNull().default("(datetime('now'))"),
 });
 
@@ -30,6 +31,28 @@ export const sessions = sqliteTable("sessions", {
   expiresAt: text("expires_at").notNull(),
 });
 
+export const passwordResetTokens = sqliteTable("password_reset_tokens", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: text("expires_at").notNull(),
+  usedAt: text("used_at"),
+  createdAt: text("created_at").notNull().default("(datetime('now'))"),
+});
+
+export const emailVerificationTokens = sqliteTable("email_verification_tokens", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: text("expires_at").notNull(),
+  verifiedAt: text("verified_at"),
+  createdAt: text("created_at").notNull().default("(datetime('now'))"),
+});
+
 export const memberships = sqliteTable(
   "memberships",
   {
@@ -44,6 +67,25 @@ export const memberships = sqliteTable(
   },
   (table) => [primaryKey({ columns: [table.organizationId, table.userId] })]
 );
+
+export const organizationInvites = sqliteTable("organization_invites", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  organizationId: integer("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  role: text("role").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  createdByUserId: integer("created_by_user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  acceptedByUserId: integer("accepted_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  expiresAt: text("expires_at").notNull(),
+  acceptedAt: text("accepted_at"),
+  createdAt: text("created_at").notNull().default("(datetime('now'))"),
+});
 
 export const roles = sqliteTable("roles", {
   id: integer("id").primaryKey({ autoIncrement: true }),

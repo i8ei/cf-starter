@@ -85,6 +85,8 @@ export function createTestEnv(overrides: Partial<Env> = {}): Env {
     CORS_ORIGIN: "http://localhost:5173",
     COOKIE_SAME_SITE: "Lax",
     COOKIE_SECURE: "true",
+    APP_BASE_URL: "http://localhost:5173",
+    EMAIL_PROVIDER: "log",
     ...overrides,
   };
 }

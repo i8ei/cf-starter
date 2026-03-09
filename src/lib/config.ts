@@ -38,6 +38,7 @@ const configSchema = z.object({
   corsOrigins: z.array(originSchema).min(1),
   cookieSameSite: z.enum(["Lax", "Strict", "None"]),
   cookieSecure: z.boolean(),
+  appBaseUrl: originSchema.optional(),
 });
 
 export type AppConfig = z.infer<typeof configSchema>;
@@ -74,8 +75,16 @@ export function getAppConfig(env: Env): AppConfig {
     corsOrigins: splitOrigins(env.CORS_ORIGIN),
     cookieSameSite: sameSite,
     cookieSecure: resolveCookieSecure(env.COOKIE_SECURE, sameSite),
+    appBaseUrl: env.APP_BASE_URL?.trim() || undefined,
   });
 
   configCache.set(env, parsed);
   return parsed;
+}
+
+export function resolveAppBaseUrl(env: Env, requestUrl?: string): string {
+  const config = getAppConfig(env);
+  if (config.appBaseUrl) return config.appBaseUrl;
+  if (requestUrl) return new URL(requestUrl).origin;
+  return config.corsOrigins[0]!;
 }

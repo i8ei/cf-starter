@@ -10,6 +10,11 @@ export interface Env {
   CORS_ORIGIN?: string;
   COOKIE_SAME_SITE?: string;
   COOKIE_SECURE?: string;
+  APP_BASE_URL?: string;
+  EMAIL_PROVIDER?: string;
+  EMAIL_FROM?: string;
+  EMAIL_REPLY_TO?: string;
+  RESEND_API_KEY?: string;
 }
 
 export interface OrganizationMembershipSummary {
@@ -17,6 +22,17 @@ export interface OrganizationMembershipSummary {
   organizationName: string;
   organizationSlug: string;
   membershipRole: string;
+}
+
+export interface OrganizationInviteSummary {
+  id: number;
+  organizationId: number;
+  email: string;
+  role: string;
+  status: "pending" | "accepted" | "expired";
+  expiresAt: string;
+  acceptedAt: string | null;
+  createdAt: string;
 }
 
 export interface AppVariables {

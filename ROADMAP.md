@@ -66,11 +66,12 @@
 - `/api/orgs`
 - `/api/auth/switch-org`
 - auth context への `orgId` / `orgRole` / `memberships` 追加
+- invite lifecycle
 
 次:
 
-- invite lifecycle
-- organization admin UI
+- password reset hardening
+- optional module install plan
 
 ## Phase 4: Real App Readiness
 
@@ -80,9 +81,9 @@
 
 次候補:
 
-1. organization invite lifecycle
-2. password reset
-3. email verification
+1. password reset hardening
+2. optional module install plan
+3. reference features の拡張
 4. organization-aware feature examples
 
 ## Phase 5: App Factory Readiness

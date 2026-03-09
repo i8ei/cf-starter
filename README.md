@@ -30,6 +30,8 @@ Cloudflare Workers 上で、小規模から中規模の業務アプリを安定�
 - audit log
 - Cloudflare Queue sample jobs
 - organization / membership / current organization context
+- password reset request / confirm flow
+- email verification request / confirm flow
 - Vitest ベースの自動テスト
 
 ## 向いている用途
@@ -146,10 +148,17 @@ cf-starter/
 | `PUT /api/kv/:key` | KV 書き込み |
 | `GET /api/orgs` | 所属 organization 一覧と current organization |
 | `POST /api/orgs` | organization 作成 + current organization 切替 |
+| `GET /api/orgs/current/invites` | current organization の招待一覧 |
+| `POST /api/orgs/current/invites` | current organization の招待作成 |
+| `POST /api/orgs/invites/accept` | organization 招待承諾 |
 | `POST /api/auth/signup` | ユーザー登録 |
 | `POST /api/auth/login` | ログイン |
 | `POST /api/auth/logout` | ログアウト |
 | `POST /api/auth/switch-org` | current organization 切替 |
+| `POST /api/auth/password-reset/request` | password reset 開始 |
+| `POST /api/auth/password-reset/confirm` | password reset 完了 |
+| `POST /api/auth/email-verification/request` | verification mail 再送 |
+| `POST /api/auth/email-verification/confirm` | email verification 完了 |
 | `GET /api/auth/me` | 現在のユーザー取得 |
 
 ## Security Invariants
@@ -176,6 +185,14 @@ cf-starter/
 
 signup / login 時には personal workspace を自動作成し、session に current organization を持たせます。
 
+招待の基本ライフサイクルも core に含みます。
+
+- `organization_invites`
+- owner / admin による招待作成
+- login 済みユーザーによる招待承諾
+- 招待 token は作成レスポンスでのみ返す
+- 一覧 API は `pending / accepted / expired` を返す
+
 認証後の context では次が使えます。
 
 - `c.get("orgId")`
@@ -192,6 +209,13 @@ signup / login 時には personal workspace を自動作成し、session に cur
 - `upload.process`
 
 consumer は Worker module の `queue()` handler で処理します。
+
+organization invite 作成時には `organization.invite_email` job も enqueue されます。
+現状の consumer は delivery payload を structured log に出す実装で、実メール送信プロバイダへの差し替え点として使います。
+
+password reset request 時には `auth.password_reset_email` job も enqueue されます。
+signup と verification 再送時には `auth.email_verification_email` job も enqueue されます。
+`EMAIL_PROVIDER=resend`、`RESEND_API_KEY`、`EMAIL_FROM` を設定すると Resend 経由で実送信します。未設定時は `log` fallback です。
 
 ## 開発の流れ
 
@@ -226,9 +250,5 @@ consumer は Worker module の `queue()` handler で処理します。
 
 まだ入っていないものです。
 
-- organization invite lifecycle
-- organization admin UI
-- password reset
-- email verification
 - feature-based structure への整理
 - optional module install plan の導入

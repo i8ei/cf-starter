@@ -63,6 +63,8 @@ example feature は使い方の見本であり、すべての派生アプリに�
 現在の認証方式:
 
 - D1 table: `sessions`
+- D1 table: `password_reset_tokens`
+- D1 table: `email_verification_tokens`
 - Cookie: HttpOnly
 - Password hash: `PBKDF2-SHA256`
 - Legacy upgrade: 旧 `salt:sha256` は login 時に upgrade
@@ -81,6 +83,7 @@ organization-aware なアプリを前提に、core で次を持ちます。
 - `organizations`
 - `memberships`
 - `sessions.current_org_id`
+- `organization_invites`
 
 middleware 後の route では次を参照できます。
 
@@ -91,6 +94,13 @@ middleware 後の route では次を参照できます。
 - `c.get("memberships")`
 
 `requireAuth` は session の `current_org_id` を membership と照合し、必要なら session を補正します。
+
+organization 招待は次の前提で扱います。
+
+- current organization に対して owner / admin が招待を作成する
+- 招待 token は DB には hash で保持する
+- 承諾は login 済みユーザーのみ
+- 招待 email と login 中の user email が一致しない場合は拒否する
 
 ## 認可
 
@@ -155,8 +165,14 @@ validation error も同じ envelope に入れます。
 
 - `user.welcome`
 - `upload.process`
+- `organization.invite_email`
+- `auth.password_reset_email`
+- `auth.email_verification_email`
 
 consumer は `src/queues/jobs.ts` と Worker module の `queue()` handler に集約します。
+invite email job は `inviteUrl` を含む delivery payload を作り、現状は structured log へ出します。
+password reset email job は `resetUrl` を含む delivery payload を作り、現状は structured log へ出します。
+email verification job は `verifyUrl` を含む delivery payload を作り、現状は structured log へ出します。
 
 ## Security Invariants
 
@@ -173,10 +189,6 @@ AI や開発者は、次を壊さないでください。
 
 現時点で未実装、または弱いものです。
 
-- organization invite lifecycle
-- organization admin UI
-- password reset
-- email verification
 - optional module install plan
 - feature-based structure への整理
 
@@ -184,7 +196,6 @@ AI や開発者は、次を壊さないでください。
 
 次の優先は次です。
 
-1. organization invite lifecycle
-2. organization admin UI
-3. password reset / email verification
-4. docs と app generation path の整備
+1. password reset hardening
+2. optional module install plan
+3. docs と app generation path の整備

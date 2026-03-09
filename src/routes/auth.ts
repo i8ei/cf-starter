@@ -3,7 +3,14 @@ import { setCookie, deleteCookie } from "hono/cookie";
 import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import { users, sessions } from "../db/schema";
-import { loginSchema, signupSchema } from "../../shared/schemas/auth";
+import {
+  emailVerificationConfirmSchema,
+  emailVerificationRequestSchema,
+  loginSchema,
+  passwordResetConfirmSchema,
+  passwordResetRequestSchema,
+  signupSchema,
+} from "../../shared/schemas/auth";
 import { switchOrganizationSchema } from "../../shared/schemas/orgs";
 import { requireAuth } from "../middleware/auth";
 import { rateLimit } from "../middleware/rate-limit";
@@ -17,6 +24,7 @@ import {
   SESSION_MAX_AGE_SECONDS,
 } from "../lib/session";
 import { writeAuditLog } from "../lib/audit";
+import { resolveAppBaseUrl } from "../lib/config";
 import { jsonError } from "../lib/http";
 import { logRequestEvent } from "../lib/logging";
 import {
@@ -24,89 +32,22 @@ import {
   getMembershipSummaries,
   setSessionOrganization,
 } from "../lib/organizations";
+import {
+  consumeEmailVerificationToken,
+  createEmailVerificationToken,
+} from "../lib/email-verification";
+import {
+  consumePasswordResetToken,
+  createPasswordResetToken,
+} from "../lib/password-reset";
+import {
+  hashPassword,
+  needsPasswordUpgrade,
+  verifyPassword,
+} from "../lib/password";
 import { ensureDefaultUserRole } from "../lib/rbac";
 import { validator } from "../lib/validator";
 import { enqueueJob } from "../queues/jobs";
-
-const PBKDF2_ITERATIONS = 310000;
-const PBKDF2_KEY_LENGTH = 32;
-const PBKDF2_ALGORITHM = "PBKDF2";
-const PBKDF2_HASH = "SHA-256";
-
-function bytesToHex(bytes: Uint8Array): string {
-  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-function hexToBytes(hex: string): Uint8Array {
-  if (hex.length % 2 !== 0) throw new Error("invalid hex");
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) {
-    bytes[i / 2] = Number.parseInt(hex.slice(i, i + 2), 16);
-  }
-  return bytes;
-}
-
-function constantTimeEquals(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return diff === 0;
-}
-
-async function derivePbkdf2(password: string, salt: Uint8Array, iterations: number): Promise<string> {
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(password),
-    PBKDF2_ALGORITHM,
-    false,
-    ["deriveBits"]
-  );
-  const bits = await crypto.subtle.deriveBits(
-    {
-      name: PBKDF2_ALGORITHM,
-      hash: PBKDF2_HASH,
-      salt,
-      iterations,
-    },
-    keyMaterial,
-    PBKDF2_KEY_LENGTH * 8
-  );
-  return bytesToHex(new Uint8Array(bits));
-}
-
-async function hashPassword(password: string): Promise<string> {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const hashHex = await derivePbkdf2(password, salt, PBKDF2_ITERATIONS);
-  return `pbkdf2$${PBKDF2_ITERATIONS}$${bytesToHex(salt)}$${hashHex}`;
-}
-
-async function verifyPassword(
-  password: string,
-  stored: string
-): Promise<boolean> {
-  // Backward compatibility with old "salt:sha256" format
-  if (stored.includes(":")) {
-    const [salt, hash] = stored.split(":");
-    const data = new TextEncoder().encode(salt + password);
-    const computed = await crypto.subtle.digest("SHA-256", data);
-    const computedHex = bytesToHex(new Uint8Array(computed));
-    return constantTimeEquals(hash, computedHex);
-  }
-
-  const [scheme, iterationRaw, saltHex, hashHex] = stored.split("$");
-  if (scheme !== "pbkdf2" || !iterationRaw || !saltHex || !hashHex) {
-    return false;
-  }
-
-  const iterations = Number.parseInt(iterationRaw, 10);
-  if (!Number.isFinite(iterations) || iterations < 100000) return false;
-
-  const salt = hexToBytes(saltHex);
-  const computedHex = await derivePbkdf2(password, salt, iterations);
-  return constantTimeEquals(hashHex, computedHex);
-}
 
 function setSessionCookie(c: any, env: Env, sessionId: string) {
   const { sameSite, secure } = resolveCookieOptions(env);
@@ -189,10 +130,21 @@ const app = new Hono<AppContextEnv>()
           requestId: c.get("requestId"),
         },
       });
+      const verification = await createEmailVerificationToken(db, user.id);
+      await enqueueJob(c.env.JOBS, {
+        type: "auth.email_verification_email",
+        payload: {
+          userId: user.id,
+          email: user.email,
+          verifyUrl: `${resolveAppBaseUrl(c.env, c.req.url)}/?verifyToken=${verification.token}`,
+          requestId: c.get("requestId"),
+        },
+      });
       return c.json({
         id: user.id,
         email: user.email,
         name: user.name,
+        emailVerifiedAt: user.emailVerifiedAt,
         roles,
         currentOrganizationId: organization.organizationId,
         organizations: [organization],
@@ -226,7 +178,7 @@ const app = new Hono<AppContextEnv>()
         return jsonError(c, 401, "invalid_credentials", "Invalid email or password");
       }
 
-      if (user.passwordHash.includes(":")) {
+      if (needsPasswordUpgrade(user.passwordHash)) {
         const upgradedHash = await hashPassword(password);
         await db
           .update(users)
@@ -251,10 +203,198 @@ const app = new Hono<AppContextEnv>()
         id: user.id,
         email: user.email,
         name: user.name,
+        emailVerifiedAt: user.emailVerifiedAt,
         roles,
         currentOrganizationId: organization.organizationId,
         organizations,
       });
+    }
+  )
+  .post(
+    "/email-verification/request",
+    requireAuth,
+    validator("json", emailVerificationRequestSchema),
+    async (c) => {
+      const db = drizzle(c.env.DB);
+      const userId = c.get("userId");
+
+      if (!userId) {
+        return jsonError(c, 401, "unauthorized", "Authentication required");
+      }
+
+      const [user] = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          emailVerifiedAt: users.emailVerifiedAt,
+        })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!user) {
+        return jsonError(c, 404, "not_found", "User not found");
+      }
+
+      if (!user.emailVerifiedAt) {
+        const verification = await createEmailVerificationToken(db, user.id);
+        await enqueueJob(c.env.JOBS, {
+          type: "auth.email_verification_email",
+          payload: {
+            userId: user.id,
+            email: user.email,
+            verifyUrl: `${resolveAppBaseUrl(c.env, c.req.url)}/?verifyToken=${verification.token}`,
+            requestId: c.get("requestId"),
+          },
+        });
+      }
+
+      await writeAuditLog(c.env.DB, c, {
+        actorUserId: user.id,
+        organizationId: c.get("orgId") ?? null,
+        action: "auth.email_verification_request",
+        resourceType: "email_verification",
+        status: 200,
+        metadata: { alreadyVerified: !!user.emailVerifiedAt },
+      });
+
+      return c.json({ ok: true, emailVerifiedAt: user.emailVerifiedAt ?? null });
+    }
+  )
+  .post(
+    "/email-verification/confirm",
+    validator("json", emailVerificationConfirmSchema),
+    async (c) => {
+      const db = drizzle(c.env.DB);
+      const { token } = c.req.valid("json");
+      const result = await consumeEmailVerificationToken(db, token);
+
+      if (!result.ok) {
+        const codeByReason = {
+          not_found: ["email_verification_not_found", 404],
+          expired: ["email_verification_expired", 410],
+          verified: ["email_verification_verified", 409],
+        } as const;
+        const [code, status] = codeByReason[result.reason];
+        await writeAuditLog(c.env.DB, c, {
+          action: "auth.email_verification_confirm_denied",
+          resourceType: "email_verification",
+          status,
+          metadata: { reason: result.reason },
+        });
+        return jsonError(c, status, code, "Forbidden");
+      }
+
+      await writeAuditLog(c.env.DB, c, {
+        actorUserId: result.userId,
+        action: "auth.email_verification_confirm",
+        resourceType: "email_verification",
+        resourceId: String(result.tokenId),
+        status: 200,
+      });
+
+      return c.json({
+        ok: true,
+        emailVerifiedAt: result.emailVerifiedAt,
+      });
+    }
+  )
+  .post(
+    "/password-reset/request",
+    rateLimit({
+      namespace: "auth-password-reset-request",
+      maxRequests: 5,
+      windowSeconds: 60,
+    }),
+    validator("json", passwordResetRequestSchema),
+    async (c) => {
+      const db = drizzle(c.env.DB);
+      const { email } = c.req.valid("json");
+
+      const [user] = await db
+        .select({
+          id: users.id,
+          email: users.email,
+        })
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+
+      if (user) {
+        const reset = await createPasswordResetToken(db, user.id);
+        await enqueueJob(c.env.JOBS, {
+          type: "auth.password_reset_email",
+          payload: {
+            userId: user.id,
+            email: user.email,
+            resetUrl: `${resolveAppBaseUrl(c.env, c.req.url)}/?resetToken=${reset.token}`,
+            requestId: c.get("requestId"),
+          },
+        });
+        await writeAuditLog(c.env.DB, c, {
+          actorUserId: user.id,
+          action: "auth.password_reset_request",
+          resourceType: "password_reset",
+          resourceId: String(reset.id),
+          status: 200,
+        });
+      } else {
+        await writeAuditLog(c.env.DB, c, {
+          action: "auth.password_reset_request",
+          resourceType: "password_reset",
+          status: 200,
+          metadata: { email },
+        });
+      }
+
+      return c.json({ ok: true });
+    }
+  )
+  .post(
+    "/password-reset/confirm",
+    rateLimit({
+      namespace: "auth-password-reset-confirm",
+      maxRequests: 10,
+      windowSeconds: 60,
+    }),
+    validator("json", passwordResetConfirmSchema),
+    async (c) => {
+      const db = drizzle(c.env.DB);
+      const { token, password } = c.req.valid("json");
+      const result = await consumePasswordResetToken(db, token);
+
+      if (!result.ok) {
+        const codeByReason = {
+          not_found: ["password_reset_not_found", 404],
+          expired: ["password_reset_expired", 410],
+          used: ["password_reset_used", 409],
+        } as const;
+        const [code, status] = codeByReason[result.reason];
+        await writeAuditLog(c.env.DB, c, {
+          action: "auth.password_reset_confirm_denied",
+          resourceType: "password_reset",
+          status,
+          metadata: { reason: result.reason },
+        });
+        return jsonError(c, status, code, "Forbidden");
+      }
+
+      const passwordHash = await hashPassword(password);
+      await db
+        .update(users)
+        .set({ passwordHash })
+        .where(eq(users.id, result.userId));
+      await db.delete(sessions).where(eq(sessions.userId, result.userId));
+
+      await writeAuditLog(c.env.DB, c, {
+        actorUserId: result.userId,
+        action: "auth.password_reset_confirm",
+        resourceType: "password_reset",
+        resourceId: String(result.tokenId),
+        status: 200,
+      });
+
+      return c.json({ ok: true });
     }
   )
   .post("/logout", requireAuth, async (c) => {
@@ -346,6 +486,7 @@ const app = new Hono<AppContextEnv>()
         id: users.id,
         email: users.email,
         name: users.name,
+        emailVerifiedAt: users.emailVerifiedAt,
         createdAt: users.createdAt,
       })
       .from(users)

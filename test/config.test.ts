@@ -17,7 +17,18 @@ describe("config", () => {
       corsOrigins: ["https://app.example.com", "http://localhost:5173"],
       cookieSameSite: "Strict",
       cookieSecure: false,
+      appBaseUrl: "http://localhost:5173",
     });
+  });
+
+  it("accepts an explicit app base url", () => {
+    const config = getAppConfig(
+      createTestEnv({
+        APP_BASE_URL: "https://starter.example.com",
+      })
+    );
+
+    expect(config.appBaseUrl).toBe("https://starter.example.com");
   });
 
   it("rejects invalid origin strings early", () => {
