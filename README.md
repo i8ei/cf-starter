@@ -335,9 +335,3 @@ example feature であっても、業務テーブルは `organization_id` を持
 - [ ] Queue 名を変更した場合は producer / consumer を揃える
 - [ ] auth rate limit の閾値を要件に合わせる
 - [ ] `scheduled` cleanup が本番でも動くことを確認する
-
-## 現在の不足
-
-まだ入っていないものです。
-
-- feature-based structure への整理
