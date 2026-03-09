@@ -333,6 +333,7 @@ describe("scaffold", () => {
     expect(plan.selectedFeatures).toEqual(["items"]);
     expect(plan.removedFeatures).toEqual(["kv", "upload"]);
     expect(plan.requiredBindings).toEqual(["DB", "JOBS", "RATE_LIMITER"]);
+    expect(plan.coreBindingsKept).toEqual(["DB", "JOBS", "RATE_LIMITER"]);
     expect(plan.bindingsRemoved).toEqual(["KV", "BUCKET"]);
     expect(plan.warnings).toContain(
       "JOBS binding remains required for invite, password reset, email verification, and welcome mail flows."
@@ -366,6 +367,7 @@ describe("scaffold", () => {
     expect(plan.warnings).toContain(
       "Core-only still keeps organization, auth, queue, and scheduled maintenance features."
     );
+    expect(plan.coreBindingsKept).toEqual(["DB", "JOBS", "RATE_LIMITER"]);
     expect(plan.bindingsRemoved).toEqual(["KV", "BUCKET"]);
   });
 

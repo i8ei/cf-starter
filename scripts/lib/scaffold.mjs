@@ -453,6 +453,10 @@ function buildBindingChanges(requiredBindings) {
   return removableBindings.filter((binding) => !requiredBindings.includes(binding));
 }
 
+function buildCoreBindingsKept(requiredBindings) {
+  return CORE_REQUIRED_BINDINGS.filter((binding) => requiredBindings.includes(binding));
+}
+
 function buildScaffoldWarnings({ coreOnly, selectedFeatures, requiredBindings }) {
   const warnings = [];
 
@@ -489,6 +493,7 @@ export function buildScaffoldPlan({
     selectedFeatures,
   });
   const bindingsRemoved = buildBindingChanges(summary.requiredBindings);
+  const coreBindingsKept = buildCoreBindingsKept(summary.requiredBindings);
   const warnings = buildScaffoldWarnings({
     coreOnly,
     selectedFeatures,
@@ -515,6 +520,7 @@ export function buildScaffoldPlan({
     targetDir,
     ...summary,
     removedFeatures,
+    coreBindingsKept,
     bindingsRemoved,
     filesRemoved,
     filesRewritten,

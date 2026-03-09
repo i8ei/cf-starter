@@ -271,10 +271,11 @@ JSON variants は将来の scaffold や CI から plan を読むための出口�
 `--core-only` を付けると example feature を外し、`src/index.ts` と `app/App.tsx` を core-only 用に置き換えます。
 `--app-name` を付けると `package.json`、`wrangler.jsonc`、`README.md`、`app/App.tsx` の名前を生成先用に書き換えます。
 `--include` / `--exclude` を付けると example feature を選択して残せます。
-`--plan` を付けるとコピーせずに `selectedFeatures`、`removedFeatures`、`bindingsRemoved`、`filesRemoved`、`filesRewritten`、`warnings`、`requiredBindings`、`transforms`、`nextSteps` だけを確認できます。
+`--plan` を付けるとコピーせずに `selectedFeatures`、`removedFeatures`、`coreBindingsKept`、`bindingsRemoved`、`filesRemoved`、`filesRewritten`、`warnings`、`requiredBindings`、`transforms`、`nextSteps` だけを確認できます。
 `--plan-out` を付けると plan JSON をファイルへ保存します。
 生成先の `wrangler.jsonc` は `requiredBindings` に合わせて不要な KV / R2 binding を落とします。
-JSON 出力では `selectedFeatures`、`removedFeatures`、`bindingsRemoved`、`filesRemoved`、`filesRewritten`、`warnings`、`requiredBindings`、`transforms`、`nextSteps` を返します。`--json-out` を付けると同じ内容をファイルにも保存します。
+生成先の `README.md` は selected features に合わせて `ディレクトリ構成`、`Feature Structure`、`Queue`、`Example Feature API` を絞ります。
+JSON 出力では `selectedFeatures`、`removedFeatures`、`coreBindingsKept`、`bindingsRemoved`、`filesRemoved`、`filesRewritten`、`warnings`、`requiredBindings`、`transforms`、`nextSteps` を返します。`--json-out` を付けると同じ内容をファイルにも保存します。
 
 ## Feature Structure
 

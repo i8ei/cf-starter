@@ -65,6 +65,7 @@ if (asJson) {
   console.log(`Target: ${result.targetDir}`);
   console.log(`Selected features: ${result.selectedFeatures.length > 0 ? result.selectedFeatures.join(", ") : "none"}`);
   console.log(`Required bindings: ${result.requiredBindings.join(", ")}`);
+  console.log(`Core bindings kept: ${result.coreBindingsKept.join(", ")}`);
   if (result.bindingsRemoved.length > 0) {
     console.log(`Bindings removed: ${result.bindingsRemoved.join(", ")}`);
   }
