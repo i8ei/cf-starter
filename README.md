@@ -116,6 +116,8 @@ npm run deploy
 | `npm run app:plan:json` | app plan を JSON で出力 |
 | `npm run app:plan:core:json` | core-only app plan を JSON で出力 |
 | `npm run app:scaffold -- --target ../new-app` | 新しい app ディレクトリを scaffold |
+| `npm run app:scaffold -- --target ../new-app --plan --json` | scaffold 前の dry-run を JSON で確認 |
+| `npm run app:scaffold -- --target ../new-app --plan --plan-out ./scaffold-plan.json` | scaffold plan をファイル保存 |
 
 ## ディレクトリ構成
 
@@ -261,11 +263,18 @@ JSON variants は将来の scaffold や CI から plan を読むための出口�
 - `npm run app:scaffold -- --target ../new-app --app-name regional-ops`
 - `npm run app:scaffold -- --target ../new-app --exclude kv,upload`
 - `npm run app:scaffold -- --target ../new-app --include items`
+- `npm run app:scaffold -- --target ../new-app --plan --json`
+- `npm run app:scaffold -- --target ../new-app --plan --plan-out ./scaffold-plan.json`
+- `npm run app:scaffold -- --target ../new-app --json --json-out ./scaffold.json`
 
 `app:scaffold` は現在の starter を別ディレクトリへコピーします。
 `--core-only` を付けると example feature を外し、`src/index.ts` と `app/App.tsx` を core-only 用に置き換えます。
 `--app-name` を付けると `package.json`、`wrangler.jsonc`、`README.md`、`app/App.tsx` の名前を生成先用に書き換えます。
 `--include` / `--exclude` を付けると example feature を選択して残せます。
+`--plan` を付けるとコピーせずに `selectedFeatures`、`removedFeatures`、`bindingsRemoved`、`filesRemoved`、`filesRewritten`、`warnings`、`requiredBindings`、`transforms`、`nextSteps` だけを確認できます。
+`--plan-out` を付けると plan JSON をファイルへ保存します。
+生成先の `wrangler.jsonc` は `requiredBindings` に合わせて不要な KV / R2 binding を落とします。
+JSON 出力では `selectedFeatures`、`removedFeatures`、`bindingsRemoved`、`filesRemoved`、`filesRewritten`、`warnings`、`requiredBindings`、`transforms`、`nextSteps` を返します。`--json-out` を付けると同じ内容をファイルにも保存します。
 
 ## Feature Structure
 
