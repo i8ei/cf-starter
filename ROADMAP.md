@@ -68,7 +68,9 @@
 - `/api/auth/switch-org`
 - auth context への `orgId` / `orgRole` / `memberships` 追加
 - invite lifecycle
-- feature-based structure の最初の整理
+- feature-based structure の整理（example は `src/features/example/` に分離、core は横断基盤として `src/routes/` + `src/lib/` に維持）
+- auth routes のサブモジュール分割（`src/routes/auth/`）
+- crypto ユーティリティの集約（`src/lib/crypto.ts`）
 
 次:
 

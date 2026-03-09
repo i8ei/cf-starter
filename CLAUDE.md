@@ -16,26 +16,34 @@ Cloudflare フルスタック スターターテンプレート。
 ```
 cf-starter/
 ├── app/                    ← React フロントエンド
-│   ├── hooks/              ← TanStack Query カスタムフック
+│   ├── features/example/   ← example feature hooks
+│   ├── hooks/              ← core hooks
 │   ├── lib/api.ts          ← Hono RPC クライアント（型付き）
 │   ├── App.tsx
 │   ├── main.tsx
 │   └── index.css
 ├── shared/                 ← フロント・バック共有
-│   └── schemas/            ← Zod バリデーションスキーマ
+│   ├── features/example/   ← example feature schemas
+│   └── schemas/            ← core Zod スキーマ
 ├── src/                    ← Hono バックエンド (Worker)
 │   ├── db/schema.ts        ← Drizzle スキーマ
-│   ├── routes/             ← API ルート
-│   │   ├── auth.ts         POST signup/login/logout, GET me
-│   │   ├── health.ts       GET /api/health
-│   │   ├── items.ts        GET/POST /api/items (D1)
-│   │   ├── upload.ts       GET/POST /api/upload (R2)
-│   │   └── kv.ts           GET/PUT /api/kv/:key (KV)
-│   ├── middleware/auth.ts   ← requireAuth ミドルウェア
+│   ├── durable-objects/    ← rate limiter
+│   ├── features/example/   ← example feature routes (items/kv/upload)
+│   ├── lib/                ← auth, session, audit, orgs, crypto 等
+│   ├── middleware/          ← auth, csrf, rate-limit, request-id, role
+│   ├── queues/             ← queue producer / consumer
+│   ├── routes/             ← core API ルート
+│   │   ├── auth/           ← signup/login/logout/me/password-reset/email-verification
+│   │   ├── health.ts       ← GET /api/health
+│   │   ├── modules.ts      ← GET /api/modules
+│   │   └── orgs.ts         ← organization CRUD / invites
 │   ├── types.ts            ← Env バインディング型
 │   └── index.ts            ← エントリーポイント（ルート集約 + エラーハンドラ）
+├── scripts/                ← scaffold, plan, create CLI
+├── test/                   ← Vitest テスト
 ├── migrations/             ← D1 マイグレーション
 ├── drizzle.config.ts
+├── vitest.config.ts
 ├── vite.config.ts
 ├── wrangler.jsonc
 └── index.html
@@ -49,9 +57,13 @@ npm run dev:split        # ローカル開発（分離モード: Vite + wrangler
 npm run build            # ビルド
 npm run preview          # ビルド後プレビュー
 npm run deploy           # Cloudflare にデプロイ
+npm test                 # Vitest テスト
 npm run db:generate      # Drizzle スキーマからマイグレーション生成
 npm run db:migrate       # D1 ローカルマイグレーション
 npm run db:migrate:remote  # D1 リモートマイグレーション
+npm run app:scaffold     # 新しいアプリをスキャフォールド
+npm run app:plan         # core / example の切り分け確認
+npm run modules:plan     # module 導入状況確認
 ```
 
 ## 開発の流れ
