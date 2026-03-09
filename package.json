@@ -1,7 +1,54 @@
 {
-  "name": "cf-starter",
-  "private": true,
+  "name": "create-cf-starter",
+  "version": "0.1.0",
+  "description": "AI-friendly CLI to scaffold new apps from cf-starter.",
+  "license": "UNLICENSED",
   "type": "module",
+  "homepage": "https://github.com/i8ei/cf-starter#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/i8ei/cf-starter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/i8ei/cf-starter/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "cloudflare",
+    "starter",
+    "scaffold",
+    "cli",
+    "hono",
+    "react"
+  ],
+  "files": [
+    ".gitignore",
+    "ARCHITECTURE.md",
+    "README.md",
+    "ROADMAP.md",
+    "app",
+    "bin",
+    "drizzle.config.ts",
+    "index.html",
+    "migrations",
+    "scripts",
+    "shared",
+    "src",
+    "test",
+    "tsconfig.json",
+    "vite.config.split.ts",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "wrangler.jsonc"
+  ],
+  "bin": {
+    "create-cf-starter": "bin/create-cf-starter"
+  },
   "scripts": {
     "dev": "vite dev",
     "dev:split": "wrangler dev src/index.ts --port 8787 --local & vite dev --config vite.config.split.ts && kill %1",
@@ -9,7 +56,9 @@
     "preview": "npm run build && vite preview",
     "deploy": "npm run build && wrangler deploy",
     "test": "vitest run",
+    "test:create": "node scripts/test-create.mjs",
     "test:watch": "vitest",
+    "check:publish": "node scripts/check-publish-ready.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/d1-migrate.mjs",
     "db:migrate:remote": "node scripts/d1-migrate.mjs remote",

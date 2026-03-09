@@ -8,6 +8,7 @@ import {
   buildScaffoldPlan,
   buildScaffoldSummary,
   resolveSelectedFeatures,
+  validateProjectName,
   rewriteScaffoldMetadata,
   rewriteIndexForCoreOnly,
   scaffoldStarter,
@@ -80,12 +81,16 @@ describe("scaffold", () => {
     await mkdir(join(sourceDir, "node_modules/pkg"), { recursive: true });
     await writeFile(join(sourceDir, "src/index.ts"), "export const ok = true;");
     await writeFile(join(sourceDir, "node_modules/pkg/index.js"), "ignored");
+    await writeFile(join(sourceDir, "package-lock.json"), "{}\n");
 
     await scaffoldStarter({ sourceDir, targetDir: target });
 
     const copied = await readFile(join(target, "src/index.ts"), "utf8");
     expect(copied).toContain("ok = true");
     await expect(readFile(join(target, "node_modules/pkg/index.js"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await expect(readFile(join(target, "package-lock.json"), "utf8")).rejects.toMatchObject({
       code: "ENOENT",
     });
   });
@@ -227,6 +232,9 @@ describe("scaffold", () => {
     });
 
     expect(await readFile(join(dir, "package.json"), "utf8")).toContain('"name": "regional-ops"');
+    expect(await readFile(join(dir, "package.json"), "utf8")).toContain('"private": true');
+    expect(await readFile(join(dir, "package.json"), "utf8")).not.toContain('"bin"');
+    expect(await readFile(join(dir, "package.json"), "utf8")).not.toContain('"publishConfig"');
     expect(await readFile(join(dir, "wrangler.jsonc"), "utf8")).toContain('"name": "regional-ops"');
     expect(await readFile(join(dir, "wrangler.jsonc"), "utf8")).toContain('"database_name": "regional-ops-db"');
     expect(await readFile(join(dir, "wrangler.jsonc"), "utf8")).not.toContain('"kv_namespaces"');
@@ -251,6 +259,42 @@ describe("scaffold", () => {
       "upload",
     ]);
     expect(resolveSelectedFeatures({ coreOnly: true, include: ["items"] })).toEqual([]);
+  });
+
+  it("validates project names", () => {
+    expect(validateProjectName("regional-ops")).toBe("regional-ops");
+    expect(() => validateProjectName("Regional Ops")).toThrow(
+      'Invalid project name "Regional Ops"'
+    );
+    expect(() => validateProjectName("9regional")).toThrow(
+      'Invalid project name "9regional"'
+    );
+  });
+
+  it("rejects unknown features in scaffold plans", () => {
+    expect(() =>
+      buildScaffoldPlan({
+        targetDir: "/tmp/regional-ops",
+        include: ["unknown-feature"],
+      })
+    ).toThrow("Unknown feature in --include: unknown-feature.");
+  });
+
+  it("refuses to overwrite existing targets without force", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "cf-starter-existing-target-"));
+    tempDirs.push(dir);
+    const sourceDir = await mkdtemp(join(tmpdir(), "cf-starter-existing-source-"));
+    tempDirs.push(sourceDir);
+
+    await mkdir(join(sourceDir, "src"), { recursive: true });
+    await writeFile(join(sourceDir, "src/index.ts"), "export const ok = true;");
+
+    await expect(
+      scaffoldStarter({
+        sourceDir,
+        targetDir: dir,
+      })
+    ).rejects.toThrow(`Refusing to overwrite existing directory: ${dir}.`);
   });
 
   it("removes excluded feature routes and items UI", async () => {

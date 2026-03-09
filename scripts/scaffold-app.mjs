@@ -1,10 +1,14 @@
 import { writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { buildScaffoldPlan, scaffoldStarter } from "./lib/scaffold.mjs";
 
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+const DEFAULT_SOURCE_DIR = resolve(SCRIPT_DIR, "..");
 const args = process.argv.slice(2);
 const targetIndex = args.findIndex((arg) => arg === "--target");
 const appNameIndex = args.findIndex((arg) => arg === "--app-name");
+const sourceDirIndex = args.findIndex((arg) => arg === "--source-dir");
 const coreOnly = args.includes("--core-only");
 const force = args.includes("--force");
 const asJson = args.includes("--json");
@@ -14,12 +18,25 @@ const excludeIndex = args.findIndex((arg) => arg === "--exclude");
 const jsonOutIndex = args.findIndex((arg) => arg === "--json-out");
 const planOutIndex = args.findIndex((arg) => arg === "--plan-out");
 
-if (targetIndex === -1 || !args[targetIndex + 1]) {
-  console.error("Usage: node scripts/scaffold-app.mjs --target <dir> [--core-only] [--force] [--plan] [--json]");
+const usage = "Usage: node scripts/scaffold-app.mjs --target <dir> [--core-only] [--force] [--plan] [--json]";
+
+function fail(message, { includeUsage = false } = {}) {
+  console.error(message);
+  if (includeUsage) {
+    console.error(usage);
+  }
   process.exit(1);
 }
 
+if (targetIndex === -1 || !args[targetIndex + 1]) {
+  fail("Missing required --target option.", { includeUsage: true });
+}
+
 const targetDir = resolve(process.cwd(), args[targetIndex + 1]);
+const sourceDir =
+  sourceDirIndex === -1 || !args[sourceDirIndex + 1]
+    ? DEFAULT_SOURCE_DIR
+    : resolve(process.cwd(), args[sourceDirIndex + 1]);
 const appName = appNameIndex === -1 ? undefined : args[appNameIndex + 1];
 const include =
   includeIndex === -1 || !args[includeIndex + 1]
@@ -39,8 +56,7 @@ const planOutPath =
     : resolve(process.cwd(), args[planOutIndex + 1]);
 
 if (planOutPath && !planOnly) {
-  console.error("--plan-out can only be used together with --plan");
-  process.exit(1);
+  fail("--plan-out can only be used together with --plan.");
 }
 
 const options = {
@@ -50,13 +66,6 @@ const options = {
   include,
   exclude,
 };
-const result = planOnly
-  ? buildScaffoldPlan(options)
-  : await scaffoldStarter({
-      sourceDir: process.cwd(),
-      ...options,
-      force,
-    });
 
 function printScaffoldSummary(result, { modeLabel, writer = console.log, concise = false }) {
   writer(`${modeLabel} ${result.appName} (${result.mode})`);
@@ -106,23 +115,37 @@ function printScaffoldSummary(result, { modeLabel, writer = console.log, concise
 
 const conciseSummary = Boolean(jsonOutPath || planOutPath);
 
-if (asJson) {
-  printScaffoldSummary(result, {
-    modeLabel: planOnly ? "Scaffold plan for" : "Scaffolded",
-    writer: (line) => console.error(line),
-    concise: conciseSummary,
-  });
-  console.log(JSON.stringify(result, null, 2));
-} else if (planOnly) {
-  printScaffoldSummary(result, { modeLabel: "Scaffold plan for", concise: conciseSummary });
-} else {
-  printScaffoldSummary(result, { modeLabel: "Scaffolded", concise: conciseSummary });
-}
+try {
+  const result = planOnly
+    ? buildScaffoldPlan(options)
+    : await scaffoldStarter({
+        sourceDir,
+        ...options,
+        force,
+      });
 
-if (jsonOutPath) {
-  await writeFile(jsonOutPath, `${JSON.stringify(result, null, 2)}\n`);
-}
+  if (asJson) {
+    printScaffoldSummary(result, {
+      modeLabel: planOnly ? "Scaffold plan for" : "Scaffolded",
+      writer: (line) => console.error(line),
+      concise: conciseSummary,
+    });
+    console.log(JSON.stringify(result, null, 2));
+  } else if (planOnly) {
+    printScaffoldSummary(result, { modeLabel: "Scaffold plan for", concise: conciseSummary });
+  } else {
+    printScaffoldSummary(result, { modeLabel: "Scaffolded", concise: conciseSummary });
+  }
 
-if (planOutPath) {
-  await writeFile(planOutPath, `${JSON.stringify(result, null, 2)}\n`);
+  if (jsonOutPath) {
+    await writeFile(jsonOutPath, `${JSON.stringify(result, null, 2)}\n`);
+  }
+
+  if (planOutPath) {
+    await writeFile(planOutPath, `${JSON.stringify(result, null, 2)}\n`);
+  }
+} catch (error) {
+  const message = error instanceof Error ? error.message : "Unknown scaffold error.";
+  console.error(`create-cf-starter failed: ${message}`);
+  process.exit(1);
 }

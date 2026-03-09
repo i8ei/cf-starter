@@ -7,6 +7,7 @@ const COPY_EXCLUDES = new Set([
   "node_modules",
   "dist",
   ".wrangler",
+  "package-lock.json",
 ]);
 
 const EXAMPLE_FEATURE_KEYS = starterManifest.exampleFeatures.map((feature) => feature.key);
@@ -20,6 +21,7 @@ const REMOVABLE_BINDING_REASONS = {
   KV: "Only the kv example feature uses the KV binding.",
   BUCKET: "Only the upload example feature uses the R2 bucket binding.",
 };
+const PROJECT_NAME_PATTERN = /^[a-z][a-z0-9-]{0,62}$/;
 
 const CORE_ONLY_APP_TEMPLATE = `import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -336,6 +338,35 @@ function toDisplayName(appName) {
     .join(" ");
 }
 
+function buildValidationError(message) {
+  const error = new Error(message);
+  error.name = "ScaffoldValidationError";
+  return error;
+}
+
+export function validateProjectName(appName) {
+  if (!appName || typeof appName !== "string") {
+    throw buildValidationError("Project name is required.");
+  }
+
+  if (!PROJECT_NAME_PATTERN.test(appName)) {
+    throw buildValidationError(
+      `Invalid project name "${appName}". Use 1-63 chars, start with a lowercase letter, and use only lowercase letters, numbers, and hyphens.`
+    );
+  }
+
+  return appName;
+}
+
+function validateFeatureList(featureList, optionName) {
+  const unknown = featureList.filter((feature) => !EXAMPLE_FEATURE_KEYS.includes(feature));
+  if (unknown.length > 0) {
+    throw buildValidationError(
+      `Unknown feature in ${optionName}: ${unknown.join(", ")}. Available features: ${EXAMPLE_FEATURE_KEYS.join(", ")}.`
+    );
+  }
+}
+
 function buildCoreOnlyAppTemplate(appName) {
   return CORE_ONLY_APP_TEMPLATE.replaceAll("__APP_DISPLAY_NAME__", toDisplayName(appName));
 }
@@ -504,6 +535,10 @@ export function buildScaffoldPlan({
   include = [],
   exclude = [],
 } = {}) {
+  validateProjectName(appName);
+  validateFeatureList(include, "--include");
+  validateFeatureList(exclude, "--exclude");
+
   const selectedFeatures = resolveSelectedFeatures({ coreOnly, include, exclude });
   const summary = buildScaffoldSummary({ appName, coreOnly, selectedFeatures });
   const removedFeatures = EXAMPLE_FEATURE_KEYS.filter(
@@ -943,6 +978,15 @@ export async function rewriteScaffoldMetadata(
     await rewriteTextFile(packageJsonPath, (source) => {
       const parsed = JSON.parse(source);
       parsed.name = appName;
+      parsed.private = true;
+      parsed.description = `${displayName} application scaffolded from cf-starter.`;
+      delete parsed.bin;
+      delete parsed.files;
+      delete parsed.publishConfig;
+      delete parsed.homepage;
+      delete parsed.repository;
+      delete parsed.bugs;
+      delete parsed.keywords;
       return `${JSON.stringify(parsed, null, 2)}\n`;
     });
   }
@@ -994,18 +1038,20 @@ async function ensureTargetReady(targetDir, { force }) {
   try {
     const info = await stat(targetDir);
     if (!info.isDirectory()) {
-      throw new Error(`Target exists and is not a directory: ${targetDir}`);
+      throw buildValidationError(`Target exists and is not a directory: ${targetDir}`);
     }
     if (force) {
       await rm(targetDir, { recursive: true, force: true });
       await mkdir(targetDir, { recursive: true });
-      return;
+      return { createdByScaffold: true };
     }
-    throw new Error(`Target already exists: ${targetDir}`);
+    throw buildValidationError(
+      `Refusing to overwrite existing directory: ${targetDir}. Use a new target path.`
+    );
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
       await mkdir(targetDir, { recursive: true });
-      return;
+      return { createdByScaffold: true };
     }
     throw error;
   }
@@ -1048,25 +1094,33 @@ export async function scaffoldStarter({
   exclude = [],
   force = false,
 }) {
-  await ensureTargetReady(targetDir, { force });
-  await cp(sourceDir, targetDir, {
-    recursive: true,
-    filter: (sourcePath) => shouldCopy(sourcePath.replace(sourceDir, "")),
-  });
+  const { createdByScaffold } = await ensureTargetReady(targetDir, { force });
 
-  const plan = buildScaffoldPlan({ targetDir, appName, coreOnly, include, exclude });
-  const { selectedFeatures } = plan;
+  try {
+    await cp(sourceDir, targetDir, {
+      recursive: true,
+      filter: (sourcePath) => shouldCopy(sourcePath.replace(sourceDir, "")),
+    });
 
-  if (coreOnly) {
-    await applyCoreOnlyTransforms(targetDir);
-    await writeCoreOnlyApp(targetDir, appName);
-  } else {
-    await applyFeatureSelection(targetDir, selectedFeatures);
+    const plan = buildScaffoldPlan({ targetDir, appName, coreOnly, include, exclude });
+    const { selectedFeatures } = plan;
+
+    if (coreOnly) {
+      await applyCoreOnlyTransforms(targetDir);
+      await writeCoreOnlyApp(targetDir, appName);
+    } else {
+      await applyFeatureSelection(targetDir, selectedFeatures);
+    }
+
+    await rewriteScaffoldMetadata(targetDir, appName, plan);
+
+    return {
+      ...plan,
+    };
+  } catch (error) {
+    if (createdByScaffold) {
+      await rm(targetDir, { recursive: true, force: true });
+    }
+    throw error;
   }
-
-  await rewriteScaffoldMetadata(targetDir, appName, plan);
-
-  return {
-    ...plan,
-  };
 }

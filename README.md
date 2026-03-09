@@ -78,6 +78,16 @@ npm run db:migrate
 npm run dev
 ```
 
+### 新しい app を切る
+
+```bash
+npx . regional-ops
+npx . regional-ops --plan --json
+node scripts/create-cf-starter.mjs regional-ops
+```
+
+`create-cf-starter` は npm 公開前です。公開後は `npx create-cf-starter@latest regional-ops` を入口にします。
+
 ### Cloudflare へデプロイ
 
 ```bash
@@ -105,7 +115,9 @@ npm run deploy
 | `npm run preview` | ビルド後プレビュー |
 | `npm run deploy` | Cloudflare にデプロイ |
 | `npm test` | 自動テスト |
+| `npm run test:create` | create CLI で temp app を生成し、install + build まで確認 |
 | `npm run test:watch` | テスト watch |
+| `npm run check:publish` | npm publish 前提の package / tarball チェック |
 | `npm run db:generate` | Drizzle から migration 生成 |
 | `npm run db:migrate` | ローカル D1 に migration 適用 |
 | `npm run db:migrate:remote` | リモート D1 に migration 適用 |
@@ -118,6 +130,8 @@ npm run deploy
 | `npm run app:scaffold -- --target ../new-app` | 新しい app ディレクトリを scaffold |
 | `npm run app:scaffold -- --target ../new-app --plan --json` | scaffold 前の dry-run を JSON で確認 |
 | `npm run app:scaffold -- --target ../new-app --plan --plan-out ./scaffold-plan.json` | scaffold plan をファイル保存 |
+| `npx . my-app` | 未公開の create CLI をローカルから実行 |
+| `node scripts/create-cf-starter.mjs my-app` | create CLI を script から直接実行 |
 
 ## ディレクトリ構成
 

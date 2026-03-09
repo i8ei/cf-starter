@@ -223,5 +223,6 @@ AI や開発者は、次を壊さないでください。
    生成先の `wrangler.jsonc` は selected features に不要な KV / R2 binding を削る
    生成先の `README.md` は selected features に合わせて主要節を絞る
    `--json-out` / `--plan-out` 利用時の端末 summary は短縮表示でよい
+   AI / 非対話フローでは `npx create-cf-starter <dir> [flags...]` を入口にしてよい
 5. example feature を残すか、置き換えるか、削るかを決める
 6. 新しい業務テーブルは `organization_id` 前提で追加する
