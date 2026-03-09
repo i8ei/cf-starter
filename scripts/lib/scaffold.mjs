@@ -11,6 +11,15 @@ const COPY_EXCLUDES = new Set([
 
 const EXAMPLE_FEATURE_KEYS = starterManifest.exampleFeatures.map((feature) => feature.key);
 const CORE_REQUIRED_BINDINGS = ["DB", "JOBS", "RATE_LIMITER"];
+const CORE_BINDING_REASONS = {
+  DB: "Core auth, organizations, sessions, audit logs, and example D1 data use D1.",
+  JOBS: "Invite, password reset, email verification, and welcome mail flows enqueue queue jobs.",
+  RATE_LIMITER: "Auth rate limiting uses the Durable Object binding.",
+};
+const REMOVABLE_BINDING_REASONS = {
+  KV: "Only the kv example feature uses the KV binding.",
+  BUCKET: "Only the upload example feature uses the R2 bucket binding.",
+};
 
 const CORE_ONLY_APP_TEMPLATE = `import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -453,8 +462,20 @@ function buildBindingChanges(requiredBindings) {
   return removableBindings.filter((binding) => !requiredBindings.includes(binding));
 }
 
+function buildRemovedBindingReasons(bindingsRemoved) {
+  return Object.fromEntries(
+    bindingsRemoved.map((binding) => [binding, REMOVABLE_BINDING_REASONS[binding]])
+  );
+}
+
 function buildCoreBindingsKept(requiredBindings) {
   return CORE_REQUIRED_BINDINGS.filter((binding) => requiredBindings.includes(binding));
+}
+
+function buildCoreBindingReasons(coreBindingsKept) {
+  return Object.fromEntries(
+    coreBindingsKept.map((binding) => [binding, CORE_BINDING_REASONS[binding]])
+  );
 }
 
 function buildScaffoldWarnings({ coreOnly, selectedFeatures, requiredBindings }) {
@@ -493,7 +514,9 @@ export function buildScaffoldPlan({
     selectedFeatures,
   });
   const bindingsRemoved = buildBindingChanges(summary.requiredBindings);
+  const bindingRemovalReasons = buildRemovedBindingReasons(bindingsRemoved);
   const coreBindingsKept = buildCoreBindingsKept(summary.requiredBindings);
+  const coreBindingReasons = buildCoreBindingReasons(coreBindingsKept);
   const warnings = buildScaffoldWarnings({
     coreOnly,
     selectedFeatures,
@@ -521,7 +544,9 @@ export function buildScaffoldPlan({
     ...summary,
     removedFeatures,
     coreBindingsKept,
+    coreBindingReasons,
     bindingsRemoved,
+    bindingRemovalReasons,
     filesRemoved,
     filesRewritten,
     warnings,

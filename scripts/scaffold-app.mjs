@@ -58,40 +58,65 @@ const result = planOnly
       force,
     });
 
-if (asJson) {
-  console.log(JSON.stringify(result, null, 2));
-} else if (planOnly) {
-  console.log(`Scaffold plan for ${result.appName} (${result.mode})`);
-  console.log(`Target: ${result.targetDir}`);
-  console.log(`Selected features: ${result.selectedFeatures.length > 0 ? result.selectedFeatures.join(", ") : "none"}`);
-  console.log(`Required bindings: ${result.requiredBindings.join(", ")}`);
-  console.log(`Core bindings kept: ${result.coreBindingsKept.join(", ")}`);
-  if (result.bindingsRemoved.length > 0) {
-    console.log(`Bindings removed: ${result.bindingsRemoved.join(", ")}`);
+function printScaffoldSummary(result, { modeLabel, writer = console.log, concise = false }) {
+  writer(`${modeLabel} ${result.appName} (${result.mode})`);
+  writer(`Target: ${result.targetDir}`);
+  writer(`Selected features: ${result.selectedFeatures.length > 0 ? result.selectedFeatures.join(", ") : "none"}`);
+  writer(`Required bindings: ${result.requiredBindings.join(", ")}`);
+  if (concise) {
+    writer(`Next steps: ${result.nextSteps.join(" | ")}`);
+    return;
   }
-  if (result.removedFeatures.length > 0) {
-    console.log(`Removed features: ${result.removedFeatures.join(", ")}`);
-  }
-  if (result.filesRemoved.length > 0) {
-    console.log(`Files removed: ${result.filesRemoved.join(", ")}`);
-  }
-  console.log(`Files rewritten: ${result.filesRewritten.join(", ")}`);
-  if (result.warnings.length > 0) {
-    console.log("Warnings:");
-    for (const warning of result.warnings) {
-      console.log(`- ${warning}`);
+  writer(`Core bindings kept: ${result.coreBindingsKept.join(", ")}`);
+  if (result.coreBindingsKept.length > 0) {
+    writer("Core binding reasons:");
+    for (const binding of result.coreBindingsKept) {
+      writer(`- ${binding}: ${result.coreBindingReasons[binding]}`);
     }
   }
-  console.log("Transforms:");
+  if (result.bindingsRemoved.length > 0) {
+    writer(`Bindings removed: ${result.bindingsRemoved.join(", ")}`);
+    writer("Binding removal reasons:");
+    for (const binding of result.bindingsRemoved) {
+      writer(`- ${binding}: ${result.bindingRemovalReasons[binding]}`);
+    }
+  }
+  if (result.removedFeatures.length > 0) {
+    writer(`Removed features: ${result.removedFeatures.join(", ")}`);
+  }
+  if (result.filesRemoved.length > 0) {
+    writer(`Files removed: ${result.filesRemoved.join(", ")}`);
+  }
+  writer(`Files rewritten: ${result.filesRewritten.join(", ")}`);
+  if (result.warnings.length > 0) {
+    writer("Warnings:");
+    for (const warning of result.warnings) {
+      writer(`- ${warning}`);
+    }
+  }
+  writer("Transforms:");
   for (const transform of result.transforms) {
-    console.log(`- ${transform}`);
+    writer(`- ${transform}`);
   }
-  console.log("Next steps:");
+  writer("Next steps:");
   for (const step of result.nextSteps) {
-    console.log(`- ${step}`);
+    writer(`- ${step}`);
   }
+}
+
+const conciseSummary = Boolean(jsonOutPath || planOutPath);
+
+if (asJson) {
+  printScaffoldSummary(result, {
+    modeLabel: planOnly ? "Scaffold plan for" : "Scaffolded",
+    writer: (line) => console.error(line),
+    concise: conciseSummary,
+  });
+  console.log(JSON.stringify(result, null, 2));
+} else if (planOnly) {
+  printScaffoldSummary(result, { modeLabel: "Scaffold plan for", concise: conciseSummary });
 } else {
-  console.log(`Scaffolded ${result.mode} app at ${result.targetDir}`);
+  printScaffoldSummary(result, { modeLabel: "Scaffolded", concise: conciseSummary });
 }
 
 if (jsonOutPath) {

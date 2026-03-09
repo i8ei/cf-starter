@@ -334,7 +334,16 @@ describe("scaffold", () => {
     expect(plan.removedFeatures).toEqual(["kv", "upload"]);
     expect(plan.requiredBindings).toEqual(["DB", "JOBS", "RATE_LIMITER"]);
     expect(plan.coreBindingsKept).toEqual(["DB", "JOBS", "RATE_LIMITER"]);
+    expect(plan.coreBindingReasons).toEqual({
+      DB: "Core auth, organizations, sessions, audit logs, and example D1 data use D1.",
+      JOBS: "Invite, password reset, email verification, and welcome mail flows enqueue queue jobs.",
+      RATE_LIMITER: "Auth rate limiting uses the Durable Object binding.",
+    });
     expect(plan.bindingsRemoved).toEqual(["KV", "BUCKET"]);
+    expect(plan.bindingRemovalReasons).toEqual({
+      KV: "Only the kv example feature uses the KV binding.",
+      BUCKET: "Only the upload example feature uses the R2 bucket binding.",
+    });
     expect(plan.warnings).toContain(
       "JOBS binding remains required for invite, password reset, email verification, and welcome mail flows."
     );
@@ -368,7 +377,9 @@ describe("scaffold", () => {
       "Core-only still keeps organization, auth, queue, and scheduled maintenance features."
     );
     expect(plan.coreBindingsKept).toEqual(["DB", "JOBS", "RATE_LIMITER"]);
+    expect(plan.coreBindingReasons.JOBS).toContain("Invite, password reset, email verification");
     expect(plan.bindingsRemoved).toEqual(["KV", "BUCKET"]);
+    expect(plan.bindingRemovalReasons.KV).toContain("kv example feature");
   });
 
   it("tailors README stack and checklist to selected bindings", async () => {

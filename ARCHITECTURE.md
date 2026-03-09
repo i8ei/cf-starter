@@ -216,11 +216,12 @@ AI や開発者は、次を壊さないでください。
 1. `npm run app:plan` か `npm run app:plan:json` で core と example feature を確認する
 2. `npm run modules:plan` か `npm run modules:plan:json` で binding の導入状況を確認する
 3. `npm run app:scaffold -- --target <dir> --plan --json` で dry-run を確認する
-   `selectedFeatures` と `removedFeatures` と `coreBindingsKept` と `bindingsRemoved` と `filesRemoved` と `filesRewritten` と `warnings` と `requiredBindings` と `transforms` を見る
+   `selectedFeatures` と `removedFeatures` と `coreBindingsKept` と `coreBindingReasons` と `bindingsRemoved` と `bindingRemovalReasons` と `filesRemoved` と `filesRewritten` と `warnings` と `requiredBindings` と `transforms` を見る
    必要なら `--plan-out ./scaffold-plan.json` でファイル保存する
 4. `npm run app:scaffold -- --target <dir> [--app-name <slug>] [--include items,kv] [--exclude upload] [--json-out ./scaffold.json]` で派生先を作る
    scaffold の JSON 出力で `selectedFeatures` と `requiredBindings` と `nextSteps` を確認する
    生成先の `wrangler.jsonc` は selected features に不要な KV / R2 binding を削る
    生成先の `README.md` は selected features に合わせて主要節を絞る
+   `--json-out` / `--plan-out` 利用時の端末 summary は短縮表示でよい
 5. example feature を残すか、置き換えるか、削るかを決める
 6. 新しい業務テーブルは `organization_id` 前提で追加する
