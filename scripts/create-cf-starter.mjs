@@ -14,6 +14,7 @@ const usage = [
   "  --core-only         Scaffold only starter core",
   "  --include <list>    Keep only selected example features (comma-separated)",
   "  --exclude <list>    Remove selected example features (comma-separated)",
+  "  --force             Overwrite existing target directory",
   "  --plan              Print scaffold plan without writing files",
   "  --json              Emit JSON output",
   "  --plan-out <file>   Write plan JSON to a file",
@@ -31,6 +32,7 @@ try {
       "core-only": { type: "boolean" },
       include: { type: "string" },
       exclude: { type: "string" },
+      force: { type: "boolean" },
       plan: { type: "boolean" },
       json: { type: "boolean" },
       "plan-out": { type: "string" },
@@ -62,6 +64,7 @@ const args = [scaffoldScript, "--target", target];
 if (values["core-only"]) args.push("--core-only");
 if (values.include) args.push("--include", values.include);
 if (values.exclude) args.push("--exclude", values.exclude);
+if (values.force) args.push("--force");
 if (values.plan) args.push("--plan");
 if (values.json) args.push("--json");
 if (values["plan-out"]) args.push("--plan-out", values["plan-out"]);

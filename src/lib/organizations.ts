@@ -11,6 +11,7 @@ import type {
   OrganizationInviteSummary,
   OrganizationMembershipSummary,
 } from "../types";
+import { bytesToHex } from "./crypto";
 
 export const DEFAULT_ORGANIZATION_ROLE = "owner";
 export const ORGANIZATION_ADMIN_ROLES = ["owner", "admin"] as const;
@@ -33,10 +34,6 @@ export function slugifyOrganizationName(name: string): string {
 
 function buildUniqueOrganizationSlug(base: string): string {
   return `${base}-${crypto.randomUUID().slice(0, 8)}`;
-}
-
-function bytesToHex(bytes: Uint8Array): string {
-  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export function normalizeInviteEmail(email: string): string {

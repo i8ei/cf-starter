@@ -876,28 +876,10 @@ function tailorReadmeForScaffold(source, { appName, coreOnly, selectedFeatures, 
 
 function stripItemsPanelFromApp(source) {
   return source
-    .replace(
-      'import {\n  useItems,\n  useCreateItem,\n} from "./features/example/items/hooks/useItems";\n',
-      ""
-    )
-    .replace('  const [name, setName] = useState("");\n', "")
-    .replace('  const { data: items = [], isLoading } = useItems(!!session);\n', "")
-    .replace('  const createItem = useCreateItem();\n', "")
-    .replace(
-      [
-        "  const handleAdd = () => {",
-        '    if (!name.trim()) return;',
-        "    createItem.mutate(name.trim());",
-        '    setName("");',
-        "  };",
-        "",
-      ].join("\n"),
-      ""
-    )
-    .replace(
-      /\s*<Panel\s+title="D1 Items"[\s\S]*?<\/Panel>\n?/,
-      ""
-    );
+    .replace(/\/\/ scaffold:items-import:start\n[\s\S]*?\/\/ scaffold:items-import:end\n/g, "")
+    .replace(/\/\/ scaffold:items-state:start\n[\s\S]*?\/\/ scaffold:items-state:end\n/g, "")
+    .replace(/\/\/ scaffold:items-hooks:start\n[\s\S]*?\/\/ scaffold:items-hooks:end\n/g, "")
+    .replace(/\s*\{\/\* scaffold:items-panel:start \*\/\}[\s\S]*?\{\/\* scaffold:items-panel:end \*\/\}\n?/g, "");
 }
 
 async function rewriteIndexForSelectedFeatures(indexPath, selectedFeatures) {
@@ -987,6 +969,22 @@ export async function rewriteScaffoldMetadata(
       delete parsed.repository;
       delete parsed.bugs;
       delete parsed.keywords;
+      if (parsed.scripts) {
+        const removeScripts = [
+          "check:publish",
+          "test:create",
+          "modules:plan",
+          "modules:plan:json",
+          "app:plan",
+          "app:plan:core",
+          "app:plan:json",
+          "app:plan:core:json",
+          "app:scaffold",
+        ];
+        for (const key of removeScripts) {
+          delete parsed.scripts[key];
+        }
+      }
       return `${JSON.stringify(parsed, null, 2)}\n`;
     });
   }

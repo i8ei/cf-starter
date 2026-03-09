@@ -39,7 +39,7 @@ export const app = new Hono<AppContextEnv>()
       origin: (origin, c) => {
         const allowlist = resolveCorsOrigins(c.env);
         if (!origin) return allowlist[0];
-        return allowlist.includes(origin) ? origin : allowlist[0];
+        return allowlist.includes(origin) ? origin : "";
       },
       credentials: true,
       allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],

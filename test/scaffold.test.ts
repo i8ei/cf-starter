@@ -177,7 +177,22 @@ describe("scaffold", () => {
     await mkdir(join(dir, "app"), { recursive: true });
     await writeFile(
       join(dir, "package.json"),
-      JSON.stringify({ name: "cf-starter" }, null, 2)
+      JSON.stringify({
+        name: "cf-starter",
+        scripts: {
+          dev: "vite dev",
+          test: "vitest run",
+          "check:publish": "node scripts/check-publish-ready.mjs",
+          "test:create": "node scripts/test-create.mjs",
+          "modules:plan": "node scripts/modules-plan.mjs",
+          "modules:plan:json": "node scripts/modules-plan.mjs --json",
+          "app:plan": "node scripts/app-plan.mjs",
+          "app:plan:core": "node scripts/app-plan.mjs --core-only",
+          "app:plan:json": "node scripts/app-plan.mjs --json",
+          "app:plan:core:json": "node scripts/app-plan.mjs --core-only --json",
+          "app:scaffold": "node scripts/scaffold-app.mjs",
+        },
+      }, null, 2)
     );
     await writeFile(
       join(dir, "wrangler.jsonc"),
@@ -231,10 +246,18 @@ describe("scaffold", () => {
       requiredBindings: ["DB", "JOBS", "RATE_LIMITER"],
     });
 
-    expect(await readFile(join(dir, "package.json"), "utf8")).toContain('"name": "regional-ops"');
-    expect(await readFile(join(dir, "package.json"), "utf8")).toContain('"private": true');
-    expect(await readFile(join(dir, "package.json"), "utf8")).not.toContain('"bin"');
-    expect(await readFile(join(dir, "package.json"), "utf8")).not.toContain('"publishConfig"');
+    const pkgJson = await readFile(join(dir, "package.json"), "utf8");
+    expect(pkgJson).toContain('"name": "regional-ops"');
+    expect(pkgJson).toContain('"private": true');
+    expect(pkgJson).not.toContain('"bin"');
+    expect(pkgJson).not.toContain('"publishConfig"');
+    expect(pkgJson).toContain('"dev"');
+    expect(pkgJson).toContain('"test"');
+    expect(pkgJson).not.toContain('"check:publish"');
+    expect(pkgJson).not.toContain('"test:create"');
+    expect(pkgJson).not.toContain('"modules:plan"');
+    expect(pkgJson).not.toContain('"app:plan"');
+    expect(pkgJson).not.toContain('"app:scaffold"');
     expect(await readFile(join(dir, "wrangler.jsonc"), "utf8")).toContain('"name": "regional-ops"');
     expect(await readFile(join(dir, "wrangler.jsonc"), "utf8")).toContain('"database_name": "regional-ops-db"');
     expect(await readFile(join(dir, "wrangler.jsonc"), "utf8")).not.toContain('"kv_namespaces"');
@@ -322,24 +345,36 @@ describe("scaffold", () => {
     await writeFile(
       join(dir, "app/App.tsx"),
       [
+        '// scaffold:items-import:start',
         'import {',
         '  useItems,',
         '  useCreateItem,',
         '} from "./features/example/items/hooks/useItems";',
+        '// scaffold:items-import:end',
+        '  // scaffold:items-state:start',
         '  const [name, setName] = useState("");',
+        '  // scaffold:items-state:end',
+        '  // scaffold:items-hooks:start',
         '  const { data: items = [], isLoading } = useItems(!!session);',
+        '  // scaffold:items-hooks:end',
+        '  // scaffold:items-hooks:start',
         '  const createItem = useCreateItem();',
+        '  // scaffold:items-hooks:end',
+        '  // scaffold:items-hooks:start',
         '  const handleAdd = () => {',
         '    if (!name.trim()) return;',
         '    createItem.mutate(name.trim());',
         '    setName("");',
         '  };',
+        '  // scaffold:items-hooks:end',
+        '            {/* scaffold:items-panel:start */}',
         '            <Panel',
         '              title="D1 Items"',
         '              subtitle="Example feature は残して、core 追加後も RPC client と mutation が崩れていないことを見ます。"',
         '            >',
         '              body',
         '            </Panel>',
+        '            {/* scaffold:items-panel:end */}',
       ].join("\n")
     );
 

@@ -9,7 +9,7 @@ Cloudflare Workers 上で、小規模から中規模の業務アプリを安定�
 - Starter Core: 認証、セッション、権限、organization context、API 契約、DB、ログ、テスト、Cloudflare bindings
 - Example Features: `items`、`kv`、`upload` のような最小サンプル
 
-設計の詳細は [ARCHITECTURE.md](/tmp/cf-starter-clean/ARCHITECTURE.md)、今後の進行は [ROADMAP.md](/tmp/cf-starter-clean/ROADMAP.md) を参照してください。
+設計の詳細は [ARCHITECTURE.md](./ARCHITECTURE.md)、今後の進行は [ROADMAP.md](./ROADMAP.md) を参照してください。
 
 ## 何が入っているか
 

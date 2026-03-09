@@ -1,11 +1,9 @@
+import { bytesToHex } from "./crypto";
+
 const PBKDF2_ITERATIONS = 310000;
 const PBKDF2_KEY_LENGTH = 32;
 const PBKDF2_ALGORITHM = "PBKDF2";
 const PBKDF2_HASH = "SHA-256";
-
-function bytesToHex(bytes: Uint8Array): string {
-  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 function hexToBytes(hex: string): Uint8Array {
   if (hex.length % 2 !== 0) throw new Error("invalid hex");

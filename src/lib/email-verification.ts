@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { emailVerificationTokens, users } from "../db/schema";
-import { hashOpaqueToken } from "./password-reset";
+import { hashOpaqueToken } from "./crypto";
 
 export const EMAIL_VERIFICATION_TTL_HOURS = 24 * 7;
 

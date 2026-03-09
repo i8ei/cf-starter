@@ -18,18 +18,22 @@ const app = new Hono<AppContextEnv>().get("/", async (c) => {
     checks.d1 = "error";
   }
 
-  try {
-    await c.env.KV.get("_health");
-    checks.kv = "ok";
-  } catch {
-    checks.kv = "error";
+  if (c.env.KV) {
+    try {
+      await c.env.KV.get("_health");
+      checks.kv = "ok";
+    } catch {
+      checks.kv = "error";
+    }
   }
 
-  try {
-    await c.env.BUCKET.head("_health");
-    checks.r2 = "ok";
-  } catch {
-    checks.r2 = "error";
+  if (c.env.BUCKET) {
+    try {
+      await c.env.BUCKET.head("_health");
+      checks.r2 = "ok";
+    } catch {
+      checks.r2 = "error";
+    }
   }
 
   try {

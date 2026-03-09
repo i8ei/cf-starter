@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+// scaffold:items-import:start
 import {
   useItems,
   useCreateItem,
 } from "./features/example/items/hooks/useItems";
+// scaffold:items-import:end
 import { useHealth } from "./hooks/useHealth";
 import {
   useAcceptOrganizationInvite,
@@ -254,7 +256,9 @@ function AuthPanel() {
 }
 
 function Dashboard() {
+  // scaffold:items-state:start
   const [name, setName] = useState("");
+  // scaffold:items-state:end
   const [orgName, setOrgName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
@@ -262,10 +266,14 @@ function Dashboard() {
   const [latestToken, setLatestToken] = useState<string | null>(null);
   const { data: health } = useHealth();
   const { data: session, isLoading: isSessionLoading } = useSession();
+  // scaffold:items-hooks:start
   const { data: items = [], isLoading } = useItems(!!session);
+  // scaffold:items-hooks:end
   const { data: organizations } = useOrganizations(!!session);
   const { data: invites } = useOrganizationInvites(!!session);
+  // scaffold:items-hooks:start
   const createItem = useCreateItem();
+  // scaffold:items-hooks:end
   const createOrganization = useCreateOrganization();
   const switchOrganization = useSwitchOrganization();
   const createInvite = useCreateOrganizationInvite();
@@ -273,11 +281,13 @@ function Dashboard() {
   const requestEmailVerification = useRequestEmailVerification();
   const logout = useLogout();
 
+  // scaffold:items-hooks:start
   const handleAdd = () => {
     if (!name.trim()) return;
     createItem.mutate(name.trim());
     setName("");
   };
+  // scaffold:items-hooks:end
 
   const handleCreateOrganization = () => {
     if (!orgName.trim()) return;
@@ -568,6 +578,7 @@ function Dashboard() {
               </Panel>
             ) : null}
 
+            {/* scaffold:items-panel:start */}
             <Panel
               title="D1 Items"
               subtitle="Example feature は残して、core 追加後も RPC client と mutation が崩れていないことを見ます。"
@@ -604,6 +615,7 @@ function Dashboard() {
                 </ul>
               )}
             </Panel>
+            {/* scaffold:items-panel:end */}
           </div>
         </div>
       </div>
