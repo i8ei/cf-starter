@@ -633,7 +633,7 @@ export function useUpdate${PASCAL}Status() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ${statusField} }: { id: number; ${statusField}: string }) => {
-      const res = await (client.api.${KEY}[":id"].status as any).$patch({
+      const res = await client.api.${KEY}[":id"]["status"].$patch({
         param: { id: String(id) },
         json: { ${statusField} },
       });

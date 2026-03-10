@@ -81,18 +81,18 @@ export function RecordFormPage({
           <Panel key={section.label} title={section.label}>
             <div className="space-y-4">
               {section.fields.map((fieldKey) => {
-                const field = def.fields[fieldKey as string];
+                const field = def.fields[fieldKey];
                 if (!field) return null;
                 return (
                   <FieldRenderer
-                    key={fieldKey as string}
-                    fieldKey={fieldKey as string}
+                    key={fieldKey}
+                    fieldKey={fieldKey}
                     field={field}
-                    value={formData[fieldKey as string]}
-                    onChange={(v) => setField(fieldKey as string, v)}
+                    value={formData[fieldKey]}
+                    onChange={(v) => setField(fieldKey, v)}
                     relationOptions={
                       field.type === "relation"
-                        ? relationOptions[fieldKey as string] ?? []
+                        ? relationOptions[fieldKey] ?? []
                         : []
                     }
                   />

@@ -10,6 +10,8 @@ type Props<T extends Record<string, unknown>> = {
   onDelete?: () => void;
   onStatusChange?: (status: string) => void;
   isDeleting?: boolean;
+  /** Map from relation field key to a lookup of id → display label */
+  relationLabels?: Record<string, Record<number, string>>;
 };
 
 export function RecordDetailPage<T extends Record<string, unknown>>({
@@ -19,6 +21,7 @@ export function RecordDetailPage<T extends Record<string, unknown>>({
   onDelete,
   onStatusChange,
   isDeleting,
+  relationLabels = {},
 }: Props<T>) {
   const [, navigate] = useLocation();
 
@@ -88,16 +91,32 @@ export function RecordDetailPage<T extends Record<string, unknown>>({
 
       <Panel title="Details">
         <dl className="grid gap-4 sm:grid-cols-2">
-          {Object.entries(def.fields).map(([key, field]) => (
-            <div key={key}>
-              <dt className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                {field.label}
-              </dt>
-              <dd className="mt-1 text-sm text-slate-200">
-                {data[key] != null ? String(data[key]) : "-"}
-              </dd>
-            </div>
-          ))}
+          {Object.entries(def.fields).map(([key, field]) => {
+            let displayValue: string;
+            if (data[key] == null) {
+              displayValue = "-";
+            } else if (
+              field.type === "relation" &&
+              relationLabels[key] &&
+              typeof data[key] === "number"
+            ) {
+              displayValue =
+                relationLabels[key][data[key] as number] ??
+                String(data[key]);
+            } else {
+              displayValue = String(data[key]);
+            }
+            return (
+              <div key={key}>
+                <dt className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  {field.label}
+                </dt>
+                <dd className="mt-1 text-sm text-slate-200">
+                  {displayValue}
+                </dd>
+              </div>
+            );
+          })}
         </dl>
       </Panel>
 
