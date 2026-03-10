@@ -100,11 +100,25 @@
 - App.tsx 分解: AppShell + AuthPage + SettingsPage
 - audit log 統合（CRUD + status 変更）
 
-次:
+次 (vNext):
 
-- 実案件（ボランティアタクシー等）で検証 → フィードバックで Engine を磨く
-- cross-field validation のパターン整備
-- relation フィールドの選択肢 API 自動生成
+**Tier 1: 複雑な業務レコードに耐える**
+
+1. Input / Persist 分離 — `input`, `persist`, `transform` で入力モデルと保存モデルを分離
+2. Relation 強化 — 候補取得 query、dependent relation、表示ラベル、badge 表示
+3. Domain Hooks — `beforeCreate`, `afterStatusChange` 等のライフサイクルフック
+
+**Tier 2: 生成器から運用基盤へ**
+
+4. Activity Log 統合 — 差分サマリ、detail 画面の履歴表示、コメント追加
+5. View Presets — フィルタ+ソート+列の「見方」定義、preset 切替 UI
+6. Record Actions — CRUD 以外の業務操作（完了、複製、CSV 出力等）
+
+**Tier 3: 使い勝手を上げる**
+
+7. Computed Fields — 保存値や relation からの導出値
+
+検証台: 明日香園 OS（lane_run の Input/Persist 分離、crop→variety の Relation、稼働中/今月終了の View Presets）
 
 ## Phase 5: App Factory Readiness
 

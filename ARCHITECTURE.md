@@ -221,18 +221,30 @@ AI や開発者は、次を壊さないでください。
 
 ## 現在の不足
 
-現時点で未実装、または弱いものです。
+現時点で未実装、または弱いものです。Record Engine vNext として優先順に整理しています。
 
-- Record Engine: relation フィールドの選択肢 API 自動生成
-- Record Engine: cross-field validation のパターン整備
-- Record Engine: file フィールドの R2 アップロード統合
+**Tier 1: 複雑な業務レコードに耐える**
+
+- Input / Persist 分離 — 入力モデルと保存モデルの分離（`input`, `persist`, `transform`）
+- Relation 強化 — 候補取得 query、dependent relation、表示ラベル、badge 表示
+- Domain Hooks — ライフサイクルフック（`beforeCreate`, `afterStatusChange` 等）
+
+**Tier 2: 生成器から運用基盤へ**
+
+- Activity Log 統合 — 差分サマリ、detail 画面の履歴表示、コメント追加
+- View Presets — フィルタ+ソート+列の「見方」定義、preset 切替 UI
+- Record Actions — CRUD 以外の業務操作（完了、複製、CSV 出力等）
+
+**Tier 3: 使い勝手を上げる**
+
+- Computed Fields — 保存値や relation からの導出値
 
 ## 次の方向
 
 次の優先は次です。
 
-1. 実案件（ボランティアタクシー等）で Record Engine を検証
-2. フィードバックで Engine を磨く
+1. Record Engine vNext（Tier 1 → 2 → 3 の順で拡張）
+2. 明日香園 OS を検証台として vNext を磨く
 3. optional module install surface の強化
 
 ## App Generation Path
