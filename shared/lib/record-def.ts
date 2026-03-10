@@ -80,10 +80,10 @@ export interface StatusDef {
 // List view
 // ──────────────────────────────────────────────
 
-export interface ListViewDef {
-  columns: readonly string[];
+export interface ListViewDef<K extends string = string> {
+  columns: readonly K[];
   defaultSort: {
-    field: string;
+    field: K;
     direction: "asc" | "desc";
   };
 }
@@ -92,33 +92,48 @@ export interface ListViewDef {
 // Form view
 // ──────────────────────────────────────────────
 
-export interface FormSectionDef {
+export interface FormSectionDef<K extends string = string> {
   label: string;
-  fields: readonly string[];
+  fields: readonly K[];
 }
 
-export interface FormViewDef {
-  sections: readonly FormSectionDef[];
+export interface FormViewDef<K extends string = string> {
+  sections: readonly FormSectionDef<K>[];
 }
 
 // ──────────────────────────────────────────────
 // Record definition
 // ──────────────────────────────────────────────
 
-export interface RecordDef {
+/** Valid column keys: field keys plus the status field key (if defined). */
+type AllowedKeys<
+  F extends Record<string, FieldDef>,
+  S extends StatusDef | undefined,
+> = Extract<keyof F, string> | (S extends StatusDef ? S["field"] : never);
+
+export interface RecordDef<
+  F extends Record<string, FieldDef> = Record<string, FieldDef>,
+  S extends StatusDef | undefined = StatusDef | undefined,
+> {
   key: string;
   label: string;
   tableName: string;
-  fields: Record<string, FieldDef>;
-  status?: StatusDef;
-  listView: ListViewDef;
-  formView: FormViewDef;
+  fields: F;
+  status?: S;
+  listView: ListViewDef<AllowedKeys<F, S>>;
+  formView: FormViewDef<Extract<keyof F, string>>;
 }
 
 /**
  * Define a record. This is the entry point for record definitions.
  * The function is identity at runtime — it exists for type inference.
+ *
+ * Field keys from `fields` (and the status field key if defined) are inferred
+ * and used to constrain `listView.columns` and `formView.sections[*].fields`.
  */
-export function defineRecord<T extends RecordDef>(def: T): T {
+export function defineRecord<
+  F extends Record<string, FieldDef>,
+  S extends StatusDef | undefined = undefined,
+>(def: RecordDef<F, S>): RecordDef<F, S> {
   return def;
 }
