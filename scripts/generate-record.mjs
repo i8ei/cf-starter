@@ -16,6 +16,19 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { parseArgs } from "node:util";
+import {
+  findRecordDef,
+  pascalCase,
+  camelCase,
+  snakeCase,
+  appendDrizzleTable,
+  generateZodSchemaContent,
+  insertRouteRegistration,
+  fieldToTsType,
+  getDefaultSortField,
+  schemaHasTable,
+  indexHasRoute,
+} from "./lib/record-engine.mjs";
 
 // ── CLI args ───────────────────────────────────
 const { values } = parseArgs({
@@ -30,11 +43,6 @@ if (!values.record) {
 }
 
 // ── Load record definition ─────────────────────
-// We use a dynamic import with tsx / ts-node not available,
-// so we parse the TS file to extract the definition object.
-// Strategy: transpile with esbuild (available via vite) or
-// do a simple regex-based extraction. For robustness, we use
-// esbuild which is already a dependency via vite.
 const recordPath = resolve(process.cwd(), values.record);
 if (!existsSync(recordPath)) {
   console.error(`Record file not found: ${recordPath}`);
@@ -70,28 +78,6 @@ if (!def) {
 console.log(`\nRecord Engine: generating "${def.key}" (${def.label})\n`);
 
 // ── Helpers ────────────────────────────────────
-function findRecordDef(mod) {
-  // Find the first export that looks like a record definition
-  for (const [, val] of Object.entries(mod)) {
-    if (val && typeof val === "object" && val.key && val.tableName && val.fields) {
-      return val;
-    }
-  }
-  return null;
-}
-
-function pascalCase(s) {
-  return s.replace(/(^|[-_])(\w)/g, (_, __, c) => c.toUpperCase());
-}
-
-function camelCase(s) {
-  return s.replace(/[-_](\w)/g, (_, c) => c.toUpperCase());
-}
-
-function snakeCase(s) {
-  return s.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`).replace(/^_/, "");
-}
-
 function ensureDir(filePath) {
   mkdirSync(dirname(filePath), { recursive: true });
 }
@@ -108,74 +94,18 @@ function generateDrizzleTable() {
   const schemaPath = resolve(process.cwd(), "src/db/schema.ts");
   const existing = readFileSync(schemaPath, "utf-8");
 
-  // Check if table already exists
-  if (existing.includes(`export const ${camelCase(TABLE)}`)) {
-    console.log(`  [skip] Drizzle table "${TABLE}" already exists in schema.ts`);
+  const result = appendDrizzleTable(existing, def);
+  if (!result.ok) {
+    console.error(`  [error] ${result.reason}`);
+    process.exit(1);
+  }
+  if (result.skipped) {
+    console.log(`  [skip] ${result.reason}`);
     return;
   }
 
-  const cols = [];
-
-  // id (implicit)
-  cols.push(
-    `  id: integer("id").primaryKey({ autoIncrement: true })`
-  );
-
-  // organizationId (implicit)
-  cols.push(
-    `  organizationId: integer("organization_id").references(() => organizations.id, {\n    onDelete: "cascade",\n  })`
-  );
-
-  // user-defined fields
-  for (const [name, field] of fieldEntries) {
-    cols.push(generateDrizzleColumn(name, field));
-  }
-
-  // status field
-  if (status) {
-    cols.push(
-      `  ${camelCase(status.field)}: text("${snakeCase(status.field)}").notNull().default("${status.defaultValue}")`
-    );
-  }
-
-  // timestamps (implicit)
-  cols.push(
-    `  createdAt: text("created_at").notNull().default("(datetime('now'))")`
-  );
-  cols.push(
-    `  updatedAt: text("updated_at").notNull().default("(datetime('now'))")`
-  );
-
-  const tableVar = camelCase(TABLE);
-  const block = `\nexport const ${tableVar} = sqliteTable("${TABLE}", {\n${cols.join(",\n")},\n});\n`;
-
-  writeFileSync(schemaPath, existing + block);
+  writeFileSync(schemaPath, result.content);
   console.log(`  [gen] src/db/schema.ts — added table "${TABLE}"`);
-}
-
-function generateDrizzleColumn(name, field) {
-  const col = snakeCase(name);
-  const notNull = field.required ? ".notNull()" : "";
-  const defaultVal = field.defaultValue !== undefined
-    ? `.default(${typeof field.defaultValue === "string" ? `"${field.defaultValue}"` : field.defaultValue})`
-    : "";
-
-  switch (field.type) {
-    case "text":
-      return `  ${name}: text("${col}")${notNull}${defaultVal}`;
-    case "number":
-      return `  ${name}: integer("${col}")${notNull}${defaultVal}`;
-    case "date":
-      return `  ${name}: text("${col}")${notNull}${defaultVal}`;
-    case "select":
-      return `  ${name}: text("${col}")${notNull}${defaultVal}`;
-    case "relation":
-      return `  ${name}: integer("${col}")${notNull}`;
-    case "file":
-      return `  ${name}: text("${col}")${notNull}`;
-    default:
-      return `  ${name}: text("${col}")${notNull}`;
-  }
 }
 
 // ── 2. Zod schemas ─────────────────────────────
@@ -191,83 +121,9 @@ function generateZodSchemas() {
     return;
   }
 
-  const createFields = [];
-  const updateFields = [];
-
-  for (const [name, field] of fieldEntries) {
-    const zodType = generateZodField(name, field, false);
-    const zodTypeOptional = generateZodField(name, field, true);
-    createFields.push(`  ${name}: ${zodType},`);
-    updateFields.push(`  ${name}: ${zodTypeOptional},`);
-  }
-
-  // Status field in create schema (optional, uses default)
-  if (status) {
-    const opts = status.options.map((o) => `"${o}"`).join(", ");
-    createFields.push(`  ${camelCase(status.field)}: z.enum([${opts}]).optional(),`);
-    updateFields.push(`  ${camelCase(status.field)}: z.enum([${opts}]).optional(),`);
-  }
-
-  const content = `import { z } from "zod";
-
-export const create${PASCAL}Schema = z.object({
-${createFields.join("\n")}
-});
-
-export const update${PASCAL}Schema = z.object({
-${updateFields.join("\n")}
-});
-
-// Cross-field validation hook — add custom refinements here:
-// export const create${PASCAL}SchemaRefined = create${PASCAL}Schema.refine(
-//   (data) => { /* your cross-field logic */ return true; },
-//   { message: "..." }
-// );
-
-export type Create${PASCAL}Input = z.infer<typeof create${PASCAL}Schema>;
-export type Update${PASCAL}Input = z.infer<typeof update${PASCAL}Schema>;
-`;
-
+  const content = generateZodSchemaContent(def);
   writeFileSync(outPath, content);
   console.log(`  [gen] shared/features/${KEY}/schema.ts`);
-}
-
-function generateZodField(name, field, forUpdate) {
-  let z;
-  switch (field.type) {
-    case "text":
-      z = "z.string()";
-      if (field.maxLength) z += `.max(${field.maxLength})`;
-      if (field.required && !forUpdate) z += ".min(1)";
-      break;
-    case "number":
-      z = "z.number()";
-      if (field.min !== undefined) z += `.min(${field.min})`;
-      if (field.max !== undefined) z += `.max(${field.max})`;
-      break;
-    case "date":
-      z = `z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/, "YYYY-MM-DD format required")`;
-      break;
-    case "select":
-      z = `z.enum([${field.options.map((o) => `"${o}"`).join(", ")}])`;
-      break;
-    case "relation":
-      z = "z.number().int()";
-      break;
-    case "file":
-      z = "z.string()";
-      break;
-    default:
-      z = "z.string()";
-  }
-
-  if (forUpdate) {
-    z += ".optional()";
-  } else if (!field.required) {
-    z += ".optional()";
-  }
-
-  return z;
 }
 
 // ── 3. Hono routes ─────────────────────────────
@@ -303,6 +159,8 @@ function generateRoutes() {
 
   const zodImport = status ? `\nimport { z } from "zod";` : "";
 
+  const sortField = getDefaultSortField(def);
+
   const content = `import { Hono } from "hono";
 import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";${zodImport}
@@ -330,7 +188,7 @@ const app = new Hono<AppContextEnv>()
       .select()
       .from(${tableVar})
       .where(eq(${tableVar}.organizationId, orgId))
-      .orderBy(desc(${tableVar}.${getDefaultSortField()}));
+      .orderBy(desc(${tableVar}.${sortField}));
     return c.json(rows);
   })
   // CREATE
@@ -443,14 +301,6 @@ export default app;
 
   writeFileSync(outPath, content);
   console.log(`  [gen] src/features/${KEY}/routes.ts`);
-}
-
-function getDefaultSortField() {
-  const sortField = def.listView?.defaultSort?.field;
-  if (sortField && fieldEntries.some(([name]) => name === sortField)) {
-    return sortField;
-  }
-  return "createdAt";
 }
 
 function generateStatusRoute(tableVar) {
@@ -646,80 +496,22 @@ export function useUpdate${PASCAL}Status() {
 `;
 }
 
-function fieldToTsType(field) {
-  switch (field.type) {
-    case "text":
-    case "date":
-    case "select":
-    case "file":
-      return "string";
-    case "number":
-    case "relation":
-      return "number";
-    default:
-      return "string";
-  }
-}
-
 // ── 5. Route registration in src/index.ts ──────
 function registerRoute() {
   const indexPath = resolve(process.cwd(), "src/index.ts");
   const existing = readFileSync(indexPath, "utf-8");
 
-  // Check if already registered
-  if (existing.includes(`/api/${KEY}`)) {
-    console.log(`  [skip] Route "/api/${KEY}" already registered in src/index.ts`);
+  const result = insertRouteRegistration(existing, KEY);
+  if (!result.ok) {
+    console.error(`  [error] ${result.reason}`);
+    process.exit(1);
+  }
+  if (result.skipped) {
+    console.log(`  [skip] ${result.reason}`);
     return;
   }
 
-  // Add import after the last import line
-  const importLine = `import ${KEY}Routes from "./features/${KEY}/routes";`;
-
-  // Find the last import statement
-  const lines = existing.split("\n");
-  let lastImportIndex = -1;
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith("import ")) {
-      lastImportIndex = i;
-    }
-  }
-
-  if (lastImportIndex === -1) {
-    console.error("  [error] Could not find import statements in src/index.ts");
-    return;
-  }
-
-  // Insert import
-  lines.splice(lastImportIndex + 1, 0, importLine);
-
-  // Find the route registration block and add before the last .route()
-  // Look for the pattern .route("/api/auth", auth);
-  let routeInsertIndex = -1;
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes('.route("/api/auth"')) {
-      routeInsertIndex = i;
-      break;
-    }
-  }
-
-  if (routeInsertIndex === -1) {
-    // Fallback: find the last .route() line
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].includes(".route(")) {
-        routeInsertIndex = i;
-      }
-    }
-  }
-
-  if (routeInsertIndex === -1) {
-    console.error("  [error] Could not find route registration block in src/index.ts");
-    return;
-  }
-
-  const routeLine = `  .route("/api/${KEY}", ${KEY}Routes)`;
-  lines.splice(routeInsertIndex, 0, routeLine);
-
-  writeFileSync(indexPath, lines.join("\n"));
+  writeFileSync(indexPath, result.content);
   console.log(`  [gen] src/index.ts — registered route "/api/${KEY}"`);
 }
 
