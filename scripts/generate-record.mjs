@@ -121,9 +121,9 @@ function generateDrizzleTable() {
     `  id: integer("id").primaryKey({ autoIncrement: true })`
   );
 
-  // organizationId (implicit)
+  // organizationId (implicit, NOT NULL with index)
   cols.push(
-    `  organizationId: integer("organization_id").references(() => organizations.id, {\n    onDelete: "cascade",\n  })`
+    `  organizationId: integer("organization_id")\n    .notNull()\n    .references(() => organizations.id, {\n      onDelete: "cascade",\n    })`
   );
 
   // user-defined fields
@@ -147,7 +147,7 @@ function generateDrizzleTable() {
   );
 
   const tableVar = camelCase(TABLE);
-  const block = `\nexport const ${tableVar} = sqliteTable("${TABLE}", {\n${cols.join(",\n")},\n});\n`;
+  const block = `\nexport const ${tableVar} = sqliteTable(\n  "${TABLE}",\n  {\n  ${cols.join(",\n  ")},\n  },\n  (table) => [index("${TABLE}_organization_id_idx").on(table.organizationId)]\n);\n`;
 
   writeFileSync(schemaPath, existing + block);
   console.log(`  [gen] src/db/schema.ts — added table "${TABLE}"`);
@@ -518,7 +518,7 @@ function generateHooks() {
   // Build the record type from fields
   const typeFields = [];
   typeFields.push("  id: number;");
-  typeFields.push("  organizationId: number | null;");
+  typeFields.push("  organizationId: number;");
   for (const [name, field] of fieldEntries) {
     const tsType = fieldToTsType(field);
     const optional = field.required ? "" : " | null";

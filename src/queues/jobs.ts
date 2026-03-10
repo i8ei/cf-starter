@@ -73,7 +73,7 @@ export async function handleJobBatch(
               inviteId: message.body.payload.inviteId,
               email: message.body.payload.email,
               role: message.body.payload.role,
-              inviteUrl: message.body.payload.inviteUrl,
+              // inviteUrl intentionally redacted — contains secret token
               delivery: delivery.delivery,
               providerMessageId: delivery.id ?? null,
               requestId: message.body.payload.requestId,
@@ -96,7 +96,7 @@ export async function handleJobBatch(
             logEvent("info", "queue.auth_password_reset_email", {
               userId: message.body.payload.userId,
               email: message.body.payload.email,
-              resetUrl: message.body.payload.resetUrl,
+              // resetUrl intentionally redacted — contains secret token
               delivery: delivery.delivery,
               providerMessageId: delivery.id ?? null,
               requestId: message.body.payload.requestId,
@@ -119,7 +119,7 @@ export async function handleJobBatch(
             logEvent("info", "queue.auth_email_verification_email", {
               userId: message.body.payload.userId,
               email: message.body.payload.email,
-              verifyUrl: message.body.payload.verifyUrl,
+              // verifyUrl intentionally redacted — contains secret token
               delivery: delivery.delivery,
               providerMessageId: delivery.id ?? null,
               requestId: message.body.payload.requestId,

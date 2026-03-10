@@ -1,13 +1,19 @@
-import { sqliteTable, text, integer, primaryKey } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, primaryKey, index } from "drizzle-orm/sqlite-core";
 
-export const items = sqliteTable("items", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  organizationId: integer("organization_id").references(() => organizations.id, {
-    onDelete: "cascade",
-  }),
-  name: text("name").notNull(),
-  createdAt: text("created_at").notNull().default("(datetime('now'))"),
-});
+export const items = sqliteTable(
+  "items",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    organizationId: integer("organization_id")
+      .notNull()
+      .references(() => organizations.id, {
+        onDelete: "cascade",
+      }),
+    name: text("name").notNull(),
+    createdAt: text("created_at").notNull().default("(datetime('now'))"),
+  },
+  (table) => [index("items_organization_id_idx").on(table.organizationId)]
+);
 
 export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),

@@ -55,9 +55,9 @@ async function derivePbkdf2(
   return bytesToHex(new Uint8Array(bits));
 }
 
-export function needsPasswordUpgrade(stored: string): boolean {
-  return stored.includes(":");
-}
+// Legacy salt:sha256 format support was removed on 2026-03-11.
+// All passwords were upgraded to PBKDF2-SHA256 on login.
+// If any legacy hashes remain in the DB, users must use password reset.
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
@@ -69,14 +69,6 @@ export async function verifyPassword(
   password: string,
   stored: string
 ): Promise<boolean> {
-  if (needsPasswordUpgrade(stored)) {
-    const [salt, hash] = stored.split(":");
-    const data = new TextEncoder().encode(salt + password);
-    const computed = await crypto.subtle.digest("SHA-256", data);
-    const computedHex = bytesToHex(new Uint8Array(computed));
-    return constantTimeEquals(hash, computedHex);
-  }
-
   const [scheme, iterationRaw, saltHex, hashHex] = stored.split("$");
   if (scheme !== "pbkdf2" || !iterationRaw || !saltHex || !hashHex) {
     return false;
