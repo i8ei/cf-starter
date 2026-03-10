@@ -244,7 +244,7 @@ AI や開発者は、次を壊さないでください。
 次の優先は次です。
 
 1. Record Engine vNext（Tier 1 → 2 → 3 の順で拡張）
-2. 明日香園 OS を検証台として vNext を磨く
+2. 実案件で vNext を検証・改善
 3. optional module install surface の強化
 
 ## App Generation Path

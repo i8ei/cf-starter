@@ -118,7 +118,7 @@
 
 7. Computed Fields — 保存値や relation からの導出値
 
-検証台: 明日香園 OS（lane_run の Input/Persist 分離、crop→variety の Relation、稼働中/今月終了の View Presets）
+検証: 実案件で Tier 1 から順に適用し、フィードバックで Engine を磨く
 
 ## Phase 5: App Factory Readiness
 
