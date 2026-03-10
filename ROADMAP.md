@@ -77,18 +77,34 @@
 - reference features の拡張
 - app generation path の整備
 
-## Phase 4: Real App Readiness
+## Phase 4: Record Engine
 
 目的:
 
-- 派生アプリで毎回必要になる実務機能を core に寄せる
+- レコードを"保存可能なデータ"から"運用可能な仕事単位"に昇格させる共通基盤
+- DB の能力を人間の仕事単位に翻訳する脚部フレーム
 
-次候補:
+状態:
 
-1. reference features の拡張
-2. app generation path の整備
-3. organization-aware feature examples
-4. optional module install surface の強化
+- v0.1 完了
+
+完了済み:
+
+- `shared/lib/record-def.ts` — defineRecord 型定義
+- `scripts/generate-record.mjs` — レコード定義 → バックエンド＋フロントエンド一発生成
+- 生成物: Drizzle テーブル / Zod スキーマ / Hono CRUD+status ルート / TanStack Query hooks
+- 汎用 UI: RecordListPage, RecordDetailPage, RecordFormPage
+- フィールドコンポーネント: TextField, NumberField, DateField, SelectField, RelationField
+- StatusBadge, StatusFilterTabs, DataTable
+- wouter ルーティング導入
+- App.tsx 分解: AppShell + AuthPage + SettingsPage
+- audit log 統合（CRUD + status 変更）
+
+次:
+
+- 実案件（ボランティアタクシー等）で検証 → フィードバックで Engine を磨く
+- cross-field validation のパターン整備
+- relation フィールドの選択肢 API 自動生成
 
 ## Phase 5: App Factory Readiness
 

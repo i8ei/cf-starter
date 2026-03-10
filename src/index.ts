@@ -42,7 +42,7 @@ export const app = new Hono<AppContextEnv>()
         return allowlist.includes(origin) ? origin : "";
       },
       credentials: true,
-      allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowHeaders: ["Content-Type", "Authorization"],
     })
   )

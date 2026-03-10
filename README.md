@@ -33,6 +33,8 @@ Cloudflare Workers 上で、小規模から中規模の業務アプリを安定�
 - password reset request / confirm flow
 - email verification request / confirm flow
 - Vitest ベースの自動テスト
+- Record Engine（レコード定義 → コード一発生成）
+- wouter による SPA ルーティング
 
 ## 向いている用途
 
@@ -51,7 +53,7 @@ Cloudflare Workers 上で、小規模から中規模の業務アプリを安定�
 
 | レイヤー | 技術 |
 |---|---|
-| Frontend | React + TypeScript + Tailwind CSS + TanStack Query |
+| Frontend | React + TypeScript + Tailwind CSS + TanStack Query + wouter |
 | Backend | Hono on Cloudflare Workers |
 | Database | D1 (SQLite) + Drizzle ORM |
 | Storage | R2 |
@@ -127,34 +129,126 @@ npm run deploy
 | `npm run app:plan:core` | core-only で始めるときの削除対象を確認 |
 | `npm run app:plan:json` | app plan を JSON で出力 |
 | `npm run app:plan:core:json` | core-only app plan を JSON で出力 |
+| `npm run record:generate -- --record shared/records/xxx.ts` | Record Engine でコード生成 |
 | `npm run app:scaffold -- --target ../new-app` | 新しい app ディレクトリを scaffold |
 | `npm run app:scaffold -- --target ../new-app --plan --json` | scaffold 前の dry-run を JSON で確認 |
 | `npm run app:scaffold -- --target ../new-app --plan --plan-out ./scaffold-plan.json` | scaffold plan をファイル保存 |
 | `npx . my-app` | 未公開の create CLI をローカルから実行 |
 | `node scripts/create-cf-starter.mjs my-app` | create CLI を script から直接実行 |
 
+## Record Engine
+
+レコード定義を書いて CLI を実行すると、バックエンド（Drizzle テーブル + Zod スキーマ + Hono CRUD ルート）とフロントエンド（TanStack Query hooks）が一発生成されます。生成後はただのコード — 自由に編集できます。
+
+### レコード定義の例
+
+```typescript
+// shared/records/requests.ts
+import { defineRecord } from "../lib/record-def";
+
+export const requestRecord = defineRecord({
+  key: "request",
+  label: "配車依頼",
+  tableName: "requests",
+  fields: {
+    passengerName: { type: "text", label: "利用者名", required: true, maxLength: 100 },
+    pickupDate:    { type: "date", label: "乗車日", required: true },
+    passengers:    { type: "number", label: "人数", min: 1, max: 10, defaultValue: 1 },
+    vehicleType:   { type: "select", label: "車種", options: ["sedan", "van"] },
+    notes:         { type: "text", label: "備考", multiline: true },
+  },
+  status: {
+    field: "status",
+    label: "ステータス",
+    options: ["受付", "配車済", "完了", "取消"],
+    defaultValue: "受付",
+  },
+  listView: {
+    columns: ["passengerName", "pickupDate", "vehicleType", "status"],
+    defaultSort: { field: "pickupDate", direction: "desc" },
+  },
+  formView: {
+    sections: [
+      { label: "利用者情報", fields: ["passengerName", "passengers"] },
+      { label: "行程", fields: ["pickupDate", "vehicleType"] },
+      { label: "備考", fields: ["notes"] },
+    ],
+  },
+});
+```
+
+### コード生成
+
+```bash
+npm run record:generate -- --record shared/records/requests.ts
+npm run db:generate
+npm run db:migrate
+```
+
+### 生成物
+
+| ファイル | 内容 |
+|---------|------|
+| `src/db/schema.ts` に追記 | Drizzle テーブル定義 |
+| `shared/features/{key}/schema.ts` | Zod create / update スキーマ |
+| `src/features/{key}/routes.ts` | CRUD + GET /:id + PATCH /:id/status |
+| `app/features/{key}/hooks/use{Key}.ts` | TanStack Query hooks |
+| `src/index.ts` に追記 | ルート登録 |
+
+### フィールド型
+
+| type | Drizzle | Zod | UI |
+|------|---------|-----|----|
+| text | `text()` | `z.string().max(N)` | `<input>` / `<textarea>` |
+| number | `integer()` | `z.number().min().max()` | `<input type="number">` |
+| date | `text()` (ISO) | `z.string().regex(...)` | `<input type="date">` |
+| select | `text()` | `z.enum([...])` | `<select>` |
+| relation | `integer()` | `z.number().int()` | `<select>` |
+| file | `text()` (R2 key) | `z.string()` | upload widget |
+
+### 汎用 UI コンポーネント
+
+生成後、フロントエンドは汎用レコードページを使って組めます:
+
+- `RecordListPage` — status filter tabs 付き一覧
+- `RecordDetailPage` — 詳細表示 + status 変更ボタン
+- `RecordFormPage` — sections ベースのフォーム
+
 ## ディレクトリ構成
 
 ```text
 cf-starter/
 ├── app/                    React UI
-│   ├── features/example/   example feature hooks
+│   ├── components/         共通 UI コンポーネント
+│   │   ├── fields/         フォーム用フィールドコンポーネント
+│   │   ├── AppShell.tsx    ナビゲーション付きレイアウト
+│   │   ├── DataTable.tsx   テーブル表示
+│   │   ├── StatusBadge.tsx ステータスバッジ
+│   │   └── StatusFilterTabs.tsx ステータスフィルタータブ
+│   ├── features/           feature hooks（生成物もここ）
 │   ├── hooks/              core hooks
-│   └── lib/api.ts          型付き Hono RPC client
+│   ├── lib/api.ts          型付き Hono RPC client
+│   ├── pages/              ページコンポーネント
+│   │   └── records/        汎用レコード画面（List / Detail / Form）
+│   └── App.tsx             wouter ルーティング
 ├── shared/                 フロント・バック共有契約
-│   ├── features/example/   example feature schema
+│   ├── features/           feature schemas（生成物もここ）
+│   ├── lib/record-def.ts   Record Engine 型定義
+│   ├── records/            レコード定義ファイル
 │   └── schemas/            core schema
 ├── src/                    Worker backend
 │   ├── db/                 Drizzle schema
 │   ├── durable-objects/    rate limiter
-│   ├── features/example/   example feature routes
+│   ├── features/           feature routes（生成物もここ）
 │   ├── lib/                auth, session, audit, organizations など
-│   ├── middleware/         auth, csrf, role, request-id
+│   ├── middleware/          auth, csrf, role, request-id
 │   ├── queues/             queue producer / consumer
 │   ├── routes/             core API routes
 │   └── index.ts            Worker entrypoint
+├── scripts/
+│   ├── generate-record.mjs Record Engine コードジェネレーター
+│   └── ...
 ├── migrations/             D1 migrations
-├── scripts/                補助スクリプト
 ├── test/                   unit / integration tests
 ├── ARCHITECTURE.md
 ├── ROADMAP.md
@@ -294,27 +388,36 @@ JSON 出力では `selectedFeatures`、`removedFeatures`、`coreBindingsKept`、
 
 ## Feature Structure
 
-`cf-starter` は段階的に feature-based structure へ寄せています。
+`cf-starter` は feature-based structure を採用しています。
 
 - core routes: `src/routes/`
-- example feature routes: `src/features/example/*/routes.ts`
+- feature routes: `src/features/{key}/routes.ts`（Record Engine で生成）
 - core hooks: `app/hooks/`
-- example feature hooks: `app/features/example/*/hooks/`
+- feature hooks: `app/features/{key}/hooks/`（Record Engine で生成）
 - core schema: `shared/schemas/`
-- example feature schema: `shared/features/example/`
+- feature schema: `shared/features/{key}/schema.ts`（Record Engine で生成）
+- record definitions: `shared/records/{key}.ts`
 
-新しい業務機能を追加する場合は、まず `core` へ入れるべき共通機能か、`example` や派生アプリ固有の feature かを分けてから配置してください。
-example feature であっても、業務テーブルは `organization_id` を持たせて current organization で絞るのを基本にします。
+新しい業務機能を追加する場合は、Record Engine でレコード定義を書いてコード生成するのが最速です。
+業務テーブルは `organization_id` を持たせて current organization で絞るのを基本にします（生成物に自動で含まれます）。
 
 ## 開発の流れ
 
-### API を追加する
+### Record Engine でレコードを追加する（推奨）
+
+1. `shared/records/xxx.ts` にレコード定義を書く
+2. `npm run record:generate -- --record shared/records/xxx.ts`
+3. `npm run db:generate && npm run db:migrate`
+4. `app/App.tsx` の `recordNavItems` にナビ追加、ルート追加
+5. `npm run dev` で動作確認
+
+### API を手動で追加する
 
 1. `src/routes/` に route を追加
 2. `src/index.ts` で `.route()` 登録
 3. `app/lib/api.ts` 経由でフロントから呼ぶ
 
-### テーブルを追加する
+### テーブルを手動で追加する
 
 1. `src/db/schema.ts` にテーブル定義を追加
 2. `npm run db:generate`

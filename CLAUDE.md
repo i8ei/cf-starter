@@ -16,37 +16,44 @@ Cloudflare フルスタック スターターテンプレート。
 ```
 cf-starter/
 ├── app/                    ← React フロントエンド
-│   ├── features/example/   ← example feature hooks
+│   ├── components/         ← 共通 UI コンポーネント
+│   │   ├── fields/         ← フォーム用フィールドコンポーネント
+│   │   ├── AppShell.tsx    ← ナビゲーション付きレイアウト
+│   │   ├── Panel.tsx       ← カードUI
+│   │   ├── DataTable.tsx   ← テーブル表示
+│   │   ├── StatusBadge.tsx ← ステータスバッジ
+│   │   └── StatusFilterTabs.tsx ← ステータスフィルタータブ
+│   ├── features/           ← feature hooks（生成物もここ）
 │   ├── hooks/              ← core hooks
 │   ├── lib/api.ts          ← Hono RPC クライアント（型付き）
-│   ├── App.tsx
+│   ├── pages/              ← ページコンポーネント
+│   │   ├── records/        ← 汎用レコード画面（List/Detail/Form）
+│   │   ├── AuthPage.tsx
+│   │   └── SettingsPage.tsx
+│   ├── App.tsx             ← wouter ルーティング
 │   ├── main.tsx
 │   └── index.css
 ├── shared/                 ← フロント・バック共有
-│   ├── features/example/   ← example feature schemas
+│   ├── features/           ← feature schemas（生成物もここ）
+│   ├── lib/record-def.ts   ← Record Engine 型定義（defineRecord）
+│   ├── records/            ← レコード定義ファイル置き場
 │   └── schemas/            ← core Zod スキーマ
 ├── src/                    ← Hono バックエンド (Worker)
 │   ├── db/schema.ts        ← Drizzle スキーマ
 │   ├── durable-objects/    ← rate limiter
-│   ├── features/example/   ← example feature routes (items/kv/upload)
+│   ├── features/           ← feature routes（生成物もここ）
 │   ├── lib/                ← auth, session, audit, orgs, crypto 等
 │   ├── middleware/          ← auth, csrf, rate-limit, request-id, role
 │   ├── queues/             ← queue producer / consumer
 │   ├── routes/             ← core API ルート
-│   │   ├── auth/           ← signup/login/logout/me/password-reset/email-verification
-│   │   ├── health.ts       ← GET /api/health
-│   │   ├── modules.ts      ← GET /api/modules
-│   │   └── orgs.ts         ← organization CRUD / invites
 │   ├── types.ts            ← Env バインディング型
 │   └── index.ts            ← エントリーポイント（ルート集約 + エラーハンドラ）
-├── scripts/                ← scaffold, plan, create CLI
+├── scripts/
+│   ├── generate-record.mjs ← Record Engine コードジェネレーター
+│   └── ...                 ← scaffold, plan, create CLI
 ├── test/                   ← Vitest テスト
 ├── migrations/             ← D1 マイグレーション
-├── drizzle.config.ts
-├── vitest.config.ts
-├── vite.config.ts
-├── wrangler.jsonc
-└── index.html
+└── ...
 ```
 
 ## コマンド
@@ -64,6 +71,7 @@ npm run db:migrate:remote  # D1 リモートマイグレーション
 npm run app:scaffold     # 新しいアプリをスキャフォールド
 npm run app:plan         # core / example の切り分け確認
 npm run modules:plan     # module 導入状況確認
+npm run record:generate -- --record shared/records/xxx.ts  # Record Engine でコード生成
 ```
 
 ## 開発の流れ
@@ -73,6 +81,48 @@ npm run modules:plan     # module 導入状況確認
 3. `npm run dev` で開発開始
 4. API追加: `src/routes/` にファイル追加 → `src/index.ts` で `.route()` 登録
 5. テーブル追加: `src/db/schema.ts` に定義 → `npm run db:generate`
+
+## Record Engine（レコード駆動開発）
+
+レコード定義を書いてジェネレーターを実行すると、バックエンド（Drizzle + Zod + Hono）とフロントエンド（TanStack Query hooks）のコードが一発生成される。生成後は自由に編集可能。
+
+### レコード追加の手順
+
+1. `shared/records/xxx.ts` にレコード定義を書く（`defineRecord()`）
+2. `npm run record:generate -- --record shared/records/xxx.ts`
+3. `npm run db:generate && npm run db:migrate`
+4. `app/App.tsx` の `recordNavItems` にナビ追加、ルート追加
+5. `npm run dev` で動作確認
+
+### 生成物（1レコードあたり）
+
+| ファイル | 内容 |
+|---------|------|
+| `src/db/schema.ts` に追記 | Drizzle テーブル定義 |
+| `shared/features/{key}/schema.ts` | Zod create/update スキーマ |
+| `src/features/{key}/routes.ts` | CRUD + PATCH status ルート |
+| `app/features/{key}/hooks/use{Key}.ts` | TanStack Query hooks |
+| `src/index.ts` に追記 | ルート登録 |
+
+### UI コンポーネント
+
+汎用レコード画面（`app/pages/records/`）を使って一覧・詳細・フォームを組める:
+- `RecordListPage` — status tabs 付き一覧
+- `RecordDetailPage` — 詳細表示 + status 変更
+- `RecordFormPage` — フォーム（sections ベース）
+
+フィールドコンポーネント（`app/components/fields/`）: TextField, NumberField, DateField, SelectField, RelationField
+
+### ルーティング
+
+wouter による SPA ルーティング:
+- `/login` → 認証（未ログイン時自動表示）
+- `/` → ホーム
+- `/:record` → 一覧
+- `/:record/new` → 新規作成
+- `/:record/:id` → 詳細
+- `/:record/:id/edit` → 編集
+- `/settings` → 組織設定
 
 ## 型安全チェーン
 

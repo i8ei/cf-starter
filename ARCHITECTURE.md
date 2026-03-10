@@ -50,6 +50,30 @@
 - queue handling
 - migration / build / test flow
 
+### Record Engine
+
+レコードを「保存可能なデータ」から「運用可能な仕事単位」に昇格させる共通基盤です。
+
+レコード定義（`shared/records/*.ts`）を書いて `npm run record:generate` を実行すると、バックエンド（Drizzle テーブル + Zod スキーマ + Hono CRUD ルート）とフロントエンド（TanStack Query hooks）が一発生成されます。
+
+Record Engine は3層で構成されます。
+
+1. **定義層** — schema（フィールド定義）、relation（他レコードとの関係）、status（ワークフローの旗）
+2. **操作層** — CRUD（規格化された基本動作）、validation（per-field + cross-field）、activity log（変化の物語）
+3. **利用層** — list view（status tabs 付き一覧）、form view（sections ベースのフォーム）
+
+生成物はただのコード。ロックインなし。生成後に自由に編集できます。
+
+フロントエンドは wouter による SPA ルーティングで:
+
+- `/:record` → 一覧（status filter tabs）
+- `/:record/new` → 新規作成
+- `/:record/:id` → 詳細（status 変更ボタン付き）
+- `/:record/:id/edit` → 編集
+- `/settings` → 組織設定
+
+汎用ページコンポーネント（`RecordListPage`, `RecordDetailPage`, `RecordFormPage`）とフィールドコンポーネント（`TextField`, `NumberField`, `DateField`, `SelectField`, `RelationField`）を組み合わせて UI を構築します。
+
 ### Example Features
 
 - `items`
@@ -57,14 +81,15 @@
 - `upload`
 
 example feature は使い方の見本であり、すべての派生アプリに残す前提ではありません。
-ただし、見本であっても D1 テーブルは `organization_id` を持たせ、current organization で絞る形を優先します。
-KV と R2 のような binding ベースの example も、organization prefix を使って current organization ごとに分離します。
+新しい業務機能は Record Engine で生成するのが推奨です。
 
 現在の配置:
 
-- backend: `src/features/example/*/routes.ts`
-- frontend: `app/features/example/*`
-- shared contracts: `shared/features/example/*`
+- record definitions: `shared/records/*.ts`
+- backend: `src/features/{key}/routes.ts`（生成物）
+- frontend: `app/features/{key}/hooks/`（生成物）
+- shared contracts: `shared/features/{key}/schema.ts`（生成物）
+- example（旧）: `src/features/example/`, `app/features/example/`, `shared/features/example/`
 
 ## 認証
 
@@ -198,15 +223,16 @@ AI や開発者は、次を壊さないでください。
 
 現時点で未実装、または弱いものです。
 
-- app generation path の整理
-- example feature の追加・削除をより自動化する install surface
+- Record Engine: relation フィールドの選択肢 API 自動生成
+- Record Engine: cross-field validation のパターン整備
+- Record Engine: file フィールドの R2 アップロード統合
 
 ## 次の方向
 
 次の優先は次です。
 
-1. docs と app generation path の継続改善
-2. example feature の整理
+1. 実案件（ボランティアタクシー等）で Record Engine を検証
+2. フィードバックで Engine を磨く
 3. optional module install surface の強化
 
 ## App Generation Path
@@ -225,4 +251,4 @@ AI や開発者は、次を壊さないでください。
    `--json-out` / `--plan-out` 利用時の端末 summary は短縮表示でよい
    AI / 非対話フローでは `npx create-cf-starter <dir> [flags...]` を入口にしてよい
 5. example feature を残すか、置き換えるか、削るかを決める
-6. 新しい業務テーブルは `organization_id` 前提で追加する
+6. 新しい業務テーブルは Record Engine でレコード定義を書いて生成する（`organization_id` は自動で含まれる）
