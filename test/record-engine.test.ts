@@ -241,7 +241,7 @@ describe("generateDrizzleTableBlock", () => {
     const closes = (result.content!.match(/}/g) || []).length;
     expect(opens).toBe(closes);
     // Ends with closing
-    expect(result.content!.trimEnd()).toMatch(/\}\);$/);
+    expect(result.content!.trimEnd()).toMatch(/\]\);$/);
   });
 });
 
