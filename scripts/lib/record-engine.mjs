@@ -94,7 +94,7 @@ export function generateDrizzleTableBlock(def) {
 
   cols.push(`  id: integer("id").primaryKey({ autoIncrement: true })`);
   cols.push(
-    `  organizationId: integer("organization_id").references(() => organizations.id, {\n    onDelete: "cascade",\n  })`
+    `  organizationId: integer("organization_id")\n    .notNull()\n    .references(() => organizations.id, {\n      onDelete: "cascade",\n    })`
   );
 
   for (const [name, field] of fieldEntries) {
@@ -115,7 +115,7 @@ export function generateDrizzleTableBlock(def) {
   );
 
   const tableVar = camelCase(TABLE);
-  const block = `\nexport const ${tableVar} = sqliteTable("${TABLE}", {\n${cols.join(",\n")},\n});\n`;
+  const block = `\nexport const ${tableVar} = sqliteTable("${TABLE}", {\n${cols.join(",\n")},\n}, (table) => [index("${TABLE}_organization_id_idx").on(table.organizationId)]);\n`;
 
   return { ok: true, content: block };
 }

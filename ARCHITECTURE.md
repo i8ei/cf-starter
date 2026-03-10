@@ -100,7 +100,6 @@ example feature は使い方の見本であり、すべての派生アプリに�
 - D1 table: `email_verification_tokens`
 - Cookie: HttpOnly
 - Password hash: `PBKDF2-SHA256`
-- Legacy upgrade: 旧 `salt:sha256` は login 時に upgrade
 
 セッション方針:
 

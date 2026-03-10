@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  hashPassword,
-  needsPasswordUpgrade,
-  verifyPassword,
-} from "../src/lib/password";
+import { hashPassword, verifyPassword } from "../src/lib/password";
 
 describe("password helpers", () => {
   it("hashes and verifies PBKDF2 passwords", async () => {
@@ -14,8 +10,9 @@ describe("password helpers", () => {
     expect(await verifyPassword("wrong", hashed)).toBe(false);
   });
 
-  it("detects legacy password format", async () => {
-    expect(needsPasswordUpgrade("salt:hash")).toBe(true);
-    expect(needsPasswordUpgrade("pbkdf2$310000$salt$hash")).toBe(false);
+  it("rejects non-PBKDF2 format as invalid", async () => {
+    // Legacy salt:sha256 format is no longer supported (removed 2026-03-11)
+    expect(await verifyPassword("anything", "salt:hash")).toBe(false);
+    expect(await verifyPassword("anything", "garbage")).toBe(false);
   });
 });

@@ -12,11 +12,7 @@ import {
   ensurePersonalOrganization,
   getMembershipSummaries,
 } from "../../lib/organizations";
-import {
-  hashPassword,
-  needsPasswordUpgrade,
-  verifyPassword,
-} from "../../lib/password";
+import { verifyPassword } from "../../lib/password";
 import { ensureDefaultUserRole } from "../../lib/rbac";
 import { validator } from "../../lib/validator";
 import { issueSession } from "./helpers";
@@ -46,14 +42,6 @@ const app = new Hono<AppContextEnv>().post(
         metadata: { email },
       });
       return jsonError(c, 401, "invalid_credentials", "Invalid email or password");
-    }
-
-    if (needsPasswordUpgrade(user.passwordHash)) {
-      const upgradedHash = await hashPassword(password);
-      await db
-        .update(users)
-        .set({ passwordHash: upgradedHash })
-        .where(eq(users.id, user.id));
     }
 
     const roles = await ensureDefaultUserRole(db, user.id);
