@@ -50,6 +50,7 @@ cf-starter/
 │   └── index.ts            ← エントリーポイント（ルート集約 + エラーハンドラ）
 ├── scripts/
 │   ├── generate-record.mjs ← Record Engine コードジェネレーター
+│   ├── lib/record-engine.mjs ← 生成ロジック（純粋関数、テスト付き）
 │   └── ...                 ← scaffold, plan, create CLI
 ├── test/                   ← Vitest テスト
 ├── migrations/             ← D1 マイグレーション

@@ -99,6 +99,12 @@
 - wouter ルーティング導入
 - App.tsx 分解: AppShell + AuthPage + SettingsPage
 - audit log 統合（CRUD + status 変更）
+- セキュリティ強化: トークン消費のアトミック化、CSRF 全 mutating リクエスト適用、ログのシークレット秘匿
+- 型安全強化: `listView.columns` / `formView.fields` のキー制約、生成コードの `as any` 除去
+- `RecordDetailPage` の relation 名前表示対応（`relationLabels`）
+- コード生成のライブラリ分離（`scripts/lib/record-engine.mjs`）、重複チェック、53 テスト追加
+- `organizationId` の NOT NULL + index 化
+- レガシーパスワードハッシュ互換コード削除
 
 次 (vNext):
 

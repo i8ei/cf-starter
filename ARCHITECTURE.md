@@ -64,6 +64,14 @@ Record Engine は3層で構成されます。
 
 生成物はただのコード。ロックインなし。生成後に自由に編集できます。
 
+生成ロジックは `scripts/lib/record-engine.mjs` に純粋関数として分離されており、53 のユニットテストで保護されています。重複生成チェック、安全な挿入点検出、構造的なエラーメッセージを備えます。
+
+型安全の保証:
+
+- `defineRecord` はジェネリクスで `listView.columns` / `formView.sections[*].fields` を `fields` のキーに制約
+- 生成コードに `as any` キャストなし
+- `organizationId` は `.notNull()` + index 付きで生成
+
 フロントエンドは wouter による SPA ルーティングで:
 
 - `/:record` → 一覧（status filter tabs）
