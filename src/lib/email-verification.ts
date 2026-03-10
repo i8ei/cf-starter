@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, gt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { emailVerificationTokens, users } from "../db/schema";
 import { hashOpaqueToken } from "./crypto";
@@ -52,10 +52,36 @@ export async function consumeEmailVerificationToken(
   | { ok: false; reason: "not_found" | "expired" | "verified" }
 > {
   const tokenHash = await hashOpaqueToken(token);
-  const [row] = await db
-    .select({
+  const verifiedAt = new Date().toISOString();
+
+  // Atomic: UPDATE ... WHERE unverified AND not expired ... RETURNING
+  const [updated] = await db
+    .update(emailVerificationTokens)
+    .set({ verifiedAt })
+    .where(
+      and(
+        eq(emailVerificationTokens.tokenHash, tokenHash),
+        isNull(emailVerificationTokens.verifiedAt),
+        gt(emailVerificationTokens.expiresAt, verifiedAt)
+      )
+    )
+    .returning({
       id: emailVerificationTokens.id,
       userId: emailVerificationTokens.userId,
+    });
+
+  if (updated) {
+    await db
+      .update(users)
+      .set({ emailVerifiedAt: verifiedAt })
+      .where(eq(users.id, updated.userId));
+
+    return { ok: true, userId: updated.userId, tokenId: updated.id, emailVerifiedAt: verifiedAt };
+  }
+
+  // No row updated — determine why for the appropriate error response
+  const [row] = await db
+    .select({
       verifiedAt: emailVerificationTokens.verifiedAt,
       expiresAt: emailVerificationTokens.expiresAt,
     })
@@ -64,30 +90,6 @@ export async function consumeEmailVerificationToken(
     .limit(1);
 
   if (!row) return { ok: false, reason: "not_found" };
-
-  const status = resolveEmailVerificationStatus({
-    verifiedAt: row.verifiedAt,
-    expiresAt: row.expiresAt,
-  });
-  if (status === "expired") return { ok: false, reason: "expired" };
-  if (status === "verified") return { ok: false, reason: "verified" };
-
-  const verifiedAt = new Date().toISOString();
-
-  await db
-    .update(emailVerificationTokens)
-    .set({ verifiedAt })
-    .where(
-      and(
-        eq(emailVerificationTokens.id, row.id),
-        eq(emailVerificationTokens.tokenHash, tokenHash)
-      )
-    );
-
-  await db
-    .update(users)
-    .set({ emailVerifiedAt: verifiedAt })
-    .where(eq(users.id, row.userId));
-
-  return { ok: true, userId: row.userId, tokenId: row.id, emailVerifiedAt: verifiedAt };
+  if (row.verifiedAt) return { ok: false, reason: "verified" };
+  return { ok: false, reason: "expired" };
 }

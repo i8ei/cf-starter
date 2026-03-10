@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, gt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { passwordResetTokens } from "../db/schema";
 import { hashOpaqueToken } from "./crypto";
@@ -52,10 +52,31 @@ export async function consumePasswordResetToken(
   | { ok: false; reason: "not_found" | "expired" | "used" }
 > {
   const tokenHash = await hashOpaqueToken(token);
-  const [row] = await db
-    .select({
+  const nowIso = new Date().toISOString();
+
+  // Atomic: UPDATE ... WHERE unused AND not expired ... RETURNING
+  const [updated] = await db
+    .update(passwordResetTokens)
+    .set({ usedAt: nowIso })
+    .where(
+      and(
+        eq(passwordResetTokens.tokenHash, tokenHash),
+        isNull(passwordResetTokens.usedAt),
+        gt(passwordResetTokens.expiresAt, nowIso)
+      )
+    )
+    .returning({
       id: passwordResetTokens.id,
       userId: passwordResetTokens.userId,
+    });
+
+  if (updated) {
+    return { ok: true, userId: updated.userId, tokenId: updated.id };
+  }
+
+  // No row updated — determine why for the appropriate error response
+  const [row] = await db
+    .select({
       usedAt: passwordResetTokens.usedAt,
       expiresAt: passwordResetTokens.expiresAt,
     })
@@ -63,27 +84,7 @@ export async function consumePasswordResetToken(
     .where(eq(passwordResetTokens.tokenHash, tokenHash))
     .limit(1);
 
-  if (!row) {
-    return { ok: false, reason: "not_found" };
-  }
-
-  const status = resolvePasswordResetStatus({
-    usedAt: row.usedAt,
-    expiresAt: row.expiresAt,
-  });
-
-  if (status === "expired") return { ok: false, reason: "expired" };
-  if (status === "used") return { ok: false, reason: "used" };
-
-  await db
-    .update(passwordResetTokens)
-    .set({ usedAt: new Date().toISOString() })
-    .where(
-      and(
-        eq(passwordResetTokens.id, row.id),
-        eq(passwordResetTokens.tokenHash, tokenHash)
-      )
-    );
-
-  return { ok: true, userId: row.userId, tokenId: row.id };
+  if (!row) return { ok: false, reason: "not_found" };
+  if (row.usedAt) return { ok: false, reason: "used" };
+  return { ok: false, reason: "expired" };
 }

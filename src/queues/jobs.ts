@@ -10,6 +10,22 @@ import { resolveAppBaseUrl } from "../lib/config";
 import { logEvent } from "../lib/logging";
 import type { JobMessage } from "./types";
 
+/** Replace token values in URLs with [REDACTED] to prevent secret leakage in logs. */
+function redactUrlToken(url: string): string {
+  try {
+    const parsed = new URL(url);
+    for (const key of [...parsed.searchParams.keys()]) {
+      if (/token/i.test(key)) {
+        parsed.searchParams.set(key, "[REDACTED]");
+      }
+    }
+    return parsed.toString();
+  } catch {
+    // If the URL can't be parsed, redact the whole thing
+    return "[REDACTED_URL]";
+  }
+}
+
 export async function enqueueJob(queue: Queue<JobMessage>, message: JobMessage) {
   await queue.send(message);
 }
@@ -73,7 +89,7 @@ export async function handleJobBatch(
               inviteId: message.body.payload.inviteId,
               email: message.body.payload.email,
               role: message.body.payload.role,
-              inviteUrl: message.body.payload.inviteUrl,
+              inviteUrl: redactUrlToken(message.body.payload.inviteUrl),
               delivery: delivery.delivery,
               providerMessageId: delivery.id ?? null,
               requestId: message.body.payload.requestId,
@@ -96,7 +112,7 @@ export async function handleJobBatch(
             logEvent("info", "queue.auth_password_reset_email", {
               userId: message.body.payload.userId,
               email: message.body.payload.email,
-              resetUrl: message.body.payload.resetUrl,
+              resetUrl: redactUrlToken(message.body.payload.resetUrl),
               delivery: delivery.delivery,
               providerMessageId: delivery.id ?? null,
               requestId: message.body.payload.requestId,
@@ -119,7 +135,7 @@ export async function handleJobBatch(
             logEvent("info", "queue.auth_email_verification_email", {
               userId: message.body.payload.userId,
               email: message.body.payload.email,
-              verifyUrl: message.body.payload.verifyUrl,
+              verifyUrl: redactUrlToken(message.body.payload.verifyUrl),
               delivery: delivery.delivery,
               providerMessageId: delivery.id ?? null,
               requestId: message.body.payload.requestId,

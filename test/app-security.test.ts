@@ -55,6 +55,7 @@ describe("app security", () => {
           headers: {
             "content-type": "application/json",
             "cf-connecting-ip": "203.0.113.10",
+            origin: "http://localhost:5173",
           },
           body: JSON.stringify({}),
         }),
@@ -85,6 +86,7 @@ describe("app security", () => {
         method: "POST",
         headers: {
           "content-type": "application/json",
+          origin: "http://localhost:5173",
         },
         body: JSON.stringify({}),
       }),

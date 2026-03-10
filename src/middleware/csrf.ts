@@ -3,7 +3,6 @@ import type { AppContextEnv } from "../types";
 import { resolveCorsOrigins } from "../lib/cors";
 import { jsonError } from "../lib/http";
 import { logRequestEvent } from "../lib/logging";
-import { hasSessionCookie } from "../lib/session";
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -22,12 +21,9 @@ export const csrfProtection = createMiddleware<AppContextEnv>(async (c, next) =>
     return;
   }
 
-  const cookieHeader = c.req.header("cookie") ?? "";
-  if (!hasSessionCookie(cookieHeader)) {
-    await next();
-    return;
-  }
-
+  // Validate Origin/Referer for ALL mutating requests, not just those
+  // with a session cookie. This prevents login CSRF attacks where an
+  // attacker forces a victim to authenticate as the attacker's account.
   const allowlist = resolveCorsOrigins(c.env);
   const origin = c.req.header("origin");
   if (origin && allowlist.includes(origin)) {
