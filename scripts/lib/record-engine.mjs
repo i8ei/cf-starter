@@ -331,6 +331,197 @@ export function insertRouteRegistration(existingIndex, key) {
   };
 }
 
+// ── 6. Page generation ──────────────────────────
+
+/**
+ * Generate List/Detail/Form page wrapper files for a record.
+ * Returns an array of { path, content } objects (relative paths).
+ */
+export function generatePages(def) {
+  const KEY = def.key;
+  const PASCAL = pascalCase(KEY);
+  const status = def.status;
+
+  const listPage = `import { useSession } from "~/hooks/useSession";
+import { use${PASCAL}s } from "~/features/${KEY}/hooks/use${PASCAL}";
+import { RecordListPage } from "~/pages/records/RecordListPage";
+import { ${KEY}Def } from "@shared/records/${KEY}";
+
+export function ${PASCAL}ListPage() {
+  const { data: session } = useSession();
+  const { data = [], isLoading } = use${PASCAL}s(!!session);
+  return <RecordListPage def={${KEY}Def} data={data} isLoading={isLoading} />;
+}
+`;
+
+  const statusImport = status
+    ? `\nimport { useUpdate${PASCAL}Status } from "~/features/${KEY}/hooks/use${PASCAL}";`
+    : "";
+  const statusHook = status
+    ? `\n  const updateStatus = useUpdate${PASCAL}Status();`
+    : "";
+  const statusProp = status
+    ? `\n      onStatusChange={(s) => updateStatus.mutate({ id, ${camelCase(status.field)}: s })}`
+    : "";
+
+  const detailPage = `import { useLocation, useParams } from "wouter";
+import { useSession } from "~/hooks/useSession";
+import { use${PASCAL}, useDelete${PASCAL} } from "~/features/${KEY}/hooks/use${PASCAL}";${statusImport}
+import { RecordDetailPage } from "~/pages/records/RecordDetailPage";
+import { ${KEY}Def } from "@shared/records/${KEY}";
+
+export function ${PASCAL}DetailPage() {
+  const { id: idParam } = useParams<{ id: string }>();
+  const id = Number(idParam);
+  const [, navigate] = useLocation();
+  const { data: session } = useSession();
+  const { data, isLoading } = use${PASCAL}(id, !!session);
+  const deleteMutation = useDelete${PASCAL}();${statusHook}
+
+  return (
+    <RecordDetailPage
+      def={${KEY}Def}
+      data={data}
+      isLoading={isLoading}
+      onDelete={() => deleteMutation.mutate(id, { onSuccess: () => navigate("/${KEY}") })}
+      isDeleting={deleteMutation.isPending}${statusProp}
+    />
+  );
+}
+`;
+
+  const formPage = `import { useLocation, useParams } from "wouter";
+import { useSession } from "~/hooks/useSession";
+import {
+  use${PASCAL},
+  useCreate${PASCAL},
+  useUpdate${PASCAL},
+} from "~/features/${KEY}/hooks/use${PASCAL}";
+import { RecordFormPage } from "~/pages/records/RecordFormPage";
+import { ${KEY}Def } from "@shared/records/${KEY}";
+
+export function ${PASCAL}FormPage({ mode }: { mode: "create" | "edit" }) {
+  const { id: idParam } = useParams<{ id: string }>();
+  const id = idParam ? Number(idParam) : undefined;
+  const [, navigate] = useLocation();
+  const { data: session } = useSession();
+  const { data: existing } = use${PASCAL}(id ?? 0, mode === "edit" && !!session);
+  const createMutation = useCreate${PASCAL}();
+  const updateMutation = useUpdate${PASCAL}();
+
+  const handleSubmit = (data: Record<string, unknown>) => {
+    if (mode === "create") {
+      createMutation.mutate(data as Parameters<typeof createMutation.mutate>[0], {
+        onSuccess: (row) => navigate(\`/${KEY}/\${row.id}\`),
+      });
+    } else if (id !== undefined) {
+      updateMutation.mutate({ id, ...data } as Parameters<typeof updateMutation.mutate>[0], {
+        onSuccess: () => navigate(\`/${KEY}/\${id}\`),
+      });
+    }
+  };
+
+  const mutation = mode === "create" ? createMutation : updateMutation;
+
+  return (
+    <RecordFormPage
+      def={${KEY}Def}
+      mode={mode}
+      initialData={mode === "edit" ? (existing as Record<string, unknown> | undefined) : undefined}
+      onSubmit={handleSubmit}
+      isPending={mutation.isPending}
+      error={mutation.error?.message ?? null}
+    />
+  );
+}
+`;
+
+  return [
+    { path: `app/pages/${KEY}/${PASCAL}ListPage.tsx`, content: listPage },
+    { path: `app/pages/${KEY}/${PASCAL}DetailPage.tsx`, content: detailPage },
+    { path: `app/pages/${KEY}/${PASCAL}FormPage.tsx`, content: formPage },
+  ];
+}
+
+/**
+ * Register a record's page routes and nav item in App.tsx.
+ * Returns { ok, content, skipped, reason }.
+ */
+export function registerAppRoute(existingApp, def) {
+  const KEY = def.key;
+  const PASCAL = pascalCase(KEY);
+
+  // Duplicate check — look for actual route registration, not comments
+  const routePattern = new RegExp(`<Route[^>]+path=["']/${KEY}(?:/|["'])`);
+  if (routePattern.test(existingApp)) {
+    return {
+      ok: true,
+      content: existingApp,
+      skipped: true,
+      reason: `Route "/${KEY}" already registered in App.tsx`,
+    };
+  }
+
+  let result = existingApp;
+
+  // 1. Add imports after the last import line
+  const importBlock = [
+    `import { ${PASCAL}ListPage } from "./pages/${KEY}/${PASCAL}ListPage";`,
+    `import { ${PASCAL}DetailPage } from "./pages/${KEY}/${PASCAL}DetailPage";`,
+    `import { ${PASCAL}FormPage } from "./pages/${KEY}/${PASCAL}FormPage";`,
+  ].join("\n");
+
+  const lines = result.split("\n");
+  let lastImportIndex = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*import\s/.test(lines[i])) {
+      lastImportIndex = i;
+    }
+  }
+  if (lastImportIndex !== -1) {
+    lines.splice(lastImportIndex + 1, 0, importBlock);
+    result = lines.join("\n");
+  }
+
+  // 2. Add nav item to recordNavItems array
+  const navEntry = `  { label: "${def.label}", href: "/${KEY}" },`;
+  result = result.replace(
+    /(const recordNavItems.*=\s*\[)([\s\S]*?)(];)/,
+    (match, open, body, close) => {
+      // Remove example comment line
+      const cleaned = body.replace(/\s*\/\/ Example:.*\n/g, "\n");
+      return `${open}${cleaned}${navEntry}\n${close}`;
+    }
+  );
+
+  // 3. Add routes before the {/* record-engine:routes */} marker or before the 404 route
+  const routeBlock = [
+    `        <Route path="/${KEY}" component={${PASCAL}ListPage} />`,
+    `        <Route path="/${KEY}/new">{() => <${PASCAL}FormPage mode="create" />}</Route>`,
+    `        <Route path="/${KEY}/:id/edit">{() => <${PASCAL}FormPage mode="edit" />}</Route>`,
+    `        <Route path="/${KEY}/:id" component={${PASCAL}DetailPage} />`,
+  ].join("\n");
+
+  if (result.includes("{/* record-engine:routes */}")) {
+    result = result.replace(
+      "{/* record-engine:routes */}",
+      `${routeBlock}\n        {/* record-engine:routes */}`
+    );
+  } else {
+    // Fallback: insert before the 404 catch-all route
+    result = result.replace(
+      /(\s*<Route>\s*\n\s*<div.*404)/,
+      `\n${routeBlock}\n$1`
+    );
+  }
+
+  return {
+    ok: true,
+    content: result,
+    skipped: false,
+  };
+}
+
 // ── Helpers for hooks/routes generation ─────────
 
 export function fieldToTsType(field) {

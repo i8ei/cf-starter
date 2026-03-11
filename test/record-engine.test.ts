@@ -12,6 +12,8 @@ import {
   generateZodField,
   generateZodSchemaContent,
   insertRouteRegistration,
+  generatePages,
+  registerAppRoute,
   fieldToTsType,
   getDefaultSortField,
 } from "../scripts/lib/record-engine.mjs";
@@ -567,5 +569,111 @@ describe("getDefaultSortField", () => {
   it("falls back to createdAt when no listView", () => {
     const def = { ...minimalDef, listView: undefined };
     expect(getDefaultSortField(def)).toBe("createdAt");
+  });
+});
+
+// ── Page generation ─────────────────────────────
+
+describe("generatePages", () => {
+  it("generates three page files for a record with status", () => {
+    const pages = generatePages(sampleDef);
+    expect(pages).toHaveLength(3);
+    expect(pages.map((p: { path: string }) => p.path)).toEqual([
+      "app/pages/tasks/TasksListPage.tsx",
+      "app/pages/tasks/TasksDetailPage.tsx",
+      "app/pages/tasks/TasksFormPage.tsx",
+    ]);
+  });
+
+  it("list page imports the hook and RecordListPage", () => {
+    const pages = generatePages(sampleDef);
+    const listPage = pages[0].content;
+    expect(listPage).toContain("useTasks");
+    expect(listPage).toContain("RecordListPage");
+    expect(listPage).toContain("tasksDef");
+  });
+
+  it("detail page includes delete and status change for records with status", () => {
+    const pages = generatePages(sampleDef);
+    const detailPage = pages[1].content;
+    expect(detailPage).toContain("useDeleteTasks");
+    expect(detailPage).toContain("useUpdateTasksStatus");
+    expect(detailPage).toContain("onStatusChange");
+  });
+
+  it("detail page omits status hook for records without status", () => {
+    const pages = generatePages(minimalDef);
+    const detailPage = pages[1].content;
+    expect(detailPage).not.toContain("useUpdateNotesStatus");
+    expect(detailPage).not.toContain("onStatusChange");
+  });
+
+  it("form page handles both create and edit modes", () => {
+    const pages = generatePages(sampleDef);
+    const formPage = pages[2].content;
+    expect(formPage).toContain("useCreateTasks");
+    expect(formPage).toContain("useUpdateTasks");
+    expect(formPage).toContain('mode: "create" | "edit"');
+  });
+});
+
+// ── App.tsx route registration ──────────────────
+
+describe("registerAppRoute", () => {
+  const baseApp = `import { Route, Switch } from "wouter";
+import { SettingsPage } from "./pages/SettingsPage";
+
+const recordNavItems: { label: string; href: string }[] = [
+  // Example: { label: "Houses", href: "/houses" },
+];
+
+function AppRoutes() {
+  return (
+    <Switch>
+      <Route path="/settings" component={SettingsPage} />
+      <Route path="/" component={WelcomePage} />
+      {/* record-engine:routes */}
+      <Route>
+        <div className="mx-auto max-w-3xl py-20 text-center">
+          <h2 className="text-xl font-semibold text-white">404</h2>
+        </div>
+      </Route>
+    </Switch>
+  );
+}
+`;
+
+  it("adds imports, nav item, and routes", () => {
+    const result = registerAppRoute(baseApp, sampleDef);
+    expect(result.ok).toBe(true);
+    expect(result.skipped).toBe(false);
+    expect(result.content).toContain('import { TasksListPage }');
+    expect(result.content).toContain('import { TasksDetailPage }');
+    expect(result.content).toContain('import { TasksFormPage }');
+    expect(result.content).toContain('{ label: "Tasks", href: "/tasks" }');
+    expect(result.content).toContain('<Route path="/tasks" component={TasksListPage} />');
+    expect(result.content).toContain('<Route path="/tasks/new">');
+    expect(result.content).toContain('<Route path="/tasks/:id/edit">');
+    expect(result.content).toContain('<Route path="/tasks/:id" component={TasksDetailPage} />');
+  });
+
+  it("skips if route already registered", () => {
+    const first = registerAppRoute(baseApp, sampleDef);
+    const second = registerAppRoute(first.content, sampleDef);
+    expect(second.ok).toBe(true);
+    expect(second.skipped).toBe(true);
+  });
+
+  it("handles multiple records sequentially", () => {
+    const r1 = registerAppRoute(baseApp, sampleDef);
+    const r2 = registerAppRoute(r1.content, minimalDef);
+    expect(r2.ok).toBe(true);
+    expect(r2.content).toContain('"/tasks"');
+    expect(r2.content).toContain('"/notes"');
+  });
+
+  it("removes the example comment when adding first nav item", () => {
+    const result = registerAppRoute(baseApp, sampleDef);
+    expect(result.content).not.toContain("// Example:");
   });
 });

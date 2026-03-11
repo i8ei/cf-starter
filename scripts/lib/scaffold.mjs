@@ -23,303 +23,81 @@ const REMOVABLE_BINDING_REASONS = {
 };
 const PROJECT_NAME_PATTERN = /^[a-z][a-z0-9-]{0,62}$/;
 
-const CORE_ONLY_APP_TEMPLATE = `import { useState } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useHealth } from "./hooks/useHealth";
-import {
-  useAcceptOrganizationInvite,
-  useCreateOrganization,
-  useCreateOrganizationInvite,
-  useLogin,
-  useLogout,
-  useOrganizationInvites,
-  useOrganizations,
-  useSession,
-  useSignup,
-  useSwitchOrganization,
-} from "./hooks/useSession";
+const CORE_ONLY_APP_TEMPLATE = `import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Route, Switch } from "wouter";
+import { useSession } from "./hooks/useSession";
+import { AppShell } from "./components/AppShell";
+import { AuthPage } from "./pages/AuthPage";
+import { SettingsPage } from "./pages/SettingsPage";
 
 const queryClient = new QueryClient();
 
-function Panel({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-3xl border border-white/10 bg-white/5 p-5">
-      <h2 className="mb-4 text-lg font-semibold text-white">{title}</h2>
-      {children}
-    </section>
-  );
-}
+/**
+ * Record Engine nav items — add entries here as you generate new records.
+ * Each record page will be mounted at /:recordKey
+ */
+const recordNavItems: { label: string; href: string }[] = [
+  // Example: { label: "Houses", href: "/houses" },
+];
 
-function AuthPanel() {
-  const [mode, setMode] = useState<"login" | "signup">("login");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const login = useLogin();
-  const signup = useSignup();
-  const mutation = mode === "login" ? login : signup;
-
-  const submit = () => {
-    if (mode === "login") {
-      login.mutate({ email, password });
-      return;
-    }
-    signup.mutate({ name, email, password });
-  };
-
-  return (
-    <Panel title="Authentication">
-      <div className="mb-4 flex gap-2">
-        <button
-          type="button"
-          onClick={() => setMode("login")}
-          className="rounded-full bg-amber-400 px-4 py-2 text-sm font-medium text-slate-950"
-        >
-          login
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("signup")}
-          className="rounded-full bg-white/5 px-4 py-2 text-sm font-medium text-slate-300"
-        >
-          signup
-        </button>
-      </div>
-      <div className="space-y-3">
-        {mode === "signup" ? (
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Name"
-            className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none"
-          />
-        ) : null}
-        <input
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email"
-          className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none"
-        />
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password"
-          className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none"
-        />
-        <button
-          type="button"
-          onClick={submit}
-          disabled={mutation.isPending}
-          className="w-full rounded-2xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
-        >
-          {mode === "login" ? "Log In" : "Create Account"}
-        </button>
-        {mutation.error ? (
-          <p className="text-sm text-rose-300">{mutation.error.message}</p>
-        ) : (
-          <p className="text-sm text-slate-400">
-            Core-only starter: auth と organization context の最小 UI です。
-          </p>
-        )}
-      </div>
-    </Panel>
-  );
-}
-
-function Dashboard() {
-  const [orgName, setOrgName] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
-  const [inviteToken, setInviteToken] = useState("");
-  const [latestToken, setLatestToken] = useState<string | null>(null);
-  const { data: health } = useHealth();
+function AuthGuard({ children }: { children: React.ReactNode }) {
   const { data: session, isLoading } = useSession();
-  const { data: organizations } = useOrganizations(!!session);
-  const { data: invites } = useOrganizationInvites(!!session);
-  const createOrganization = useCreateOrganization();
-  const switchOrganization = useSwitchOrganization();
-  const createInvite = useCreateOrganizationInvite();
-  const acceptInvite = useAcceptOrganizationInvite();
-  const logout = useLogout();
-
   if (isLoading) {
-    return <div className="p-8 text-slate-300">Loading...</div>;
+    return (
+      <AppShell>
+        <div className="flex justify-center py-20">
+          <p className="text-sm text-slate-400">Loading...</p>
+        </div>
+      </AppShell>
+    );
   }
-
+  if (!session) {
+    return (
+      <AppShell>
+        <AuthPage />
+      </AppShell>
+    );
+  }
   return (
-    <div className="min-h-screen bg-slate-950 px-6 py-8 text-slate-100">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <header className="rounded-[2rem] border border-white/10 bg-slate-900 p-8">
-          <p className="text-sm uppercase tracking-[0.3em] text-amber-300">Core Only</p>
-          <h1 className="mt-3 text-4xl font-semibold text-white">__APP_DISPLAY_NAME__</h1>
-          <p className="mt-3 max-w-2xl text-sm text-slate-400">
-            Authentication, organization context, invite lifecycle, queue-driven mail.
-          </p>
-        </header>
+    <AppShell navItems={recordNavItems}>
+      {children}
+    </AppShell>
+  );
+}
 
-        {health?.checks ? (
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(health.checks).map(([key, value]) => (
-              <span
-                key={key}
-                className="rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300"
-              >
-                {key}: {value}
-              </span>
-            ))}
-          </div>
-        ) : null}
-
-        {!session ? (
-          <AuthPanel />
-        ) : (
-          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="space-y-6">
-              <Panel title="Organizations">
-                <div className="space-y-2">
-                  {organizations?.organizations.map((organization) => (
-                    <button
-                      key={organization.organizationId}
-                      type="button"
-                      onClick={() => switchOrganization.mutate(organization.organizationId)}
-                      className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-left"
-                    >
-                      <span>
-                        <span className="block text-white">
-                          {organization.organizationName}
-                        </span>
-                        <span className="block text-xs text-slate-400">
-                          {organization.organizationSlug}
-                        </span>
-                      </span>
-                      <span className="text-xs uppercase tracking-[0.2em] text-slate-300">
-                        {organization.membershipRole}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <input
-                    value={orgName}
-                    onChange={(e) => setOrgName(e.target.value)}
-                    placeholder="New organization"
-                    className="flex-1 rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      createOrganization.mutate(orgName, {
-                        onSuccess: () => setOrgName(""),
-                      })
-                    }
-                    className="rounded-2xl bg-amber-400 px-4 py-3 font-semibold text-slate-950"
-                  >
-                    Create
-                  </button>
-                </div>
-              </Panel>
-
-              <Panel title="Invites">
-                <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto]">
-                  <input
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    placeholder="user@example.com"
-                    className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none"
-                  />
-                  <select
-                    value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value as "admin" | "member")}
-                    className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none"
-                  >
-                    <option value="member">member</option>
-                    <option value="admin">admin</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      createInvite.mutate(
-                        { email: inviteEmail, role: inviteRole },
-                        { onSuccess: (data) => setLatestToken(data.invite.token) }
-                      )
-                    }
-                    className="rounded-2xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950"
-                  >
-                    Invite
-                  </button>
-                </div>
-                {latestToken ? (
-                  <div className="mt-4 rounded-2xl border border-amber-300/30 bg-amber-300/10 p-4 font-mono text-sm text-amber-100">
-                    {latestToken}
-                  </div>
-                ) : null}
-                <div className="mt-4 space-y-2">
-                  {invites?.invites.map((invite) => (
-                    <div
-                      key={invite.id}
-                      className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3"
-                    >
-                      <div className="text-white">{invite.email}</div>
-                      <div className="text-xs text-slate-400">
-                        {invite.role} · {invite.status}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <input
-                    value={inviteToken}
-                    onChange={(e) => setInviteToken(e.target.value)}
-                    placeholder="Invite token"
-                    className="flex-1 rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => acceptInvite.mutate(inviteToken)}
-                    className="rounded-2xl bg-fuchsia-300 px-4 py-3 font-semibold text-slate-950"
-                  >
-                    Accept
-                  </button>
-                </div>
-              </Panel>
-            </div>
-
-            <div className="space-y-6">
-              <Panel title="Session">
-                <div className="space-y-2 text-sm text-slate-300">
-                  <div>name: {session.name}</div>
-                  <div>email: {session.email}</div>
-                  <div>currentOrg: {session.currentOrganizationId}</div>
-                  <div>organizationRole: {session.organizationRole}</div>
-                  <div>roles: {session.roles.join(", ")}</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => logout.mutate()}
-                  className="mt-4 rounded-2xl bg-rose-400 px-4 py-3 font-semibold text-slate-950"
-                >
-                  Log Out
-                </button>
-              </Panel>
-            </div>
-          </div>
-        )}
-      </div>
+function WelcomePage() {
+  return (
+    <div className="mx-auto max-w-3xl space-y-6">
+      <h1 className="text-2xl font-semibold text-white">__APP_DISPLAY_NAME__</h1>
+      <p className="text-sm text-slate-400">
+        Ready to go. Add your first record with the Record Engine.
+      </p>
     </div>
+  );
+}
+
+function AppRoutes() {
+  return (
+    <AuthGuard>
+      <Switch>
+        <Route path="/settings" component={SettingsPage} />
+        <Route path="/" component={WelcomePage} />
+        {/* record-engine:routes */}
+        <Route>
+          <div className="mx-auto max-w-3xl py-20 text-center">
+            <h2 className="text-xl font-semibold text-white">404</h2>
+            <p className="mt-2 text-sm text-slate-400">Page not found</p>
+          </div>
+        </Route>
+      </Switch>
+    </AuthGuard>
   );
 }
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Dashboard />
+      <AppRoutes />
     </QueryClientProvider>
   );
 }
@@ -1076,6 +854,7 @@ export async function applyCoreOnlyTransforms(targetDir) {
   await rm(join(targetDir, "src/features/example"), { recursive: true, force: true });
   await rm(join(targetDir, "app/features/example"), { recursive: true, force: true });
   await rm(join(targetDir, "shared/features/example"), { recursive: true, force: true });
+  await rm(join(targetDir, "app/pages/HomePage.tsx"), { force: true });
   await rewriteIndexForCoreOnly(join(targetDir, "src/index.ts"));
 }
 

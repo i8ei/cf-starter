@@ -131,6 +131,10 @@ export interface RecordDef<
  * Field keys from `fields` (and the status field key if defined) are inferred
  * and used to constrain `listView.columns` and `formView.sections[*].fields`.
  */
+/** Loosened type for components that accept any concrete RecordDef. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type AnyRecordDef = RecordDef<any, any>;
+
 export function defineRecord<
   F extends Record<string, FieldDef>,
   S extends StatusDef | undefined = undefined,

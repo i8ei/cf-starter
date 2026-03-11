@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import type { RecordDef, FieldDef } from "@shared/lib/record-def";
+import type { AnyRecordDef, FieldDef } from "@shared/lib/record-def";
 import { Panel } from "~/components/Panel";
 import {
   TextField,
@@ -11,7 +11,7 @@ import {
 } from "~/components/fields";
 
 type Props = {
-  def: RecordDef;
+  def: AnyRecordDef;
   initialData?: Record<string, unknown>;
   onSubmit: (data: Record<string, unknown>) => void;
   isPending: boolean;
@@ -47,7 +47,7 @@ export function RecordFormPage({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleaned: Record<string, unknown> = {};
-    for (const [key, field] of Object.entries(def.fields)) {
+    for (const [key, field] of Object.entries(def.fields) as [string, FieldDef][]) {
       const val = formData[key];
       if (val !== undefined && val !== "") {
         cleaned[key] = val;
@@ -223,11 +223,11 @@ function FieldRenderer({
 }
 
 function buildInitial(
-  def: RecordDef,
+  def: AnyRecordDef,
   existing?: Record<string, unknown>
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {};
-  for (const [key, field] of Object.entries(def.fields)) {
+  for (const [key, field] of Object.entries(def.fields) as [string, FieldDef][]) {
     if (existing && key in existing) {
       result[key] = existing[key];
     } else if ("defaultValue" in field && field.defaultValue !== undefined) {

@@ -1,13 +1,13 @@
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
-import type { RecordDef } from "@shared/lib/record-def";
+import type { AnyRecordDef } from "@shared/lib/record-def";
 import { Panel } from "~/components/Panel";
 import { DataTable } from "~/components/DataTable";
 import { StatusFilterTabs } from "~/components/StatusFilterTabs";
 import { SummaryCards } from "~/components/SummaryCards";
 
 type Props<T extends Record<string, unknown>> = {
-  def: RecordDef;
+  def: AnyRecordDef;
   data: T[];
   isLoading: boolean;
 };

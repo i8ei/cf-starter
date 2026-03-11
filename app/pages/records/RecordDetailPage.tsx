@@ -1,10 +1,10 @@
 import { useLocation } from "wouter";
-import type { RecordDef } from "@shared/lib/record-def";
+import type { AnyRecordDef, FieldDef } from "@shared/lib/record-def";
 import { Panel } from "~/components/Panel";
 import { StatusBadge } from "~/components/StatusBadge";
 
 type Props<T extends Record<string, unknown>> = {
-  def: RecordDef;
+  def: AnyRecordDef;
   data: T | undefined;
   isLoading: boolean;
   onDelete?: () => void;
@@ -95,7 +95,7 @@ export function RecordDetailPage<T extends Record<string, unknown>>({
 
       <Panel title="Details">
         <dl className="grid gap-4 sm:grid-cols-2">
-          {Object.entries(def.fields).map(([key, field]) => {
+          {(Object.entries(def.fields) as [string, FieldDef][]).map(([key, field]) => {
             let displayValue: string;
             if (data[key] == null) {
               displayValue = "-";
@@ -127,7 +127,7 @@ export function RecordDetailPage<T extends Record<string, unknown>>({
       {def.status && onStatusChange ? (
         <Panel title="Status">
           <div className="flex flex-wrap gap-2">
-            {def.status.options.map((opt) => (
+            {(def.status.options as readonly string[]).map((opt) => (
               <button
                 key={opt}
                 type="button"

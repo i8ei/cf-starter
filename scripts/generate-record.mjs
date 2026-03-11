@@ -24,6 +24,8 @@ import {
   appendDrizzleTable,
   generateZodSchemaContent,
   insertRouteRegistration,
+  generatePages,
+  registerAppRoute,
   fieldToTsType,
   getDefaultSortField,
   schemaHasTable,
@@ -515,12 +517,50 @@ function registerRoute() {
   console.log(`  [gen] src/index.ts — registered route "/api/${KEY}"`);
 }
 
+// ── 6. Page wrappers ─────────────────────────
+function generatePageWrappers() {
+  const pages = generatePages(def);
+  for (const page of pages) {
+    const outPath = resolve(process.cwd(), page.path);
+    ensureDir(outPath);
+    if (existsSync(outPath)) {
+      console.log(`  [skip] Page already exists: ${page.path}`);
+      continue;
+    }
+    writeFileSync(outPath, page.content);
+    console.log(`  [gen] ${page.path}`);
+  }
+}
+
+// ── 7. App.tsx route registration ────────────
+function registerAppRoutes() {
+  const appPath = resolve(process.cwd(), "app/App.tsx");
+  if (!existsSync(appPath)) {
+    console.log(`  [skip] app/App.tsx not found — skipping route registration`);
+    return;
+  }
+  const existing = readFileSync(appPath, "utf-8");
+  const result = registerAppRoute(existing, def);
+  if (!result.ok) {
+    console.error(`  [error] ${result.reason}`);
+    return;
+  }
+  if (result.skipped) {
+    console.log(`  [skip] ${result.reason}`);
+    return;
+  }
+  writeFileSync(appPath, result.content);
+  console.log(`  [gen] app/App.tsx — registered routes and nav for "${KEY}"`);
+}
+
 // ── Run all generators ─────────────────────────
 generateDrizzleTable();
 generateZodSchemas();
 generateRoutes();
 generateHooks();
 registerRoute();
+generatePageWrappers();
+registerAppRoutes();
 
 console.log(`\nDone! Next steps:`);
 console.log(`  1. npm run db:generate    # Generate migration`);

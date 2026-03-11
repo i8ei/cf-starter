@@ -57,9 +57,10 @@ describe("scaffold", () => {
     await mkdir(join(dir, "app/features/example/items"), { recursive: true });
     await mkdir(join(dir, "shared/features/example/items"), { recursive: true });
     await mkdir(join(dir, "src"), { recursive: true });
-    await mkdir(join(dir, "app"), { recursive: true });
+    await mkdir(join(dir, "app/pages"), { recursive: true });
     await writeFile(join(dir, "src/index.ts"), 'import items from "./features/example/items/routes";\napp.route("/api/items", items)\napp.route("/api/auth", auth)');
     await writeFile(join(dir, "app/App.tsx"), "old app");
+    await writeFile(join(dir, "app/pages/HomePage.tsx"), "export function HomePage() {}");
 
     await applyCoreOnlyTransforms(dir);
     await writeCoreOnlyApp(dir, "starter-core");
@@ -67,8 +68,15 @@ describe("scaffold", () => {
     const appSource = await readFile(join(dir, "app/App.tsx"), "utf8");
     const indexSource = await readFile(join(dir, "src/index.ts"), "utf8");
 
-    expect(appSource).toContain("Core-only starter");
+    expect(appSource).toContain("Record Engine");
+    expect(appSource).toContain("recordNavItems");
+    expect(appSource).not.toContain("HomePage");
     expect(indexSource).not.toContain("/api/items");
+
+    // HomePage.tsx should be removed
+    await expect(readFile(join(dir, "app/pages/HomePage.tsx"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
   });
 
   it("scaffolds a starter copy without node_modules", async () => {
