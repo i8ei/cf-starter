@@ -105,7 +105,8 @@ describe("string helpers", () => {
 describe("findRecordDef", () => {
   it("finds a record def from a module with named export", () => {
     const mod = { tasksDef: sampleDef, other: "value" };
-    expect(findRecordDef(mod)).toBe(sampleDef);
+    const result = findRecordDef(mod);
+    expect(result).toEqual({ def: sampleDef, exportName: "tasksDef" });
   });
 
   it("returns null for a module with no record def", () => {
@@ -115,7 +116,8 @@ describe("findRecordDef", () => {
 
   it("finds default export", () => {
     const mod = { default: sampleDef };
-    expect(findRecordDef(mod)).toBe(sampleDef);
+    const result = findRecordDef(mod);
+    expect(result).toEqual({ def: sampleDef, exportName: "default" });
   });
 });
 

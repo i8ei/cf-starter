@@ -82,7 +82,7 @@ UI/UX 品質:
 フロントエンドは wouter による SPA ルーティングで:
 
 - 未ログイン時 → AuthPage をインライン表示（専用 `/login` ルートはない）
-- `/` → ホーム（現在は Example Items ページ）
+- `/` → HomePage（件数カード + スターター案内）
 - `/:record` → 一覧（Record Engine で生成・配線後に有効）
 - `/:record/new` → 新規作成（同上）
 - `/:record/:id` → 詳細（status 変更ボタン付き、同上）
@@ -93,12 +93,13 @@ UI/UX 品質:
 
 ### Example Features
 
-- `items` — D1 CRUD の見本。フロントエンド UI あり（`App.tsx` に組み込み）
-- `kv` — KV read/write の見本。API のみ（フロントエンド hooks/UI なし）
-- `upload` — R2 upload の見本。API のみ（フロントエンド hooks/UI なし）
+- `items` — D1 CRUD の見本。フロントエンド UI あり
+- `kv` — KV read/write の見本。API のみ
+- `upload` — R2 upload の見本。API のみ
 
-example feature は使い方の見本であり、すべての派生アプリに残す前提ではありません。
-新しい業務機能は Record Engine で生成するのが推奨です。
+example feature は `examples/feature-packs/` に参考実装として置いてあるだけで、core には組み込まれていません。
+scaffold CLI (`create-cf-starter`) で `--include items,kv` のように指定すれば派生アプリに取り込めます。
+新しい業務機能は Record Engine でレコード定義を書いて生成するのが推奨です。
 
 現在の配置:
 

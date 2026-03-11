@@ -3,7 +3,7 @@ import { Panel } from "../components/Panel";
 
 export function HomePage() {
   const { data: session } = useSession();
-  const primaryOrg = session?.memberships?.[0];
+  const primaryOrg = session?.organizations?.[0];
 
   const nextSteps = [
     "Add your first domain route under src/routes or examples/feature-packs.",
@@ -21,8 +21,8 @@ export function HomePage() {
             Starter 本体は example UI を初期表示しません。必要な feature pack だけ残すか、自分の業務機能へ置き換える前提です。
           </p>
           <div className="rounded-lg border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
-            <p>Current user: {session?.user.email ?? "not signed in"}</p>
-            <p>Current organization: {primaryOrg?.organization.name ?? "none"}</p>
+            <p>Current user: {session?.email ?? "not signed in"}</p>
+            <p>Current organization: {primaryOrg?.organizationName ?? "none"}</p>
           </div>
           <ul className="space-y-2 text-sm text-slate-300">
             {nextSteps.map((step) => (

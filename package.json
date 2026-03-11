@@ -84,6 +84,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4",
     "drizzle-kit": "^0.31",
+    "esbuild": "^0.25",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite": "^6",

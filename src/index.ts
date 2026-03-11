@@ -4,9 +4,6 @@ import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
 import type { AppContextEnv, Env } from "./types";
 import health from "./routes/health";
-import items from "../examples/feature-packs/items/server/routes";
-import kv from "../examples/feature-packs/kv/server/routes";
-import upload from "../examples/feature-packs/upload/server/routes";
 import auth from "./routes/auth";
 import orgs from "./routes/orgs";
 import modules from "./routes/modules";
@@ -57,9 +54,6 @@ export const app = new Hono<AppContextEnv>()
     return jsonError(c, 500, "internal_error", "Internal Server Error");
   })
   .route("/api/health", health)
-  .route("/api/items", items)
-  .route("/api/kv", kv)
-  .route("/api/upload", upload)
   .route("/api/modules", modules)
   .route("/api/orgs", orgs)
   .route("/api/auth", auth);

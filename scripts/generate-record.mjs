@@ -18,6 +18,7 @@ import { resolve, dirname } from "node:path";
 import { parseArgs } from "node:util";
 import {
   findRecordDef,
+  resolveDefExportName,
   pascalCase,
   camelCase,
   snakeCase,
@@ -67,14 +68,20 @@ await build({
 
 // Dynamic import of the transpiled file
 const mod = await import(`file://${tmpOut}`);
-const def = findRecordDef(mod);
+const found = findRecordDef(mod);
 
-if (!def) {
+if (!found) {
   console.error("No record definition found in the exported module.");
   console.error(
     "Make sure you export the result of defineRecord() as a named or default export."
   );
   process.exit(1);
+}
+
+const { def, exportName } = found;
+const { name: defExportName, warning: namingWarning } = resolveDefExportName(def.key, exportName);
+if (namingWarning) {
+  console.warn(`  [warn] ${namingWarning}`);
 }
 
 console.log(`\nRecord Engine: generating "${def.key}" (${def.label})\n`);
@@ -519,7 +526,7 @@ function registerRoute() {
 
 // ── 6. Page wrappers ─────────────────────────
 function generatePageWrappers() {
-  const pages = generatePages(def);
+  const pages = generatePages(def, defExportName);
   for (const page of pages) {
     const outPath = resolve(process.cwd(), page.path);
     ensureDir(outPath);

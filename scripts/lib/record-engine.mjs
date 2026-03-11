@@ -22,12 +22,25 @@ export function snakeCase(s) {
 // ── Record definition detection ─────────────────
 
 export function findRecordDef(mod) {
-  for (const [, val] of Object.entries(mod)) {
+  for (const [exportName, val] of Object.entries(mod)) {
     if (val && typeof val === "object" && val.key && val.tableName && val.fields) {
-      return val;
+      return { def: val, exportName };
     }
   }
   return null;
+}
+
+/**
+ * Resolve the expected export name for a record definition.
+ * Convention: `${key}Def` (e.g., key "tasks" → "tasksDef").
+ * If the actual export name differs, warn and return the actual name.
+ */
+export function resolveDefExportName(key, actualExportName) {
+  const expected = `${key}Def`;
+  if (actualExportName !== expected && actualExportName !== "default") {
+    return { name: actualExportName, warning: `Export name "${actualExportName}" does not match convention "${expected}". Generated pages will import as "${actualExportName}".` };
+  }
+  return { name: expected, warning: null };
 }
 
 // ── Duplicate detection ─────────────────────────
@@ -337,20 +350,21 @@ export function insertRouteRegistration(existingIndex, key) {
  * Generate List/Detail/Form page wrapper files for a record.
  * Returns an array of { path, content } objects (relative paths).
  */
-export function generatePages(def) {
+export function generatePages(def, defExportName) {
   const KEY = def.key;
   const PASCAL = pascalCase(KEY);
   const status = def.status;
+  const DEF_NAME = defExportName || `${KEY}Def`;
 
   const listPage = `import { useSession } from "~/hooks/useSession";
 import { use${PASCAL}s } from "~/features/${KEY}/hooks/use${PASCAL}";
 import { RecordListPage } from "~/pages/records/RecordListPage";
-import { ${KEY}Def } from "@shared/records/${KEY}";
+import { ${DEF_NAME} } from "@shared/records/${KEY}";
 
 export function ${PASCAL}ListPage() {
   const { data: session } = useSession();
   const { data = [], isLoading } = use${PASCAL}s(!!session);
-  return <RecordListPage def={${KEY}Def} data={data} isLoading={isLoading} />;
+  return <RecordListPage def={${DEF_NAME}} data={data} isLoading={isLoading} />;
 }
 `;
 
@@ -368,7 +382,7 @@ export function ${PASCAL}ListPage() {
 import { useSession } from "~/hooks/useSession";
 import { use${PASCAL}, useDelete${PASCAL} } from "~/features/${KEY}/hooks/use${PASCAL}";${statusImport}
 import { RecordDetailPage } from "~/pages/records/RecordDetailPage";
-import { ${KEY}Def } from "@shared/records/${KEY}";
+import { ${DEF_NAME} } from "@shared/records/${KEY}";
 
 export function ${PASCAL}DetailPage() {
   const { id: idParam } = useParams<{ id: string }>();
@@ -380,7 +394,7 @@ export function ${PASCAL}DetailPage() {
 
   return (
     <RecordDetailPage
-      def={${KEY}Def}
+      def={${DEF_NAME}}
       data={data}
       isLoading={isLoading}
       onDelete={() => deleteMutation.mutate(id, { onSuccess: () => navigate("/${KEY}") })}
@@ -398,7 +412,7 @@ import {
   useUpdate${PASCAL},
 } from "~/features/${KEY}/hooks/use${PASCAL}";
 import { RecordFormPage } from "~/pages/records/RecordFormPage";
-import { ${KEY}Def } from "@shared/records/${KEY}";
+import { ${DEF_NAME} } from "@shared/records/${KEY}";
 
 export function ${PASCAL}FormPage({ mode }: { mode: "create" | "edit" }) {
   const { id: idParam } = useParams<{ id: string }>();
@@ -425,7 +439,7 @@ export function ${PASCAL}FormPage({ mode }: { mode: "create" | "edit" }) {
 
   return (
     <RecordFormPage
-      def={${KEY}Def}
+      def={${DEF_NAME}}
       mode={mode}
       initialData={mode === "edit" ? (existing as Record<string, unknown> | undefined) : undefined}
       onSubmit={handleSubmit}

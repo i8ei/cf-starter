@@ -16,10 +16,6 @@ export const organizations = sqliteTable("organizations", {
   createdAt: text("created_at").notNull().default("(datetime('now'))"),
 });
 
-// scaffold:items-schema:start
-export { items } from "../../examples/feature-packs/items/server/db-schema";
-// scaffold:items-schema:end
-
 export const sessions = sqliteTable("sessions", {
   id: text("id").primaryKey(),
   userId: integer("user_id")
