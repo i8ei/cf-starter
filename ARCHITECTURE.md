@@ -72,6 +72,13 @@ Record Engine は3層で構成されます。
 - 生成コードに `as any` キャストなし
 - `organizationId` は `.notNull()` + index 付きで生成
 
+UI/UX 品質:
+
+- アクセシビリティ: 全フィールドで `label`/`input` 紐付け、`focus-visible` リング、`aria-required`、`role="alert"` エラー通知
+- DataTable: ソート（`aria-sort`）、キーボード操作（`tabIndex` + `onKeyDown`）、`<th scope="col">`、`<caption>`、空状態アクション誘導
+- フォーム: 必須フィールド `*` 表示、送信スピナー、削除確認ダイアログ
+- デザイン: StatusBadge セマンティックカラー（意味ベースの色割り当て）、Inter + Noto Sans JP フォント、`tabular-nums`
+
 フロントエンドは wouter による SPA ルーティングで:
 
 - `/:record` → 一覧（status filter tabs）

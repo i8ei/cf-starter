@@ -105,6 +105,10 @@
 - コード生成のライブラリ分離（`scripts/lib/record-engine.mjs`）、重複チェック、53 テスト追加
 - `organizationId` の NOT NULL + index 化
 - レガシーパスワードハッシュ互換コード削除
+- UI/UX 品質改善: アクセシビリティ基盤（label 紐付け、フォーカスリング、aria 属性、キーボード操作）
+- DataTable: クライアントサイドソート、空状態アクション誘導、テーブルアクセシビリティ
+- フォーム: 必須マーカー `*`、送信スピナー、削除確認ダイアログ
+- デザインシステム: セマンティックステータスカラー、Inter + Noto Sans JP、border-radius/shadow 整理、コントラスト改善
 
 次 (vNext):
 

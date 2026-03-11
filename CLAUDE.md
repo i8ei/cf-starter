@@ -108,11 +108,17 @@ npm run record:generate -- --record shared/records/xxx.ts  # Record Engine で�
 ### UI コンポーネント
 
 汎用レコード画面（`app/pages/records/`）を使って一覧・詳細・フォームを組める:
-- `RecordListPage` — status tabs 付き一覧
-- `RecordDetailPage` — 詳細表示 + status 変更
-- `RecordFormPage` — フォーム（sections ベース）
+- `RecordListPage` — status tabs 付き一覧、クライアントサイドソート、空状態アクション誘導
+- `RecordDetailPage` — 詳細表示 + status 変更 + 削除確認ダイアログ
+- `RecordFormPage` — フォーム（sections ベース）、必須マーカー `*`、送信スピナー
 
 フィールドコンポーネント（`app/components/fields/`）: TextField, NumberField, DateField, SelectField, RelationField
+- 全フィールド: `label`/`input` の `htmlFor`/`id` 紐付け、`focus-visible` リング、`aria-required`、エラー `role="alert"`
+
+デザインシステム:
+- フォント: Inter + Noto Sans JP（`tabular-nums` 対応）
+- StatusBadge: セマンティックカラー（ステータスの意味に基づく色割り当て）
+- border-radius: input `rounded-lg`、button/panel `rounded-xl`
 
 ### ルーティング
 
