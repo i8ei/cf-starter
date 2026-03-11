@@ -8,7 +8,7 @@ export function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)] backdrop-blur">
+    <section className="rounded-xl border border-white/10 bg-white/5 p-5 shadow-lg backdrop-blur">
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-white">{title}</h2>
         {subtitle ? (

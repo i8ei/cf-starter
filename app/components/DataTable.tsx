@@ -74,7 +74,7 @@ export function DataTable<T extends Record<string, unknown>>({
       <table className="w-full text-left text-sm">
         {caption && <caption className="sr-only">{caption}</caption>}
         <thead>
-          <tr className="border-b border-white/10 text-xs uppercase tracking-[0.2em] text-slate-400">
+          <tr className="border-b border-white/10 text-xs uppercase tracking-[0.2em] text-slate-300">
             {columns.map((col) => {
               const isActive = sort?.field === col.key;
               const ariaSortAttr =
