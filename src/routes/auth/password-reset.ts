@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
-import { sessions, users } from "../../db/schema";
+import { passwordResetTokens, sessions, users } from "../../db/schema";
 import {
   passwordResetConfirmSchema,
   passwordResetRequestSchema,
@@ -101,11 +101,20 @@ const app = new Hono<AppContextEnv>()
       }
 
       const passwordHash = await hashPassword(password);
-      await db
-        .update(users)
-        .set({ passwordHash })
-        .where(eq(users.id, result.userId));
-      await db.delete(sessions).where(eq(sessions.userId, result.userId));
+      try {
+        await db
+          .update(users)
+          .set({ passwordHash })
+          .where(eq(users.id, result.userId));
+        await db.delete(sessions).where(eq(sessions.userId, result.userId));
+      } catch (err) {
+        // Roll back token consumption if password update fails
+        await db
+          .update(passwordResetTokens)
+          .set({ usedAt: null })
+          .where(eq(passwordResetTokens.id, result.tokenId));
+        throw err;
+      }
 
       await writeAuditLog(c.env.DB, c, {
         actorUserId: result.userId,

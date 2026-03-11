@@ -77,9 +77,9 @@ export function RecordListPage<T extends Record<string, unknown>>({
             status={def.status}
             onRowClick={(row) => navigate(`/${def.key}/${row.id}`)}
             caption={`${def.label} list`}
-            emptyMessage="No records yet"
-            emptyActionLabel="+ New"
-            onEmptyAction={() => navigate(`/${def.key}/new`)}
+            emptyMessage={statusFilter ? "No records match this filter" : "No records yet"}
+            emptyActionLabel={statusFilter ? undefined : "+ New"}
+            onEmptyAction={statusFilter ? undefined : () => navigate(`/${def.key}/new`)}
             sortable
             defaultSort={def.listView.defaultSort}
           />

@@ -50,7 +50,7 @@ export function schemaHasTable(schemaContent, tableName) {
 export function indexHasRoute(indexContent, key) {
   return (
     indexContent.includes(`"/api/${key}"`) ||
-    indexContent.includes(`'api/${key}'`)
+    indexContent.includes(`'/api/${key}'`)
   );
 }
 
@@ -137,9 +137,21 @@ export function appendDrizzleTable(existingSchema, def) {
   const result = generateDrizzleTableBlock(def);
   if (!result.ok) return result;
 
+  // Ensure `index` is imported from drizzle-orm/sqlite-core
+  let schema = existingSchema;
+  if (!schema.includes("index") || !schema.match(/\bindex\b.*from\s+["']drizzle-orm\/sqlite-core["']/)) {
+    schema = schema.replace(
+      /(import\s*\{[^}]*)(}\s*from\s*["']drizzle-orm\/sqlite-core["'])/,
+      (match, imports, tail) => {
+        if (/\bindex\b/.test(imports)) return match;
+        return `${imports.trimEnd()}, index ${tail}`;
+      }
+    );
+  }
+
   // Trim trailing whitespace/newlines for a clean insertion point,
   // then append the block followed by a final newline.
-  const trimmed = existingSchema.trimEnd();
+  const trimmed = schema.trimEnd();
   return {
     ok: true,
     content: trimmed + result.content,

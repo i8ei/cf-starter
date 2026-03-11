@@ -71,10 +71,19 @@ export async function consumeEmailVerificationToken(
     });
 
   if (updated) {
-    await db
-      .update(users)
-      .set({ emailVerifiedAt: verifiedAt })
-      .where(eq(users.id, updated.userId));
+    try {
+      await db
+        .update(users)
+        .set({ emailVerifiedAt: verifiedAt })
+        .where(eq(users.id, updated.userId));
+    } catch (err) {
+      // Roll back token consumption if user update fails
+      await db
+        .update(emailVerificationTokens)
+        .set({ verifiedAt: null })
+        .where(eq(emailVerificationTokens.id, updated.id));
+      throw err;
+    }
 
     return { ok: true, userId: updated.userId, tokenId: updated.id, emailVerifiedAt: verifiedAt };
   }

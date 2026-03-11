@@ -77,25 +77,35 @@ export function DataTable<T extends Record<string, unknown>>({
           <tr className="border-b border-white/10 text-xs uppercase tracking-[0.2em] text-slate-300">
             {columns.map((col) => {
               const isActive = sort?.field === col.key;
-              const ariaSortAttr =
-                sortable && isActive
+              const ariaSortAttr = sortable
+                ? isActive
                   ? sort.direction === "asc"
                     ? ("ascending" as const)
                     : ("descending" as const)
-                  : undefined;
+                  : ("none" as const)
+                : undefined;
               return (
                 <th
                   key={col.key}
                   scope="col"
-                  className={`px-4 py-3 font-medium${sortable ? " cursor-pointer select-none" : ""}`}
+                  className="px-4 py-3 font-medium"
                   aria-sort={ariaSortAttr}
-                  onClick={sortable ? () => handleSort(col.key) : undefined}
                 >
-                  {col.label}
-                  {sortable && isActive && (
-                    <span className="ml-1" aria-hidden="true">
-                      {sort.direction === "asc" ? "▲" : "▼"}
-                    </span>
+                  {sortable ? (
+                    <button
+                      type="button"
+                      className="inline-flex items-center bg-transparent border-none p-0 font-inherit text-inherit cursor-pointer select-none"
+                      onClick={() => handleSort(col.key)}
+                    >
+                      {col.label}
+                      {isActive && (
+                        <span className="ml-1" aria-hidden="true">
+                          {sort.direction === "asc" ? "▲" : "▼"}
+                        </span>
+                      )}
+                    </button>
+                  ) : (
+                    col.label
                   )}
                 </th>
               );
@@ -134,7 +144,6 @@ export function DataTable<T extends Record<string, unknown>>({
                 {...(onRowClick
                   ? {
                       tabIndex: 0,
-                      role: "link" as const,
                       "aria-label": String(
                         row[columns[0]?.key] ?? `Row ${i + 1}`,
                       ),
