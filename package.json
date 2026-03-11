@@ -33,6 +33,7 @@
     "ROADMAP.md",
     "app",
     "bin",
+    "examples",
     "drizzle.config.ts",
     "index.html",
     "migrations",

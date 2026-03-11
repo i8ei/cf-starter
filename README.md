@@ -244,6 +244,7 @@ cf-starter/
 │   ├── pages/              ページコンポーネント
 │   │   ├── records/        汎用レコード画面（List / Detail / Form）
 │   │   ├── AuthPage.tsx    認証画面
+│   │   ├── HomePage.tsx    トップページ（スターター案内）
 │   │   └── SettingsPage.tsx 組織設定画面
 │   └── App.tsx             wouter ルーティング
 ├── shared/                 フロント・バック共有契約

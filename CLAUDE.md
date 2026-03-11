@@ -71,9 +71,6 @@ npm test                 # Vitest テスト
 npm run db:generate      # Drizzle スキーマからマイグレーション生成
 npm run db:migrate       # D1 ローカルマイグレーション
 npm run db:migrate:remote  # D1 リモートマイグレーション
-npm run app:scaffold     # 新しいアプリをスキャフォールド
-npm run app:plan         # core / example の切り分け確認
-npm run modules:plan     # module 導入状況確認
 npm run record:generate -- --record shared/records/xxx.ts  # Record Engine でコード生成
 ```
 
@@ -126,7 +123,7 @@ npm run record:generate -- --record shared/records/xxx.ts  # Record Engine で�
 
 wouter による SPA ルーティング:
 - 未ログイン時 → AuthPage をインライン表示（専用 `/login` ルートはない）
-- `/` → HomePage（件数カード + 最新5件。ExampleItemsPage は残存）
+- `/` → HomePage（スターター案内 + 現在のユーザー/組織表示）
 - `/:record` → 一覧（Record Engine で生成・配線後に有効）
 - `/:record/new` → 新規作成（同上）
 - `/:record/:id` → 詳細（同上）

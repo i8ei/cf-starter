@@ -82,7 +82,7 @@ UI/UX 品質:
 フロントエンドは wouter による SPA ルーティングで:
 
 - 未ログイン時 → AuthPage をインライン表示（専用 `/login` ルートはない）
-- `/` → HomePage（件数カード + スターター案内）
+- `/` → HomePage（スターター案内 + 現在のユーザー/組織表示）
 - `/:record` → 一覧（Record Engine で生成・配線後に有効）
 - `/:record/new` → 新規作成（同上）
 - `/:record/:id` → 詳細（status 変更ボタン付き、同上）
