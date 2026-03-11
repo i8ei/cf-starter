@@ -7,6 +7,7 @@ import {
   updateItemSchema,
 } from "../../../../shared/features/example/items/schema";
 import { requireAuth } from "../../../middleware/auth";
+import { requireOrgRole } from "../../../middleware/require-org-role";
 import type { AppContextEnv } from "../../../types";
 import { writeAuditLog } from "../../../lib/audit";
 import { jsonError } from "../../../lib/http";
@@ -14,6 +15,7 @@ import { validator } from "../../../lib/validator";
 
 const app = new Hono<AppContextEnv>()
   .use("*", requireAuth)
+  .use("*", requireOrgRole())
   .get("/", async (c) => {
     const orgId = c.get("orgId");
     if (!orgId) {

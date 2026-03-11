@@ -11,7 +11,7 @@ import type {
   OrganizationInviteSummary,
   OrganizationMembershipSummary,
 } from "../types";
-import { bytesToHex } from "./crypto";
+import { hashOpaqueToken } from "./crypto";
 
 export const DEFAULT_ORGANIZATION_ROLE = "owner";
 export const ORGANIZATION_ADMIN_ROLES = ["owner", "admin"] as const;
@@ -38,14 +38,6 @@ function buildUniqueOrganizationSlug(base: string): string {
 
 export function normalizeInviteEmail(email: string): string {
   return email.trim().toLowerCase();
-}
-
-export async function hashInviteToken(token: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(token)
-  );
-  return bytesToHex(new Uint8Array(digest));
 }
 
 export function resolveOrganizationInviteStatus(
@@ -169,7 +161,7 @@ export async function createOrganizationInvite(
   }
 ): Promise<OrganizationInviteSummary & { token: string }> {
   const token = crypto.randomUUID();
-  const tokenHash = await hashInviteToken(token);
+  const tokenHash = await hashOpaqueToken(token);
   const expiresAt = new Date(
     Date.now() + ORGANIZATION_INVITE_TTL_DAYS * 24 * 60 * 60 * 1000
   ).toISOString();
@@ -253,7 +245,7 @@ export async function acceptOrganizationInvite(
     userEmail: string;
   }
 ): Promise<AcceptOrganizationInviteResult> {
-  const tokenHash = await hashInviteToken(input.token);
+  const tokenHash = await hashOpaqueToken(input.token);
   const [invite] = await db
     .select({
       id: organizationInvites.id,

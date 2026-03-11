@@ -40,13 +40,6 @@ export function getSessionCookie(c: Context): string | undefined {
   );
 }
 
-export function hasSessionCookie(cookieHeader: string): boolean {
-  return (
-    cookieHeader.includes(`${HOST_SESSION_COOKIE_NAME}=`) ||
-    cookieHeader.includes(`${LEGACY_SESSION_COOKIE_NAME}=`)
-  );
-}
-
 export async function rotateSession(
   repository: SessionRepository,
   userId: number,
