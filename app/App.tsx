@@ -12,6 +12,7 @@ import {
 } from "./features/example/items/hooks/useItems";
 // scaffold:items-import:end
 import { Panel } from "./components/Panel";
+import { HomePage } from "./pages/HomePage";
 
 const queryClient = new QueryClient();
 
@@ -110,7 +111,7 @@ function AppRoutes() {
       <Switch>
         <Route path="/settings" component={SettingsPage} />
         {/* Example feature route — kept for backward compatibility */}
-        <Route path="/" component={ExampleItemsPage} />
+        <Route path="/" component={HomePage} />
         {/*
           Record Engine routes will be added here by the generator:
           <Route path="/:record" component={...} />

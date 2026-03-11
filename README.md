@@ -223,13 +223,16 @@ cf-starter/
 │   │   ├── fields/         フォーム用フィールドコンポーネント
 │   │   ├── AppShell.tsx    ナビゲーション付きレイアウト
 │   │   ├── DataTable.tsx   テーブル表示
+│   │   ├── Panel.tsx       カードUI
 │   │   ├── StatusBadge.tsx ステータスバッジ
 │   │   └── StatusFilterTabs.tsx ステータスフィルタータブ
 │   ├── features/           feature hooks（生成物もここ）
 │   ├── hooks/              core hooks
 │   ├── lib/api.ts          型付き Hono RPC client
 │   ├── pages/              ページコンポーネント
-│   │   └── records/        汎用レコード画面（List / Detail / Form）
+│   │   ├── records/        汎用レコード画面（List / Detail / Form）
+│   │   ├── AuthPage.tsx    認証画面
+│   │   └── SettingsPage.tsx 組織設定画面
 │   └── App.tsx             wouter ルーティング
 ├── shared/                 フロント・バック共有契約
 │   ├── features/           feature schemas（生成物もここ）

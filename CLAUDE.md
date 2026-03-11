@@ -22,13 +22,15 @@ cf-starter/
 │   │   ├── Panel.tsx       ← カードUI
 │   │   ├── DataTable.tsx   ← テーブル表示
 │   │   ├── StatusBadge.tsx ← ステータスバッジ
-│   │   └── StatusFilterTabs.tsx ← ステータスフィルタータブ
+│   │   ├── StatusFilterTabs.tsx ← ステータスフィルタータブ
+│   │   └── SummaryCards.tsx ← ステータス別件数カード（RecordListPage 上部）
 │   ├── features/           ← feature hooks（生成物もここ）
 │   ├── hooks/              ← core hooks
 │   ├── lib/api.ts          ← Hono RPC クライアント（型付き）
 │   ├── pages/              ← ページコンポーネント
 │   │   ├── records/        ← 汎用レコード画面（List/Detail/Form）
 │   │   ├── AuthPage.tsx
+│   │   ├── HomePage.tsx    ← トップページ（件数カード + 最新更新）
 │   │   └── SettingsPage.tsx
 │   ├── App.tsx             ← wouter ルーティング
 │   ├── main.tsx
@@ -108,7 +110,7 @@ npm run record:generate -- --record shared/records/xxx.ts  # Record Engine で�
 ### UI コンポーネント
 
 汎用レコード画面（`app/pages/records/`）を使って一覧・詳細・フォームを組める:
-- `RecordListPage` — status tabs 付き一覧、クライアントサイドソート、空状態アクション誘導
+- `RecordListPage` — SummaryCards + status tabs 付き一覧、クライアントサイドソート、空状態アクション誘導
 - `RecordDetailPage` — 詳細表示 + status 変更 + 削除確認ダイアログ
 - `RecordFormPage` — フォーム（sections ベース）、必須マーカー `*`、送信スピナー
 
@@ -124,7 +126,7 @@ npm run record:generate -- --record shared/records/xxx.ts  # Record Engine で�
 
 wouter による SPA ルーティング:
 - 未ログイン時 → AuthPage をインライン表示（専用 `/login` ルートはない）
-- `/` → ホーム（現在は Example Items ページ）
+- `/` → HomePage（件数カード + 最新5件。ExampleItemsPage は残存）
 - `/:record` → 一覧（Record Engine で生成・配線後に有効）
 - `/:record/new` → 新規作成（同上）
 - `/:record/:id` → 詳細（同上）

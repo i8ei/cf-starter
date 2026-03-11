@@ -4,6 +4,7 @@ import type { RecordDef } from "@shared/lib/record-def";
 import { Panel } from "~/components/Panel";
 import { DataTable } from "~/components/DataTable";
 import { StatusFilterTabs } from "~/components/StatusFilterTabs";
+import { SummaryCards } from "~/components/SummaryCards";
 
 type Props<T extends Record<string, unknown>> = {
   def: RecordDef;
@@ -57,6 +58,15 @@ export function RecordListPage<T extends Record<string, unknown>>({
           + New
         </button>
       </div>
+
+      {def.status && statusCounts ? (
+        <SummaryCards
+          counts={statusCounts}
+          options={def.status.options}
+          onSelect={setStatusFilter}
+          activeFilter={statusFilter}
+        />
+      ) : null}
 
       {def.status ? (
         <StatusFilterTabs
