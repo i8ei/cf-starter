@@ -154,6 +154,16 @@ hc<AppType> → TanStack Query（フロントエンド）
 - 通常: `npm run dev`（シンプル、認証なしなら問題なし）
 - 認証あり: `npm run dev:split`（フリッカーする場合はこちら）
 
+## 変更時のチェックリスト
+
+コードを変更したら、commit 前に必ず確認する。
+
+- [ ] この変更の影響を受ける他のファイルに波及漏れがないか（grep で確認）
+- [ ] 不要になった関数・export・import が残っていないか
+- [ ] CLAUDE.md / ARCHITECTURE.md / ROADMAP.md の記述と矛盾しないか（矛盾があればコードと一緒に直す）
+- [ ] デザインシステムのルール（input: `rounded-lg`、button/panel: `rounded-xl`、`focus-visible:ring-2`、`text-slate-300` 以上）に違反していないか
+- [ ] `npx tsc --noEmit` && `npm test` && `npm run build` が通るか
+
 ## 規約
 
 - API は `/api/` 以下、Hono ルーターで管理
