@@ -1,3 +1,8 @@
+/**
+ * CLI/build-time module plan — reads wrangler.jsonc.
+ * Module definitions are intentionally duplicated with src/lib/module-plan.ts
+ * which checks live Env bindings at runtime. Keep both in sync when adding modules.
+ */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 

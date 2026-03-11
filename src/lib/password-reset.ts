@@ -3,8 +3,6 @@ import { drizzle } from "drizzle-orm/d1";
 import { passwordResetTokens } from "../db/schema";
 import { hashOpaqueToken } from "./crypto";
 
-export { hashOpaqueToken };
-
 export const PASSWORD_RESET_TTL_HOURS = 2;
 
 export function resolvePasswordResetStatus(

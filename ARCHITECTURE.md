@@ -81,19 +81,21 @@ UI/UX 品質:
 
 フロントエンドは wouter による SPA ルーティングで:
 
-- `/:record` → 一覧（status filter tabs）
-- `/:record/new` → 新規作成
-- `/:record/:id` → 詳細（status 変更ボタン付き）
-- `/:record/:id/edit` → 編集
+- 未ログイン時 → AuthPage をインライン表示（専用 `/login` ルートはない）
+- `/` → ホーム（現在は Example Items ページ）
+- `/:record` → 一覧（Record Engine で生成・配線後に有効）
+- `/:record/new` → 新規作成（同上）
+- `/:record/:id` → 詳細（status 変更ボタン付き、同上）
+- `/:record/:id/edit` → 編集（同上）
 - `/settings` → 組織設定
 
 汎用ページコンポーネント（`RecordListPage`, `RecordDetailPage`, `RecordFormPage`）とフィールドコンポーネント（`TextField`, `NumberField`, `DateField`, `SelectField`, `RelationField`）を組み合わせて UI を構築します。
 
 ### Example Features
 
-- `items`
-- `kv`
-- `upload`
+- `items` — D1 CRUD の見本。フロントエンド UI あり（`App.tsx` に組み込み）
+- `kv` — KV read/write の見本。API のみ（フロントエンド hooks/UI なし）
+- `upload` — R2 upload の見本。API のみ（フロントエンド hooks/UI なし）
 
 example feature は使い方の見本であり、すべての派生アプリに残す前提ではありません。
 新しい業務機能は Record Engine で生成するのが推奨です。

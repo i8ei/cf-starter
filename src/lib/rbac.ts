@@ -3,7 +3,6 @@ import { drizzle } from "drizzle-orm/d1";
 import { roles, userRoles } from "../db/schema";
 
 export const DEFAULT_ROLE = "member";
-export const ADMIN_ROLE = "admin";
 
 export function hasRequiredRole(
   assignedRoles: string[],
