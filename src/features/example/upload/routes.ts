@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { requireAuth } from "../../../middleware/auth";
+import { requireOrgRole } from "../../../middleware/require-org-role";
 import type { AppContextEnv } from "../../../types";
 import { writeAuditLog } from "../../../lib/audit";
 import { jsonError } from "../../../lib/http";
@@ -16,6 +17,7 @@ const sanitizeFilename = (name: string): string =>
 
 const app = new Hono<AppContextEnv>()
   .use("*", requireAuth)
+  .use("*", requireOrgRole())
   .get("/", async (c) => {
     const orgId = c.get("orgId");
     if (!orgId) {

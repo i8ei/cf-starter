@@ -4,7 +4,7 @@ export const starterManifest = {
       "Authentication, organization context, security middleware, queues, logging, and operational scripts.",
     backendPaths: [
       "src/index.ts",
-      "src/routes/auth.ts",
+      "src/routes/auth/index.ts",
       "src/routes/orgs.ts",
       "src/routes/health.ts",
       "src/routes/modules.ts",
