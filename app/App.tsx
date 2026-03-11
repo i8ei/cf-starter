@@ -73,27 +73,27 @@ function ExampleItemsPage() {
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             placeholder="New item..."
-            className="flex-1 rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none"
+            className="flex-1 rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
           />
           <button
             onClick={handleAdd}
             disabled={createItem.isPending}
-            className="rounded-2xl bg-cyan-300 px-5 py-3 font-semibold text-slate-950 disabled:opacity-50"
+            className="rounded-xl bg-cyan-300 px-5 py-3 font-semibold text-slate-950 disabled:opacity-50"
           >
             Add
           </button>
         </div>
         {isLoading ? (
-          <p className="text-slate-500">Loading...</p>
+          <p className="text-slate-400">Loading...</p>
         ) : (
           <ul className="space-y-2">
             {items.map((item) => (
               <li
                 key={item.id}
-                className="flex justify-between rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3"
+                className="flex justify-between rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3"
               >
                 <span>{item.name}</span>
-                <span className="text-sm text-slate-500">{item.createdAt}</span>
+                <span className="text-sm text-slate-400">{item.createdAt}</span>
               </li>
             ))}
           </ul>

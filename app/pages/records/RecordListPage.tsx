@@ -52,7 +52,7 @@ export function RecordListPage<T extends Record<string, unknown>>({
         <button
           type="button"
           onClick={() => navigate(`/${def.key}/new`)}
-          className="rounded-2xl bg-amber-400 px-5 py-3 font-semibold text-slate-950"
+          className="rounded-xl bg-amber-400 px-5 py-3 font-semibold text-slate-950"
         >
           + New
         </button>
