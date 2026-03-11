@@ -67,7 +67,7 @@ export function RecordFormPage({
         <button
           type="button"
           onClick={() => navigate(`/${def.key}`)}
-          className="text-sm text-slate-400 hover:text-white"
+          className="text-sm text-slate-400 hover:text-white focus-visible:ring-2 focus-visible:ring-amber-400/60 rounded-lg"
         >
           &larr; Back
         </button>
@@ -110,14 +110,14 @@ export function RecordFormPage({
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-2xl bg-amber-400 px-6 py-3 font-semibold text-slate-950 disabled:opacity-50"
+            className="rounded-lg bg-amber-400 px-6 py-3 font-semibold text-slate-950 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-amber-400/60"
           >
             {mode === "create" ? "Create" : "Save"}
           </button>
           <button
             type="button"
             onClick={() => navigate(`/${def.key}`)}
-            className="rounded-2xl bg-white/5 px-6 py-3 font-semibold text-slate-300"
+            className="rounded-lg bg-white/5 px-6 py-3 font-semibold text-slate-300 focus-visible:ring-2 focus-visible:ring-amber-400/60"
           >
             Cancel
           </button>
@@ -147,6 +147,8 @@ function FieldRenderer({
           def={field}
           value={String(value ?? "")}
           onChange={onChange as (v: string) => void}
+          fieldKey={fieldKey}
+          required={field.required}
         />
       );
     case "number":
@@ -155,6 +157,8 @@ function FieldRenderer({
           def={field}
           value={value === undefined || value === "" ? "" : Number(value)}
           onChange={onChange as (v: number | "") => void}
+          fieldKey={fieldKey}
+          required={field.required}
         />
       );
     case "date":
@@ -163,6 +167,8 @@ function FieldRenderer({
           def={field}
           value={String(value ?? "")}
           onChange={onChange as (v: string) => void}
+          fieldKey={fieldKey}
+          required={field.required}
         />
       );
     case "select":
@@ -171,6 +177,8 @@ function FieldRenderer({
           def={field}
           value={String(value ?? "")}
           onChange={onChange as (v: string) => void}
+          fieldKey={fieldKey}
+          required={field.required}
         />
       );
     case "relation":
@@ -180,19 +188,27 @@ function FieldRenderer({
           value={value === undefined || value === "" ? "" : Number(value)}
           onChange={onChange as (v: number | "") => void}
           options={relationOptions}
+          fieldKey={fieldKey}
+          required={field.required}
         />
       );
     default:
       return (
         <div>
-          <label className="mb-1.5 block text-sm text-slate-300">
+          <label
+            className="mb-1.5 block text-sm text-slate-300"
+            htmlFor={`field-${fieldKey}`}
+          >
             {field.label}
+            {field.required && <span className="text-rose-400 ml-0.5">*</span>}
           </label>
           <input
+            id={`field-${fieldKey}`}
             type="text"
             value={String(value ?? "")}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none"
+            className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
+            aria-required={field.required || undefined}
           />
         </div>
       );
