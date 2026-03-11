@@ -53,7 +53,7 @@ export function SettingsPage() {
             type="button"
             onClick={() => requestEmailVerification.mutate()}
             disabled={requestEmailVerification.isPending}
-            className="mt-4 mr-3 rounded-2xl bg-emerald-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
+            className="mt-4 mr-3 rounded-xl bg-emerald-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
           >
             Resend Verification
           </button>
@@ -62,7 +62,7 @@ export function SettingsPage() {
           type="button"
           onClick={() => logout.mutate()}
           disabled={logout.isPending}
-          className="mt-4 rounded-2xl bg-rose-400 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
+          className="mt-4 rounded-xl bg-rose-400 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
         >
           Log Out
         </button>
@@ -83,7 +83,7 @@ export function SettingsPage() {
                   onClick={() =>
                     switchOrganization.mutate(org.organizationId)
                   }
-                  className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left ${
+                  className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left ${
                     session.currentOrganizationId === org.organizationId
                       ? "border-amber-300/40 bg-amber-300/10"
                       : "border-white/10 bg-slate-950/40"
@@ -105,7 +105,7 @@ export function SettingsPage() {
             </div>
           </div>
           <div className="space-y-4">
-            <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+            <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
               <div className="mb-3 text-sm text-slate-300">
                 Create Organization
               </div>
@@ -114,7 +114,7 @@ export function SettingsPage() {
                   value={orgName}
                   onChange={(e) => setOrgName(e.target.value)}
                   placeholder="Regional Ops"
-                  className="flex-1 rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none"
+                  className="flex-1 rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
                 />
                 <button
                   type="button"
@@ -125,7 +125,7 @@ export function SettingsPage() {
                     });
                   }}
                   disabled={createOrganization.isPending}
-                  className="rounded-2xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
+                  className="rounded-xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
                 >
                   Create
                 </button>
@@ -136,14 +136,14 @@ export function SettingsPage() {
                 </p>
               ) : null}
             </div>
-            <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+            <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
               <div className="mb-3 text-sm text-slate-300">Accept Invite</div>
               <div className="flex gap-2">
                 <input
                   value={inviteToken}
                   onChange={(e) => setInviteToken(e.target.value)}
                   placeholder="Invite token"
-                  className="flex-1 rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none"
+                  className="flex-1 rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
                 />
                 <button
                   type="button"
@@ -154,7 +154,7 @@ export function SettingsPage() {
                     });
                   }}
                   disabled={acceptInvite.isPending}
-                  className="rounded-2xl bg-fuchsia-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
+                  className="rounded-xl bg-fuchsia-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
                 >
                   Accept
                 </button>
@@ -179,14 +179,14 @@ export function SettingsPage() {
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               placeholder="user@example.com"
-              className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none"
+              className="rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
             />
             <select
               value={inviteRole}
               onChange={(e) =>
                 setInviteRole(e.target.value as "admin" | "member")
               }
-              className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none"
+              className="rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
             >
               <option value="member">member</option>
               <option value="admin">admin</option>
@@ -206,7 +206,7 @@ export function SettingsPage() {
                 );
               }}
               disabled={createInvite.isPending}
-              className="rounded-2xl bg-amber-400 px-5 py-3 font-semibold text-slate-950 disabled:opacity-50"
+              className="rounded-xl bg-amber-400 px-5 py-3 font-semibold text-slate-950 disabled:opacity-50"
             >
               Invite
             </button>
@@ -217,7 +217,7 @@ export function SettingsPage() {
           </p>
         )}
         {latestToken ? (
-          <div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-300/10 p-4">
+          <div className="mb-4 rounded-xl border border-amber-300/30 bg-amber-300/10 p-4">
             <div className="text-xs uppercase tracking-[0.24em] text-amber-200/80">
               latest invite token
             </div>
@@ -236,7 +236,7 @@ export function SettingsPage() {
             invites.invites.map((invite) => (
               <div
                 key={invite.id}
-                className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 lg:flex-row lg:items-center lg:justify-between"
+                className="flex flex-col gap-2 rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 lg:flex-row lg:items-center lg:justify-between"
               >
                 <div>
                   <div className="font-medium text-white">{invite.email}</div>
@@ -250,7 +250,7 @@ export function SettingsPage() {
               </div>
             ))
           ) : (
-            <p className="text-sm text-slate-500">No invites yet.</p>
+            <p className="text-sm text-slate-400">No invites yet.</p>
           )}
         </div>
       </Panel>

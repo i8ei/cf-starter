@@ -119,12 +119,12 @@ export function DataTable<T extends Record<string, unknown>>({
                 colSpan={columns.length}
                 className="px-4 py-12 text-center"
               >
-                <p className="text-slate-500">{emptyMessage}</p>
+                <p className="text-slate-400">{emptyMessage}</p>
                 {onEmptyAction && emptyActionLabel && (
                   <button
                     type="button"
                     onClick={onEmptyAction}
-                    className="mt-4 rounded-2xl bg-amber-400 px-5 py-3 font-semibold text-slate-950"
+                    className="mt-4 rounded-xl bg-amber-400 px-5 py-3 font-semibold text-slate-950"
                   >
                     {emptyActionLabel}
                   </button>

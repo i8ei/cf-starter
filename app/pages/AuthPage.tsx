@@ -69,7 +69,7 @@ export function AuthPage() {
   };
 
   const inputClass =
-    "w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none";
+    "w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60";
 
   return (
     <div className="mx-auto max-w-xl">
@@ -119,7 +119,7 @@ export function AuthPage() {
             type="button"
             onClick={handleSubmit}
             disabled={currentMutation.isPending}
-            className="w-full rounded-2xl bg-amber-400 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
+            className="w-full rounded-xl bg-amber-400 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
           >
             {mode === "login" ? "Log In" : "Create Account"}
           </button>
@@ -144,7 +144,7 @@ export function AuthPage() {
               type="button"
               onClick={handleRequestReset}
               disabled={requestPasswordReset.isPending}
-              className="w-full rounded-2xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
+              className="w-full rounded-xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
             >
               Send Reset Link
             </button>
@@ -179,7 +179,7 @@ export function AuthPage() {
               type="button"
               onClick={handleConfirmReset}
               disabled={confirmPasswordReset.isPending}
-              className="w-full rounded-2xl bg-fuchsia-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
+              className="w-full rounded-xl bg-fuchsia-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
             >
               Reset Password
             </button>
@@ -205,7 +205,7 @@ export function AuthPage() {
               type="button"
               onClick={handleConfirmEmailVerification}
               disabled={confirmEmailVerification.isPending}
-              className="w-full rounded-2xl bg-emerald-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
+              className="w-full rounded-xl bg-emerald-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
             >
               Verify Email
             </button>
