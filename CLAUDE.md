@@ -123,12 +123,12 @@ npm run record:generate -- --record shared/records/xxx.ts  # Record Engine で�
 ### ルーティング
 
 wouter による SPA ルーティング:
-- `/login` → 認証（未ログイン時自動表示）
-- `/` → ホーム
-- `/:record` → 一覧
-- `/:record/new` → 新規作成
-- `/:record/:id` → 詳細
-- `/:record/:id/edit` → 編集
+- 未ログイン時 → AuthPage をインライン表示（専用 `/login` ルートはない）
+- `/` → ホーム（現在は Example Items ページ）
+- `/:record` → 一覧（Record Engine で生成・配線後に有効）
+- `/:record/new` → 新規作成（同上）
+- `/:record/:id` → 詳細（同上）
+- `/:record/:id/edit` → 編集（同上）
 - `/settings` → 組織設定
 
 ## 型安全チェーン

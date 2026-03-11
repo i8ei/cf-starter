@@ -1,3 +1,8 @@
+/**
+ * Runtime module status — checks live Env bindings.
+ * Module definitions are intentionally duplicated with scripts/lib/modules-plan.mjs
+ * which reads wrangler.jsonc at build/CLI time. Keep both in sync when adding modules.
+ */
 import type { Env } from "../types";
 
 export type ModuleStatus = {
