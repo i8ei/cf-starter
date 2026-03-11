@@ -1,17 +1,17 @@
 import { Hono } from "hono";
 import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
-import { items } from "../../../db/schema";
+import { items } from "./db-schema";
 import {
   createItemSchema,
   updateItemSchema,
-} from "../../../../shared/features/example/items/schema";
-import { requireAuth } from "../../../middleware/auth";
-import { requireOrgRole } from "../../../middleware/require-org-role";
-import type { AppContextEnv } from "../../../types";
-import { writeAuditLog } from "../../../lib/audit";
-import { jsonError } from "../../../lib/http";
-import { validator } from "../../../lib/validator";
+} from "../shared/schema";
+import { requireAuth } from "../../../../src/middleware/auth";
+import { requireOrgRole } from "../../../../src/middleware/require-org-role";
+import type { AppContextEnv } from "../../../../src/types";
+import { writeAuditLog } from "../../../../src/lib/audit";
+import { jsonError } from "../../../../src/lib/http";
+import { validator } from "../../../../src/lib/validator";
 
 const app = new Hono<AppContextEnv>()
   .use("*", requireAuth)

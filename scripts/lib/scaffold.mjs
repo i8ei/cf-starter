@@ -1,5 +1,6 @@
 import { cp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { materializeFeatureMigrations } from "./example-migrations.mjs";
 import { starterManifest } from "./starter-manifest.mjs";
 
 const COPY_EXCLUDES = new Set([
@@ -9,6 +10,35 @@ const COPY_EXCLUDES = new Set([
   ".wrangler",
   "package-lock.json",
 ]);
+const GENERATED_APP_REMOVED_PATHS = [
+  "bin/create-cf-starter",
+  "scripts/check-publish-ready.mjs",
+  "scripts/compat/app-plan.mjs",
+  "scripts/compat/modules-plan.mjs",
+  "scripts/compat/scaffold-app.mjs",
+  "scripts/create-cf-starter.mjs",
+  "scripts/internal/app-plan.mjs",
+  "scripts/internal/modules-plan.mjs",
+  "scripts/internal/scaffold-app.mjs",
+  "scripts/lib/app-plan.mjs",
+  "scripts/lib/modules-plan.mjs",
+  "scripts/lib/scaffold.mjs",
+  "scripts/lib/starter-manifest.mjs",
+  "scripts/test-create.mjs",
+  "test/create-cf-starter.test.ts",
+  "test/deprecated-cli.test.ts",
+  "test/doctor.test.ts",
+  "test/module-plan.test.ts",
+  "test/public-surface.test.ts",
+  "test/scaffold.test.ts",
+  "test/starter-manifest.test.ts",
+  "ARCHITECTURE.md",
+  "CLAUDE.md",
+  "ROADMAP.md",
+];
+const GENERATED_APP_REWRITTEN_PATHS = [
+  ".github/workflows/ci.yml",
+];
 
 const EXAMPLE_FEATURE_KEYS = starterManifest.exampleFeatures.map((feature) => feature.key);
 const CORE_REQUIRED_BINDINGS = ["DB", "JOBS", "RATE_LIMITER"];
@@ -190,6 +220,12 @@ function getSelectedFeatureManifests(selectedFeatures) {
   );
 }
 
+function buildProfile({ coreOnly, selectedFeatures }) {
+  if (coreOnly) return "core-only";
+  if (selectedFeatures.length === 0) return "no-examples-selected";
+  return "optional-examples";
+}
+
 export function buildScaffoldSummary({ appName, coreOnly = false, selectedFeatures = [] }) {
   const featureManifests = getSelectedFeatureManifests(selectedFeatures);
   const requiredBindings = Array.from(
@@ -202,8 +238,18 @@ export function buildScaffoldSummary({ appName, coreOnly = false, selectedFeatur
   const nextSteps = [
     "Run npm install",
     "Run npm run db:migrate",
-    "Set real Cloudflare resource IDs in wrangler.jsonc",
+    "Optionally run npm run seed:demo for a local demo user",
+    "Run npm run doctor",
+    "Set real d1 database_id and queue name in wrangler.jsonc",
   ];
+
+  if (requiredBindings.includes("KV")) {
+    nextSteps.push("Create or wire the KV namespace, then set the KV binding in wrangler.jsonc");
+  }
+
+  if (requiredBindings.includes("BUCKET")) {
+    nextSteps.push("Create or wire the R2 bucket, then set the BUCKET binding in wrangler.jsonc");
+  }
 
   if (coreOnly) {
     nextSteps.push("Add your first domain feature under src/routes or src/features");
@@ -216,6 +262,7 @@ export function buildScaffoldSummary({ appName, coreOnly = false, selectedFeatur
   return {
     appName,
     mode: coreOnly ? "core-only" : "starter",
+    profile: buildProfile({ coreOnly, selectedFeatures }),
     selectedFeatures,
     requiredBindings,
     nextSteps,
@@ -223,21 +270,18 @@ export function buildScaffoldSummary({ appName, coreOnly = false, selectedFeatur
 }
 
 function buildScaffoldFileChanges({ coreOnly, selectedFeatures }) {
-  const filesRemoved = [];
+  const filesRemoved = [...GENERATED_APP_REMOVED_PATHS];
   const filesRewritten = [
     "package.json",
     "wrangler.jsonc",
     "README.md",
     "app/App.tsx",
+    ...GENERATED_APP_REWRITTEN_PATHS,
   ];
 
   if (coreOnly) {
-    filesRemoved.push(
-      "src/features/example/",
-      "app/features/example/",
-      "shared/features/example/"
-    );
-    filesRewritten.push("src/index.ts");
+    filesRemoved.push("examples/");
+    filesRewritten.push("src/index.ts", "src/db/schema.ts", "app/pages/HomePage.tsx");
     return {
       filesRemoved,
       filesRewritten,
@@ -246,18 +290,18 @@ function buildScaffoldFileChanges({ coreOnly, selectedFeatures }) {
 
   for (const featureKey of EXAMPLE_FEATURE_KEYS) {
     if (selectedFeatures.includes(featureKey)) continue;
-    filesRemoved.push(
-      `src/features/example/${featureKey}/`,
-      `app/features/example/${featureKey}/`,
-      `shared/features/example/${featureKey}/`
-    );
+    filesRemoved.push(`examples/feature-packs/${featureKey}/`);
+  }
+
+  if (!selectedFeatures.includes("kv") && !selectedFeatures.includes("upload")) {
+    filesRemoved.push("examples/lib/");
   }
 
   if (filesRemoved.length > 0) {
     filesRewritten.push("src/index.ts");
   }
   if (!selectedFeatures.includes("items")) {
-    filesRewritten.push("app/App.tsx");
+    filesRewritten.push("app/App.tsx", "src/db/schema.ts", "app/pages/HomePage.tsx");
   }
 
   return {
@@ -338,7 +382,7 @@ export function buildScaffoldPlan({
   const transforms = [];
 
   if (coreOnly) {
-    transforms.push("Remove all example features from src/features/example, app/features/example, and shared/features/example");
+    transforms.push("Remove all example feature packs from examples/");
     transforms.push("Rewrite src/index.ts to keep only core routes");
     transforms.push("Replace app/App.tsx with the core-only starter UI");
   } else if (removedFeatures.length > 0) {
@@ -351,6 +395,8 @@ export function buildScaffoldPlan({
 
   transforms.push("Rewrite package.json, wrangler.jsonc, README.md, and app/App.tsx for the generated app name");
   transforms.push("Tailor README.md to selected features and required Cloudflare bindings");
+  transforms.push("Remove starter-only scripts, tests, and docs from the generated app");
+  transforms.push("Rewrite .github/workflows/ci.yml to the generated app baseline");
 
   return {
     targetDir,
@@ -367,24 +413,12 @@ export function buildScaffoldPlan({
   };
 }
 
-function replaceSectionBetweenMarkers(source, startMarker, endMarker, replacement) {
-  const start = source.indexOf(startMarker);
-  if (start === -1) return source;
-
-  const end = source.indexOf(endMarker, start + startMarker.length);
-  if (end === -1) {
-    return `${source.slice(0, start)}${replacement}\n`;
-  }
-
-  return `${source.slice(0, start)}${replacement}\n${source.slice(end)}`;
-}
-
 function renderSelectedFeaturesIntro(selectedFeatures) {
   if (selectedFeatures.length === 0) {
-    return "- Starter Core: 認証、セッション、権限、organization context、API 契約、DB、ログ、テスト、Cloudflare bindings\n- Example Features: なし";
+    return "- Core: 認証、セッション、権限、organization context、API 契約、DB、ログ、テスト、Cloudflare bindings\n- Optional Examples: なし";
   }
 
-  return `- Starter Core: 認証、セッション、権限、organization context、API 契約、DB、ログ、テスト、Cloudflare bindings\n- Example Features: ${selectedFeatures.map((feature) => `\`${feature}\``).join("、")}`;
+  return `- Core: 認証、セッション、権限、organization context、API 契約、DB、ログ、テスト、Cloudflare bindings\n- Optional Examples: ${selectedFeatures.map((feature) => `\`${feature}\``).join("、")}`;
 }
 
 function renderDeployBlock(requiredBindings) {
@@ -466,6 +500,29 @@ function renderExampleFeatureTable(selectedFeatures) {
   ];
 }
 
+function renderOptionalExamplesSection(selectedFeatures) {
+  const lines = ["## Optional Examples", ""];
+
+  if (selectedFeatures.length === 0) {
+    lines.push("この app は core-first 構成です。optional example は含みません。");
+    return lines.join("\n");
+  }
+
+  lines.push("この app には次の optional example を含めています。", "");
+
+  if (selectedFeatures.includes("items")) {
+    lines.push("- `items`: D1 + organization scope の最小 CRUD");
+  }
+  if (selectedFeatures.includes("kv")) {
+    lines.push("- `kv`: organization scope の KV read/write");
+  }
+  if (selectedFeatures.includes("upload")) {
+    lines.push("- `upload`: R2 upload/list と queue enqueue");
+  }
+
+  return lines.join("\n");
+}
+
 function renderProductionChecklist(requiredBindings) {
   const lines = ['- [ ] `wrangler.jsonc` の `database_id` を実値にする'];
 
@@ -497,9 +554,7 @@ function renderQueueSection(selectedFeatures) {
   }
 
   const lines = [
-    "## Queue",
-    "",
-    "`JOBS` Queue binding を持ち、現在は sample job として次を enqueue します。",
+    "`JOBS` Queue binding を持ち、core と optional examples の両方で job を enqueue します。",
     "",
     ...jobs.map((job) => `- ${job}`),
     "",
@@ -511,14 +566,19 @@ function renderQueueSection(selectedFeatures) {
     "`EMAIL_PROVIDER=resend`、`RESEND_API_KEY`、`EMAIL_FROM` を設定すると Resend 経由で実送信します。未設定時は `log` fallback です。",
   ];
 
+  if (selectedFeatures.includes("upload")) {
+    lines.push("");
+    lines.push("`upload.process` は `upload` example feature に含まれる job です。");
+  }
+
   return lines.join("\n");
 }
 
-function renderFeatureStructureSection(selectedFeatures) {
+function renderFeatureStructureSection(selectedFeatures, appName) {
   const lines = [
     "## Feature Structure",
     "",
-    "`cf-starter` は段階的に feature-based structure へ寄せています。",
+    `\`${appName}\` は core と feature を分けて拡張する前提です。`,
     "",
     "- core routes: `src/routes/`",
     "- core hooks: `app/hooks/`",
@@ -529,14 +589,16 @@ function renderFeatureStructureSection(selectedFeatures) {
     lines.push("- example features: なし");
   } else {
     lines.push(
-      `- example feature routes: ${selectedFeatures.map((feature) => `\`src/features/example/${feature}/routes.ts\``).join("、")}`
+      `- example feature routes: ${selectedFeatures.map((feature) => `\`examples/feature-packs/${feature}/server/routes.ts\``).join("、")}`
     );
     if (selectedFeatures.includes("items")) {
-      lines.push("- example feature hooks: `app/features/example/items/hooks/`");
-      lines.push("- example feature schema: `shared/features/example/items/`");
+      lines.push("- example feature hooks: `examples/feature-packs/items/app/hooks/`");
+      lines.push("- example feature schema: `examples/feature-packs/items/shared/`");
+      lines.push("- example feature migrations: `migrations/0010_example_items.sql`");
     } else {
       lines.push("- example feature hooks: なし");
       lines.push("- example feature schema: なし");
+      lines.push("- example feature migrations: なし");
     }
   }
 
@@ -549,107 +611,169 @@ function renderFeatureStructureSection(selectedFeatures) {
   return lines.join("\n");
 }
 
-function renderDirectoryStructureSection(selectedFeatures) {
-  const lines = ["## ディレクトリ構成", "", "```text", "cf-starter/", "├── app/                    React UI"];
+function renderDirectoryStructureSection(selectedFeatures, appName) {
+  const lines = ["## ディレクトリ構成", "", "```text", `${appName}/`, "├── app/                    React UI"];
 
-  if (selectedFeatures.length > 0) {
-    lines.push("│   ├── features/example/   selected example feature hooks");
-  }
   lines.push("│   ├── hooks/              core hooks");
   lines.push("│   └── lib/api.ts          型付き Hono RPC client");
-  lines.push("├── shared/                 フロント・バック共有契約");
   if (selectedFeatures.length > 0) {
-    lines.push("│   ├── features/example/   selected example feature schema");
+    lines.push("├── examples/               selected example feature packs");
+    lines.push("│   ├── feature-packs/      app / shared / server example code");
   }
+  lines.push(
+    selectedFeatures.includes("items")
+      ? "├── migrations/             core + selected example migrations"
+      : "├── migrations/             core migrations"
+  );
+  lines.push("├── shared/                 フロント・バック共有契約");
   lines.push("│   └── schemas/            core schema");
   lines.push("├── src/                    Worker backend");
   lines.push("│   ├── db/                 Drizzle schema");
   lines.push("│   ├── durable-objects/    rate limiter");
-  if (selectedFeatures.length > 0) {
-    lines.push("│   ├── features/example/   selected example feature routes");
-  }
   lines.push("│   ├── lib/                auth, session, audit, organizations など");
   lines.push("│   ├── middleware/         auth, csrf, role, request-id");
   lines.push("│   ├── queues/             queue producer / consumer");
   lines.push("│   ├── routes/             core API routes");
   lines.push("│   └── index.ts            Worker entrypoint");
-  lines.push("├── migrations/             D1 migrations");
   lines.push("├── scripts/                補助スクリプト");
   lines.push("├── test/                   unit / integration tests");
-  lines.push("├── ARCHITECTURE.md");
-  lines.push("├── ROADMAP.md");
   lines.push("└── README.md");
   lines.push("```");
 
   return lines.join("\n");
 }
 
-function tailorReadmeForScaffold(source, { appName, coreOnly, selectedFeatures, requiredBindings }) {
-  const lines = source.split("\n");
-  if (lines[0] === "# cf-starter") {
-    lines[0] = `# ${appName}`;
-  }
+function renderGeneratedAppReadme({ appName, coreOnly, selectedFeatures, requiredBindings }) {
+  const introHeading = coreOnly
+    ? "このリポジトリは core-first 構成で始める前提です。"
+    : "このリポジトリは core を中心に、必要な example だけを足す前提です。";
+  const introBody = coreOnly
+    ? "- Core: 認証、セッション、権限、organization context、API 契約、DB、ログ、テスト、Cloudflare bindings\n- Optional Examples: なし"
+    : renderSelectedFeaturesIntro(selectedFeatures);
 
-  let updated = lines
-    .join("\n")
-    .replaceAll("`cf-starter`", `\`${appName}\``)
-    .replace("cf-starter/", `${appName}/`)
-    .replace(
-      "- Starter Core: 認証、セッション、権限、organization context、API 契約、DB、ログ、テスト、Cloudflare bindings\n- Example Features: `items`、`kv`、`upload` のような最小サンプル",
-      renderSelectedFeaturesIntro(selectedFeatures)
-    );
+  const lines = [
+    `# ${appName}`,
+    "",
+    "Cloudflare Workers 上で動く業務アプリの土台です。",
+    "",
+    "この生成先リポジトリは starter 本体ではなく、すぐに業務機能追加へ入るための app です。",
+    "",
+    introHeading,
+    "",
+    introBody,
+    "",
+    "## 何が入っているか",
+    "",
+    "- React + TypeScript + Tailwind CSS v4",
+    "- Hono on Cloudflare Workers",
+    "- D1 + Drizzle ORM",
+    "- Zod による shared schema",
+    "- Hono RPC client による型付き API 呼び出し",
+    "- D1 session + HttpOnly Cookie 認証",
+    "- CSRF 保護",
+    "- request id",
+    "- 構造化 JSON ログ",
+    "- 統一 API エラー形式",
+    "- Durable Object ベースの auth rate limit",
+    "- organization / membership / current organization context",
+    "- password reset request / confirm flow",
+    "- email verification request / confirm flow",
+    "- Vitest ベースの自動テスト",
+    "",
+    "## スタック",
+    "",
+    ...renderStackTable(requiredBindings),
+    "",
+    "## クイックスタート",
+    "",
+    "### 前提",
+    "",
+    "- Node.js 20+",
+    "- npm",
+    "- Wrangler CLI",
+    "",
+    "### ローカル開発",
+    "",
+    "```bash",
+    "npm install",
+    "npm run db:migrate",
+    "npm run dev",
+    "```",
+    "",
+    "### Cloudflare へデプロイ",
+    "",
+    ...renderDeployBlock(requiredBindings),
+    "",
+    "## コマンド",
+    "",
+    "| コマンド | 内容 |",
+    "|---|---|",
+    "| `npm run dev` | 統合開発モード |",
+    "| `npm run dev:split` | Wrangler と Vite を分離起動 |",
+    "| `npm run build` | ビルド |",
+    "| `npm run preview` | ビルド後プレビュー |",
+    "| `npm run deploy` | Cloudflare にデプロイ |",
+    "| `npm test` | 自動テスト |",
+    "| `npm run test:watch` | テスト watch |",
+    "| `npm run db:generate` | Drizzle から migration 生成 |",
+    "| `npm run db:migrate` | ローカル D1 に migration 適用 |",
+    "| `npm run db:migrate:remote` | リモート D1 に migration 適用 |",
+    "| `npm run seed:demo` | ローカル D1 に demo user を投入 |",
+    "| `npm run doctor` | generated app としての整合性チェック |",
+    "| `npm run record:generate -- --record shared/records/xxx.ts` | Record Engine でコード生成 |",
+    "",
+    renderOptionalExamplesSection(selectedFeatures),
+    "",
+    renderDirectoryStructureSection(selectedFeatures, appName),
+    "",
+    "## Core API",
+    "",
+    "| エンドポイント | 内容 |",
+    "|---|---|",
+    "| `GET /api/health` | DB / KV / R2 / Env の基本チェック |",
+    "| `GET /api/modules` | core / optional module の runtime status |",
+    "| `GET /api/orgs` | 所属 organization 一覧と current organization |",
+    "| `POST /api/orgs` | organization 作成 + current organization 切替 |",
+    "| `GET /api/orgs/current/invites` | current organization の招待一覧 |",
+    "| `POST /api/orgs/current/invites` | current organization の招待作成 |",
+    "| `POST /api/orgs/invites/accept` | organization 招待承諾 |",
+    "| `POST /api/auth/signup` | ユーザー登録 |",
+    "| `POST /api/auth/login` | ログイン |",
+    "| `POST /api/auth/logout` | ログアウト |",
+    "| `POST /api/auth/switch-org` | current organization 切替 |",
+    "| `POST /api/auth/password-reset/request` | password reset 開始 |",
+    "| `POST /api/auth/password-reset/confirm` | password reset 完了 |",
+    "| `POST /api/auth/email-verification/request` | verification mail 再送 |",
+    "| `POST /api/auth/email-verification/confirm` | email verification 完了 |",
+    "| `GET /api/auth/me` | 現在のユーザー取得 |",
+    "",
+    "## Security Invariants",
+    "",
+    "- session cookie は HttpOnly",
+    "- パスワードは PBKDF2 で保存",
+    "- write 系 API は CSRF 保護",
+    "- auth API は rate limit 付き",
+    "- すべてのエラーは `{ error: { code, message, requestId, details? } }`",
+    "- 監査ログは `audit_logs` に保存",
+    "- `X-Request-Id` をレスポンスとログに載せる",
+    "- organization context は `memberships` と `sessions.current_org_id` で解決",
+    "",
+    "## Queue",
+    "",
+    renderQueueSection(selectedFeatures),
+    "",
+    renderFeatureStructureSection(selectedFeatures, appName),
+    "",
+    "## Optional Example APIs",
+    "",
+    ...renderExampleFeatureTable(selectedFeatures),
+    "",
+    "## 本番チェックリスト",
+    "",
+    ...renderProductionChecklist(requiredBindings),
+  ];
 
-  updated = replaceSectionBetweenMarkers(
-    updated,
-    "### Cloudflare へデプロイ\n",
-    "\n## コマンド\n",
-    `### Cloudflare へデプロイ\n\n${renderDeployBlock(requiredBindings).join("\n")}`
-  );
-  updated = replaceSectionBetweenMarkers(
-    updated,
-    "## Example Feature API\n",
-    "\n## Security Invariants\n",
-    `## Example Feature API\n\n${renderExampleFeatureTable(selectedFeatures).join("\n")}`
-  );
-  updated = replaceSectionBetweenMarkers(
-    updated,
-    "## スタック\n",
-    "\n## クイックスタート\n",
-    `## スタック\n\n${renderStackTable(requiredBindings).join("\n")}`
-  );
-  updated = replaceSectionBetweenMarkers(
-    updated,
-    "## 本番チェックリスト\n",
-    "\n## 現在の不足\n",
-    `## 本番チェックリスト\n\n${renderProductionChecklist(requiredBindings).join("\n")}`
-  );
-  updated = replaceSectionBetweenMarkers(
-    updated,
-    "## ディレクトリ構成\n",
-    "\n## Core API\n",
-    renderDirectoryStructureSection(selectedFeatures)
-  );
-  updated = replaceSectionBetweenMarkers(
-    updated,
-    "## Queue\n",
-    "\n## Module Plan\n",
-    renderQueueSection(selectedFeatures)
-  );
-  updated = replaceSectionBetweenMarkers(
-    updated,
-    "## Feature Structure\n",
-    "\n## 開発の流れ\n",
-    renderFeatureStructureSection(selectedFeatures)
-  );
-
-  if (coreOnly) {
-    updated = updated.replace(
-      "このリポジトリは 2 層で考えます。",
-      "このリポジトリは core-only 構成で始める前提です。"
-    );
-  }
-
-  return updated;
+  return `${lines.join("\n").replace(/\n{3,}/g, "\n\n")}\n`;
 }
 
 function stripItemsPanelFromApp(source) {
@@ -660,19 +784,45 @@ function stripItemsPanelFromApp(source) {
     .replace(/\s*\{\/\* scaffold:items-panel:start \*\/\}[\s\S]*?\{\/\* scaffold:items-panel:end \*\/\}\n?/g, "");
 }
 
+function stripItemsSchemaFromDb(source) {
+  return source.replace(
+    /\/\/ scaffold:items-schema:start\n[\s\S]*?\/\/ scaffold:items-schema:end\n?/g,
+    ""
+  );
+}
+
+function buildGenericHomePage(appName) {
+  const displayName = toDisplayName(appName);
+  return `import { Panel } from "../components/Panel";
+
+export function HomePage() {
+  return (
+    <div className="mx-auto max-w-3xl space-y-6">
+      <h1 className="text-2xl font-semibold text-white">Welcome to ${displayName}</h1>
+      <Panel title="Starter Core" subtitle="Add your own feature packs or Record Engine records here.">
+        <p className="text-sm text-slate-300">
+          This app was generated without the example items feature.
+        </p>
+      </Panel>
+    </div>
+  );
+}
+`;
+}
+
 async function rewriteIndexForSelectedFeatures(indexPath, selectedFeatures) {
   const source = await readFile(indexPath, "utf8");
   const featurePatterns = {
     items: [
-      'import items from "./features/example/items/routes";',
+      'import items from "../examples/feature-packs/items/server/routes";',
       '.route("/api/items", items)',
     ],
     kv: [
-      'import kv from "./features/example/kv/routes";',
+      'import kv from "../examples/feature-packs/kv/server/routes";',
       '.route("/api/kv", kv)',
     ],
     upload: [
-      'import upload from "./features/example/upload/routes";',
+      'import upload from "../examples/feature-packs/upload/server/routes";',
       '.route("/api/upload", upload)',
     ],
   };
@@ -704,26 +854,55 @@ async function rewriteAppForSelectedFeatures(appPath, selectedFeatures) {
   await writeFile(appPath, source);
 }
 
+async function rewriteDbSchemaForSelectedFeatures(schemaPath, selectedFeatures) {
+  if (!(await pathExists(schemaPath))) {
+    return;
+  }
+
+  let source = await readFile(schemaPath, "utf8");
+
+  if (!selectedFeatures.includes("items")) {
+    source = stripItemsSchemaFromDb(source);
+  }
+
+  await writeFile(schemaPath, source);
+}
+
+async function rewriteHomePageForSelectedFeatures(homePagePath, appName, selectedFeatures) {
+  if (!(await pathExists(homePagePath))) {
+    return;
+  }
+
+  if (!selectedFeatures.includes("items")) {
+    await writeFile(homePagePath, buildGenericHomePage(appName));
+  }
+}
+
 export async function applyFeatureSelection(targetDir, selectedFeatures) {
   for (const featureKey of EXAMPLE_FEATURE_KEYS) {
     if (selectedFeatures.includes(featureKey)) continue;
 
-    await rm(join(targetDir, "src/features/example", featureKey), {
-      recursive: true,
-      force: true,
-    });
-    await rm(join(targetDir, "app/features/example", featureKey), {
-      recursive: true,
-      force: true,
-    });
-    await rm(join(targetDir, "shared/features/example", featureKey), {
+    await rm(join(targetDir, "examples/feature-packs", featureKey), {
       recursive: true,
       force: true,
     });
   }
 
+  if (!selectedFeatures.includes("kv") && !selectedFeatures.includes("upload")) {
+    await rm(join(targetDir, "examples/lib"), { recursive: true, force: true });
+  }
+  if (!selectedFeatures.includes("items")) {
+    await rm(join(targetDir, "migrations/0010_example_items.sql"), { force: true });
+  }
+
   await rewriteIndexForSelectedFeatures(join(targetDir, "src/index.ts"), selectedFeatures);
   await rewriteAppForSelectedFeatures(join(targetDir, "app/App.tsx"), selectedFeatures);
+  await rewriteDbSchemaForSelectedFeatures(join(targetDir, "src/db/schema.ts"), selectedFeatures);
+  await rewriteHomePageForSelectedFeatures(
+    join(targetDir, "app/pages/HomePage.tsx"),
+    basename(targetDir),
+    selectedFeatures
+  );
 }
 
 export async function rewriteScaffoldMetadata(
@@ -748,6 +927,8 @@ export async function rewriteScaffoldMetadata(
       delete parsed.bugs;
       delete parsed.keywords;
       if (parsed.scripts) {
+        parsed.scripts.doctor ??= "node scripts/doctor.mjs";
+        parsed.scripts["seed:demo"] ??= "node scripts/seed-demo.mjs";
         const removeScripts = [
           "check:publish",
           "test:create",
@@ -792,8 +973,9 @@ export async function rewriteScaffoldMetadata(
 
   const readmePath = join(targetDir, "README.md");
   if (await pathExists(readmePath)) {
-    await rewriteTextFile(readmePath, (source) =>
-      tailorReadmeForScaffold(source, {
+    await writeFile(
+      readmePath,
+      renderGeneratedAppReadme({
         appName,
         coreOnly,
         selectedFeatures,
@@ -839,9 +1021,9 @@ export async function rewriteIndexForCoreOnly(indexPath) {
     .split("\n")
     .filter(
       (line) =>
-        !line.includes('features/example/items/routes') &&
-        !line.includes('features/example/kv/routes') &&
-        !line.includes('features/example/upload/routes') &&
+        !line.includes('examples/feature-packs/items/server/routes') &&
+        !line.includes('examples/feature-packs/kv/server/routes') &&
+        !line.includes('examples/feature-packs/upload/server/routes') &&
         !line.includes('.route("/api/items", items)') &&
         !line.includes('.route("/api/kv", kv)') &&
         !line.includes('.route("/api/upload", upload)')
@@ -851,11 +1033,36 @@ export async function rewriteIndexForCoreOnly(indexPath) {
 }
 
 export async function applyCoreOnlyTransforms(targetDir) {
-  await rm(join(targetDir, "src/features/example"), { recursive: true, force: true });
-  await rm(join(targetDir, "app/features/example"), { recursive: true, force: true });
-  await rm(join(targetDir, "shared/features/example"), { recursive: true, force: true });
+  await rm(join(targetDir, "examples"), { recursive: true, force: true });
+  await rm(join(targetDir, "migrations/0010_example_items.sql"), { force: true });
   await rm(join(targetDir, "app/pages/HomePage.tsx"), { force: true });
   await rewriteIndexForCoreOnly(join(targetDir, "src/index.ts"));
+  await rewriteDbSchemaForSelectedFeatures(join(targetDir, "src/db/schema.ts"), []);
+}
+
+async function removeStarterOnlyGeneratedFiles(targetDir) {
+  for (const relativePath of GENERATED_APP_REMOVED_PATHS) {
+    await rm(join(targetDir, relativePath), { recursive: true, force: true });
+  }
+}
+
+async function rewriteGeneratedAppCiWorkflow(workflowPath) {
+  if (!(await pathExists(workflowPath))) {
+    return;
+  }
+
+  await rewriteTextFile(workflowPath, (source) =>
+    source
+      .replace(
+        /\n\s+- name: Check publish readiness[\s\S]*?\n\s+run: npm run check:publish\n/g,
+        "\n"
+      )
+      .replace(
+        /\n\s+- name: Scaffold integration test[\s\S]*?\n\s+timeout-minutes: 10\n/g,
+        "\n"
+      )
+      .replace(/\n{3,}/g, "\n\n")
+  );
 }
 
 export async function writeCoreOnlyApp(targetDir, appName) {
@@ -887,9 +1094,16 @@ export async function scaffoldStarter({
       await writeCoreOnlyApp(targetDir, appName);
     } else {
       await applyFeatureSelection(targetDir, selectedFeatures);
+      await materializeFeatureMigrations({
+        sourceDir: targetDir,
+        targetDir,
+        selectedFeatures,
+      });
     }
 
+    await removeStarterOnlyGeneratedFiles(targetDir);
     await rewriteScaffoldMetadata(targetDir, appName, plan);
+    await rewriteGeneratedAppCiWorkflow(join(targetDir, ".github/workflows/ci.yml"));
 
     return {
       ...plan,

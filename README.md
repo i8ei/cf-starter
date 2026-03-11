@@ -1,13 +1,13 @@
 # cf-starter
 
-Cloudflare Workers 上で、小規模から中規模の業務アプリを安定して立ち上げるためのスターターです。
+Cloudflare Workers 上で、小規模から中規模の業務アプリを安定して立ち上げるための starter です。
 
-目的は `1つのアプリを育てること` ではなく、`複数のアプリを安全に始められる土台を揃えること` です。
+目的は `1つのアプリを育てること` ではなく、`複数のアプリを安全に始められる core を揃えること` です。
 
-このリポジトリは 2 層で考えます。
+デフォルトの導線は `core-first` です。
 
-- Starter Core: 認証、セッション、権限、organization context、API 契約、DB、ログ、テスト、Cloudflare bindings
-- Example Features: `items`、`kv`、`upload` のような最小サンプル
+- Core: 認証、セッション、権限、organization context、API 契約、DB、ログ、テスト、Cloudflare bindings
+- Optional examples: `examples/feature-packs/` に置いた `items`、`kv`、`upload` の最小サンプル
 
 設計の詳細は [ARCHITECTURE.md](./ARCHITECTURE.md)、今後の進行は [ROADMAP.md](./ROADMAP.md) を参照してください。
 
@@ -28,7 +28,7 @@ Cloudflare Workers 上で、小規模から中規模の業務アプリを安定�
 - 統一 API エラー形式
 - Durable Object ベースの auth rate limit
 - audit log
-- Cloudflare Queue sample jobs
+- Cloudflare Queues integration
 - organization / membership / current organization context
 - password reset request / confirm flow
 - email verification request / confirm flow
@@ -56,8 +56,8 @@ Cloudflare Workers 上で、小規模から中規模の業務アプリを安定�
 | Frontend | React + TypeScript + Tailwind CSS + TanStack Query + wouter |
 | Backend | Hono on Cloudflare Workers |
 | Database | D1 (SQLite) + Drizzle ORM |
-| Storage | R2 |
-| Cache | KV |
+| Storage | R2 (optional) |
+| Cache | KV (optional) |
 | Rate limit | Durable Object |
 | Async jobs | Cloudflare Queues |
 | Validation | Zod |
@@ -84,8 +84,15 @@ npm run dev
 
 ```bash
 npx . regional-ops
+npx . regional-ops --include items
 npx . regional-ops --plan --json
-node scripts/create-cf-starter.mjs regional-ops
+```
+
+デフォルトは `core-only` です。example feature を含めたい時だけ `--include` を使います。`--starter` は bundled examples を全部入れる互換ショートカットです。
+
+```bash
+npx . regional-ops --include items,upload
+npx . regional-ops --starter
 ```
 
 `create-cf-starter` は npm 公開前です。公開後は `npx create-cf-starter@latest regional-ops` を入口にします。
@@ -120,21 +127,26 @@ npm run deploy
 | `npm run test:create` | create CLI で temp app を生成し、install + build まで確認 |
 | `npm run test:watch` | テスト watch |
 | `npm run check:publish` | npm publish 前提の package / tarball チェック |
+| `npm run doctor` | generated app に starter 残骸がないか検査 |
 | `npm run db:generate` | Drizzle から migration 生成 |
 | `npm run db:migrate` | ローカル D1 に migration 適用 |
 | `npm run db:migrate:remote` | リモート D1 に migration 適用 |
-| `npm run modules:plan` | binding ベースの module 導入状況を確認 |
-| `npm run modules:plan:json` | module plan を JSON で出力 |
-| `npm run app:plan` | starter core と example feature の切り分けを確認 |
-| `npm run app:plan:core` | core-only で始めるときの削除対象を確認 |
-| `npm run app:plan:json` | app plan を JSON で出力 |
-| `npm run app:plan:core:json` | core-only app plan を JSON で出力 |
+| `npm run seed:demo` | ローカル D1 に demo user / org を投入 |
 | `npm run record:generate -- --record shared/records/xxx.ts` | Record Engine でコード生成 |
-| `npm run app:scaffold -- --target ../new-app` | 新しい app ディレクトリを scaffold |
-| `npm run app:scaffold -- --target ../new-app --plan --json` | scaffold 前の dry-run を JSON で確認 |
-| `npm run app:scaffold -- --target ../new-app --plan --plan-out ./scaffold-plan.json` | scaffold plan をファイル保存 |
 | `npx . my-app` | 未公開の create CLI をローカルから実行 |
-| `node scripts/create-cf-starter.mjs my-app` | create CLI を script から直接実行 |
+| `npx . my-app --include items` | selected example feature を含めて app を作る |
+| `npx . my-app --starter` | bundled example feature を全部入れる互換ショートカット |
+| `npx . my-app --plan --json` | create plan を JSON で確認 |
+
+## Optional Examples
+
+bundled examples は default app の一部ではなく、`examples/feature-packs/` に退避しています。
+
+- `items`: D1 + organization scope の最小 CRUD
+- `kv`: organization scope の KV read/write
+- `upload`: R2 upload/list と queue enqueue
+
+新しい app を空の業務アプリとして始めたい場合は無視して構いません。必要な時だけ `--include` で持ち込みます。全部欲しい時だけ `--starter` を使います。
 
 ## Record Engine
 
@@ -251,6 +263,8 @@ cf-starter/
 ├── scripts/
 │   ├── generate-record.mjs Record Engine コードジェネレーター
 │   └── ...
+├── examples/
+│   └── feature-packs/      optional example features
 ├── migrations/             D1 migrations
 ├── test/                   unit / integration tests
 ├── ARCHITECTURE.md
@@ -278,17 +292,6 @@ cf-starter/
 | `POST /api/auth/email-verification/request` | verification mail 再送 |
 | `POST /api/auth/email-verification/confirm` | email verification 完了 |
 | `GET /api/auth/me` | 現在のユーザー取得 |
-
-## Example Feature API
-
-| エンドポイント | 内容 |
-|---|---|
-| `GET /api/items` | current organization の item 一覧 |
-| `POST /api/items` | current organization に item 作成 |
-| `GET /api/upload` | current organization prefix の R2 ファイル一覧取得 |
-| `POST /api/upload` | current organization prefix に R2 アップロード |
-| `GET /api/kv/:key` | current organization scope の KV 読み取り |
-| `PUT /api/kv/:key` | current organization scope の KV 書き込み |
 
 ## Security Invariants
 
@@ -332,10 +335,9 @@ signup / login 時には personal workspace を自動作成し、session に cur
 
 ## Queue
 
-`JOBS` Queue binding を持ち、現在は sample job として次を enqueue します。
+`JOBS` Queue binding を持ち、core と optional examples の両方で job を enqueue します。
 
 - `user.welcome`
-- `upload.process`
 
 consumer は Worker module の `queue()` handler で処理します。
 
@@ -346,48 +348,39 @@ password reset request 時には `auth.password_reset_email` job も enqueue さ
 signup と verification 再送時には `auth.email_verification_email` job も enqueue されます。
 `EMAIL_PROVIDER=resend`、`RESEND_API_KEY`、`EMAIL_FROM` を設定すると Resend 経由で実送信します。未設定時は `log` fallback です。
 
-## Module Plan
+`upload.process` は `upload` example feature を含めた時だけ使います。
+
+## Module Status
 
 - runtime: `GET /api/modules`
 - runtime: `GET /api/health` の `modules`
-- CLI: `npm run modules:plan`
-- CLI: `npm run modules:plan:json`
 
-`modules:plan` は `wrangler.jsonc` を読み、core / optional module の導入状況を一覧表示します。
-`modules:plan:json` は同じ情報を機械可読な JSON で返します。
+`GET /api/modules` は `wrangler.jsonc` の binding 状態に基づいて、core / optional module の導入状況を返します。
+`GET /api/health` の `modules` でも同じ系統の状態を確認できます。
 
-## App Plan
+## Create Flow
 
-- CLI: `npm run app:plan`
-- CLI: `npm run app:plan:core`
-- CLI: `npm run app:plan:json`
-- CLI: `npm run app:plan:core:json`
+- `npx . ../new-app`
+- `npx . ../new-app --include items`
+- `npx . ../new-app --include items,upload`
+- `npx . ../new-app --starter`
+- `npx . ../new-app --exclude kv,upload`
+- `npx . ../new-app --plan --json`
+- `npx . ../new-app --plan --plan-out ./scaffold-plan.json`
 
-`app:plan` は、新しいアプリを切るときに `core として残す部分` と `example として置き換える部分` を一覧表示します。
-`app:plan:core` は example feature を外して core-only で始める前提の出力です。
-JSON variants は将来の scaffold や CI から plan を読むための出口です。
-
-## App Scaffold
-
-- `npm run app:scaffold -- --target ../new-app`
-- `npm run app:scaffold -- --target ../new-app --core-only`
-- `npm run app:scaffold -- --target ../new-app --app-name regional-ops`
-- `npm run app:scaffold -- --target ../new-app --exclude kv,upload`
-- `npm run app:scaffold -- --target ../new-app --include items`
-- `npm run app:scaffold -- --target ../new-app --plan --json`
-- `npm run app:scaffold -- --target ../new-app --plan --plan-out ./scaffold-plan.json`
-- `npm run app:scaffold -- --target ../new-app --json --json-out ./scaffold.json`
-
-`app:scaffold` は現在の starter を別ディレクトリへコピーします。
-`--core-only` を付けると example feature を外し、`src/index.ts` と `app/App.tsx` を core-only 用に置き換えます。
-`--app-name` を付けると `package.json`、`wrangler.jsonc`、`README.md`、`app/App.tsx` の名前を生成先用に書き換えます。
+`create-cf-starter` は現在の starter を別ディレクトリへコピーします。
+何も付けなければ `core-only` で始まります。
 `--include` / `--exclude` を付けると example feature を選択して残せます。
-`--plan` を付けるとコピーせずに `selectedFeatures`、`removedFeatures`、`coreBindingsKept`、`coreBindingReasons`、`bindingsRemoved`、`bindingRemovalReasons`、`filesRemoved`、`filesRewritten`、`warnings`、`requiredBindings`、`transforms`、`nextSteps` だけを確認できます。
+`--starter` は bundled example feature を全部入れる互換ショートカットです。
+`--plan` を付けるとコピーせずに `profile`、`selectedFeatures`、`removedFeatures`、`coreBindingsKept`、`coreBindingReasons`、`bindingsRemoved`、`bindingRemovalReasons`、`filesRemoved`、`filesRewritten`、`warnings`、`requiredBindings`、`transforms`、`nextSteps` だけを確認できます。
+JSON には互換のため `mode` も残りますが、新規利用では `profile` と `selectedFeatures` を使います。
 `--plan-out` を付けると plan JSON をファイルへ保存します。
 生成先の `wrangler.jsonc` は `requiredBindings` に合わせて不要な KV / R2 binding を落とします。
-生成先の `README.md` は selected features に合わせて `ディレクトリ構成`、`Feature Structure`、`Queue`、`Example Feature API` を絞ります。
-`--json-out` または `--plan-out` を付けた時の端末 summary は短縮表示になります。詳細は保存ファイルを見ます。
-JSON 出力では `selectedFeatures`、`removedFeatures`、`coreBindingsKept`、`coreBindingReasons`、`bindingsRemoved`、`bindingRemovalReasons`、`filesRemoved`、`filesRewritten`、`warnings`、`requiredBindings`、`transforms`、`nextSteps` を返します。`--json-out` を付けると同じ内容をファイルにも保存します。
+生成先の `README.md` は selected features に合わせて `ディレクトリ構成`、`Feature Structure`、`Queue`、`Optional Example APIs` を絞ります。
+
+### Compatibility Note
+
+`scripts/compat/` には旧 CLI wrapper が残っていますが、通常の導線には含めません。新規利用では `create-cf-starter` だけを使います。
 
 ## Feature Structure
 
@@ -400,9 +393,23 @@ JSON 出力では `selectedFeatures`、`removedFeatures`、`coreBindingsKept`、
 - core schema: `shared/schemas/`
 - feature schema: `shared/features/{key}/schema.ts`（Record Engine で生成）
 - record definitions: `shared/records/{key}.ts`
+- optional examples: `examples/feature-packs/{key}/`
 
 新しい業務機能を追加する場合は、Record Engine でレコード定義を書いてコード生成するのが最速です。
 業務テーブルは `organization_id` を持たせて current organization で絞るのを基本にします（生成物に自動で含まれます）。
+
+## Optional Example APIs
+
+default app には含まれません。対応する example feature を選んだ時だけ使います。
+
+| エンドポイント | 内容 |
+|---|---|
+| `GET /api/items` | current organization の item 一覧 |
+| `POST /api/items` | current organization に item 作成 |
+| `GET /api/upload` | current organization prefix の R2 ファイル一覧取得 |
+| `POST /api/upload` | current organization prefix に R2 アップロード |
+| `GET /api/kv/:key` | current organization scope の KV 読み取り |
+| `PUT /api/kv/:key` | current organization scope の KV 書き込み |
 
 ## 開発の流れ
 

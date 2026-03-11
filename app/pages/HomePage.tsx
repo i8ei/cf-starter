@@ -1,60 +1,40 @@
 import { useSession } from "../hooks/useSession";
-import { useItems } from "../features/example/items/hooks/useItems";
 import { Panel } from "../components/Panel";
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins} min ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
 
 export function HomePage() {
   const { data: session } = useSession();
-  const { data: items = [], isLoading } = useItems(!!session);
+  const primaryOrg = session?.memberships?.[0];
 
-  const recent = [...items]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5);
+  const nextSteps = [
+    "Add your first domain route under src/routes or examples/feature-packs.",
+    "Generate records with npm run record:generate when CRUD screens are needed.",
+    "Run npm run seed:demo if you want a local login baseline.",
+  ];
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <h1 className="text-2xl font-semibold text-white">Welcome to cf-starter</h1>
 
-      <div className="flex flex-wrap gap-3">
-        <a
-          href="/items"
-          className="rounded-xl border border-white/10 bg-white/5 p-4 min-w-[140px] transition hover:bg-white/10"
-        >
-          <p className="text-sm text-slate-400">Items</p>
-          <p className="text-2xl font-bold tabular-nums text-white">
-            {isLoading ? "—" : items.length}
+      <Panel title="Starter Core" subtitle="Auth, org context, DB, queues, and typed API are ready.">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-300">
+            Starter 本体は example UI を初期表示しません。必要な feature pack だけ残すか、自分の業務機能へ置き換える前提です。
           </p>
-        </a>
-      </div>
-
-      <Panel title="Recent updates">
-        {isLoading ? (
-          <p className="text-sm text-slate-400">Loading...</p>
-        ) : recent.length === 0 ? (
-          <p className="text-sm text-slate-400">No items yet</p>
-        ) : (
-          <ul className="space-y-2">
-            {recent.map((item) => (
+          <div className="rounded-lg border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+            <p>Current user: {session?.user.email ?? "not signed in"}</p>
+            <p>Current organization: {primaryOrg?.organization.name ?? "none"}</p>
+          </div>
+          <ul className="space-y-2 text-sm text-slate-300">
+            {nextSteps.map((step) => (
               <li
-                key={item.id}
-                className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-950/40 px-4 py-3"
+                key={step}
+                className="rounded-lg border border-white/10 bg-slate-950/40 px-4 py-3"
               >
-                <span className="text-sm text-white">{item.name}</span>
-                <span className="text-xs text-slate-400">{timeAgo(item.createdAt)}</span>
+                {step}
               </li>
             ))}
           </ul>
-        )}
+        </div>
       </Panel>
     </div>
   );

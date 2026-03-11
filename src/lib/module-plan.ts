@@ -1,9 +1,5 @@
-/**
- * Runtime module status — checks live Env bindings.
- * Module definitions are intentionally duplicated with scripts/lib/modules-plan.mjs
- * which reads wrangler.jsonc at build/CLI time. Keep both in sync when adding modules.
- */
 import type { Env } from "../types";
+import { moduleCatalog } from "../../shared/module-catalog.mjs";
 
 export type ModuleStatus = {
   key: string;
@@ -16,53 +12,31 @@ export type ModuleStatus = {
 
 export function getRuntimeModuleStatuses(env: Env): ModuleStatus[] {
   const emailProvider = env.EMAIL_PROVIDER?.toLowerCase() ?? "log";
+  const enabledByKey = {
+    jobs: !!env.JOBS,
+    rate_limiter: !!env.RATE_LIMITER,
+    kv: !!env.KV,
+    upload: !!env.BUCKET,
+    email_delivery:
+      emailProvider === "resend" &&
+      !!env.RESEND_API_KEY &&
+      !!env.EMAIL_FROM,
+  };
+  const requiredByKey = {
+    jobs: ["JOBS binding"],
+    rate_limiter: ["RATE_LIMITER binding"],
+    kv: ["KV binding"],
+    upload: ["BUCKET binding"],
+    email_delivery: ["EMAIL_PROVIDER=resend", "RESEND_API_KEY", "EMAIL_FROM"],
+  };
 
-  return [
-    {
-      key: "jobs",
-      label: "Queue Jobs",
-      kind: "core",
-      enabled: !!env.JOBS,
-      required: ["JOBS binding"],
-      note: "core auth mail jobs and uploads",
-    },
-    {
-      key: "rate_limiter",
-      label: "Rate Limiter",
-      kind: "core",
-      enabled: !!env.RATE_LIMITER,
-      required: ["RATE_LIMITER binding"],
-      note: "auth rate limit",
-    },
-    {
-      key: "kv",
-      label: "KV Example",
-      kind: "optional",
-      enabled: !!env.KV,
-      required: ["KV binding"],
-      note: "example key-value feature",
-    },
-    {
-      key: "upload",
-      label: "R2 Upload Example",
-      kind: "optional",
-      enabled: !!env.BUCKET,
-      required: ["BUCKET binding"],
-      note: "example upload feature",
-    },
-    {
-      key: "email_delivery",
-      label: "Email Delivery",
-      kind: "optional",
-      enabled:
-        emailProvider === "resend" &&
-        !!env.RESEND_API_KEY &&
-        !!env.EMAIL_FROM,
-      required: ["EMAIL_PROVIDER=resend", "RESEND_API_KEY", "EMAIL_FROM"],
-      note:
-        emailProvider === "resend"
-          ? "resend active"
-          : "log fallback active",
-    },
-  ];
+  return moduleCatalog.map((module) => ({
+    ...module,
+    enabled: enabledByKey[module.key],
+    required: requiredByKey[module.key],
+    note:
+      module.key === "email_delivery" && emailProvider === "resend"
+        ? "resend active"
+        : module.note,
+  }));
 }

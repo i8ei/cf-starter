@@ -1,10 +1,6 @@
-/**
- * CLI/build-time module plan — reads wrangler.jsonc.
- * Module definitions are intentionally duplicated with src/lib/module-plan.ts
- * which checks live Env bindings at runtime. Keep both in sync when adding modules.
- */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { moduleCatalog } from "../../shared/module-catalog.mjs";
 
 function stripLineComments(input) {
   let out = "";
@@ -67,46 +63,28 @@ function getVar(config, key) {
 
 export function buildModulesPlan(config, env = process.env) {
   const emailProvider = (getVar(config, "EMAIL_PROVIDER") ?? "log").toLowerCase();
+  const enabledByKey = {
+    jobs: hasBinding(config, "JOBS"),
+    rate_limiter: hasBinding(config, "RATE_LIMITER"),
+    kv: hasBinding(config, "KV"),
+    upload: hasBinding(config, "BUCKET"),
+    email_delivery:
+      emailProvider === "resend" &&
+      !!getVar(config, "EMAIL_FROM") &&
+      !!env.RESEND_API_KEY,
+  };
 
   return {
-    modules: [
-      {
-        key: "jobs",
-        kind: "core",
-        enabled: hasBinding(config, "JOBS"),
-        note: "core auth mail jobs and uploads",
-      },
-      {
-        key: "rate_limiter",
-        kind: "core",
-        enabled: hasBinding(config, "RATE_LIMITER"),
-        note: "auth rate limit",
-      },
-      {
-        key: "kv",
-        kind: "optional",
-        enabled: hasBinding(config, "KV"),
-        note: "example key-value feature",
-      },
-      {
-        key: "upload",
-        kind: "optional",
-        enabled: hasBinding(config, "BUCKET"),
-        note: "example upload feature",
-      },
-      {
-        key: "email_delivery",
-        kind: "optional",
-        enabled:
-          emailProvider === "resend" &&
-          !!getVar(config, "EMAIL_FROM") &&
-          !!env.RESEND_API_KEY,
-        note:
-          emailProvider === "resend"
-            ? "set RESEND_API_KEY in env before deploy"
-            : "log fallback active",
-      },
-    ],
+    modules: moduleCatalog.map((module) => ({
+      key: module.key,
+      label: module.label,
+      kind: module.kind,
+      enabled: enabledByKey[module.key],
+      note:
+        module.key === "email_delivery" && emailProvider === "resend"
+          ? "set RESEND_API_KEY in env before deploy"
+          : module.note,
+    })),
   };
 }
 

@@ -18,5 +18,5 @@
       "@shared/*": ["./shared/*"]
     }
   },
-  "include": ["src", "app", "shared"]
+  "include": ["src", "app", "shared", "examples"]
 }

@@ -3,7 +3,7 @@ import {
   getExampleKvScopedKey,
   getExampleUploadObjectKey,
   getExampleUploadPrefix,
-} from "../src/features/example/lib/organization-scope";
+} from "../examples/lib/organization-scope";
 
 describe("example organization scope", () => {
   it("prefixes KV keys by organization", () => {

@@ -1,14 +1,14 @@
 import { Hono } from "hono";
-import { requireAuth } from "../../../middleware/auth";
-import { requireOrgRole } from "../../../middleware/require-org-role";
-import type { AppContextEnv } from "../../../types";
-import { writeAuditLog } from "../../../lib/audit";
-import { jsonError } from "../../../lib/http";
-import { enqueueJob } from "../../../queues/jobs";
+import { requireAuth } from "../../../../src/middleware/auth";
+import { requireOrgRole } from "../../../../src/middleware/require-org-role";
+import type { AppContextEnv } from "../../../../src/types";
+import { writeAuditLog } from "../../../../src/lib/audit";
+import { jsonError } from "../../../../src/lib/http";
+import { enqueueJob } from "../../../../src/queues/jobs";
 import {
   getExampleUploadObjectKey,
   getExampleUploadPrefix,
-} from "../lib/organization-scope";
+} from "../../../lib/organization-scope";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -86,3 +86,4 @@ const app = new Hono<AppContextEnv>()
   });
 
 export default app;
+

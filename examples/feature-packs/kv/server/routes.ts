@@ -1,12 +1,12 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { requireAuth } from "../../../middleware/auth";
-import { requireOrgRole } from "../../../middleware/require-org-role";
-import type { AppContextEnv } from "../../../types";
-import { writeAuditLog } from "../../../lib/audit";
-import { jsonError } from "../../../lib/http";
-import { validator } from "../../../lib/validator";
-import { getExampleKvScopedKey } from "../lib/organization-scope";
+import { requireAuth } from "../../../../src/middleware/auth";
+import { requireOrgRole } from "../../../../src/middleware/require-org-role";
+import type { AppContextEnv } from "../../../../src/types";
+import { writeAuditLog } from "../../../../src/lib/audit";
+import { jsonError } from "../../../../src/lib/http";
+import { validator } from "../../../../src/lib/validator";
+import { getExampleKvScopedKey } from "../../../lib/organization-scope";
 
 const keySchema = z.object({
   key: z
@@ -68,3 +68,4 @@ const app = new Hono<AppContextEnv>()
   );
 
 export default app;
+

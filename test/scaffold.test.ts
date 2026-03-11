@@ -1,4 +1,5 @@
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -30,9 +31,9 @@ describe("scaffold", () => {
     await writeFile(
       indexPath,
       [
-        'import items from "./features/example/items/routes";',
-        'import kv from "./features/example/kv/routes";',
-        'import upload from "./features/example/upload/routes";',
+        'import items from "../examples/feature-packs/items/server/routes";',
+        'import kv from "../examples/feature-packs/kv/server/routes";',
+        'import upload from "../examples/feature-packs/upload/server/routes";',
         'app.route("/api/items", items)',
         'app.route("/api/kv", kv)',
         'app.route("/api/upload", upload)',
@@ -53,28 +54,37 @@ describe("scaffold", () => {
     const dir = await mkdtemp(join(tmpdir(), "cf-starter-core-only-"));
     tempDirs.push(dir);
 
-    await mkdir(join(dir, "src/features/example/items"), { recursive: true });
-    await mkdir(join(dir, "app/features/example/items"), { recursive: true });
-    await mkdir(join(dir, "shared/features/example/items"), { recursive: true });
+    await mkdir(join(dir, "examples/feature-packs/items/server"), { recursive: true });
+    await mkdir(join(dir, "examples/feature-packs/items/app/hooks"), { recursive: true });
+    await mkdir(join(dir, "examples/feature-packs/items/shared"), { recursive: true });
     await mkdir(join(dir, "src"), { recursive: true });
+    await mkdir(join(dir, "src/db"), { recursive: true });
     await mkdir(join(dir, "app/pages"), { recursive: true });
-    await writeFile(join(dir, "src/index.ts"), 'import items from "./features/example/items/routes";\napp.route("/api/items", items)\napp.route("/api/auth", auth)');
+    await mkdir(join(dir, "migrations"), { recursive: true });
+    await writeFile(join(dir, "src/index.ts"), 'import items from "../examples/feature-packs/items/server/routes";\napp.route("/api/items", items)\napp.route("/api/auth", auth)');
+    await writeFile(join(dir, "src/db/schema.ts"), 'export const organizations = {};\n// scaffold:items-schema:start\nexport { items } from "../../examples/feature-packs/items/server/db-schema";\n// scaffold:items-schema:end\n');
     await writeFile(join(dir, "app/App.tsx"), "old app");
     await writeFile(join(dir, "app/pages/HomePage.tsx"), "export function HomePage() {}");
+    await writeFile(join(dir, "migrations/0010_example_items.sql"), "-- items\n");
 
     await applyCoreOnlyTransforms(dir);
     await writeCoreOnlyApp(dir, "starter-core");
 
     const appSource = await readFile(join(dir, "app/App.tsx"), "utf8");
     const indexSource = await readFile(join(dir, "src/index.ts"), "utf8");
+    const dbSchemaSource = await readFile(join(dir, "src/db/schema.ts"), "utf8");
 
     expect(appSource).toContain("Record Engine");
     expect(appSource).toContain("recordNavItems");
     expect(appSource).not.toContain("HomePage");
     expect(indexSource).not.toContain("/api/items");
+    expect(dbSchemaSource).not.toContain("db-schema");
 
     // HomePage.tsx should be removed
     await expect(readFile(join(dir, "app/pages/HomePage.tsx"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await expect(readFile(join(dir, "migrations/0010_example_items.sql"), "utf8")).rejects.toMatchObject({
       code: "ENOENT",
     });
   });
@@ -135,16 +145,15 @@ describe("scaffold", () => {
         "```text",
         "cf-starter/",
         "├── app/                    React UI",
-        "│   ├── features/example/   example feature hooks",
         "│   ├── hooks/              core hooks",
         "│   └── lib/api.ts          型付き Hono RPC client",
+        "├── examples/               selected example feature packs",
+        "│   ├── feature-packs/      app / shared / server example code",
         "├── shared/                 フロント・バック共有契約",
-        "│   ├── features/example/   example feature schema",
         "│   └── schemas/            core schema",
         "├── src/                    Worker backend",
         "│   ├── db/                 Drizzle schema",
         "│   ├── durable-objects/    rate limiter",
-        "│   ├── features/example/   example feature routes",
         "│   ├── lib/                auth, session, audit, organizations など",
         "│   ├── middleware/         auth, csrf, role, request-id",
         "│   ├── queues/             queue producer / consumer",
@@ -162,7 +171,7 @@ describe("scaffold", () => {
       ].join("\n")
     );
     await writeFile(join(sourceDir, "app/App.tsx"), "cf-starter\nStarter Core\n");
-    await writeFile(join(sourceDir, "src/index.ts"), 'import kv from "./features/example/kv/routes";\napp.route("/api/kv", kv)');
+    await writeFile(join(sourceDir, "src/index.ts"), 'import kv from "../examples/feature-packs/kv/server/routes";\napp.route("/api/kv", kv)');
 
     await scaffoldStarter({
       sourceDir,
@@ -173,9 +182,8 @@ describe("scaffold", () => {
 
     const readme = await readFile(join(target, "README.md"), "utf8");
     const [directorySection] = readme.split("\n## Core API\n");
-    expect(directorySection).toContain("selected example feature hooks");
-    expect(directorySection).toContain("selected example feature routes");
-    expect(directorySection).toContain("selected example feature schema");
+    expect(directorySection).toContain("selected example feature packs");
+    expect(directorySection).toContain("feature-packs/      app / shared / server example code");
   });
 
   it("rewrites package, wrangler, readme, and app metadata for the target app name", async () => {
@@ -261,6 +269,8 @@ describe("scaffold", () => {
     expect(pkgJson).not.toContain('"publishConfig"');
     expect(pkgJson).toContain('"dev"');
     expect(pkgJson).toContain('"test"');
+    expect(pkgJson).toContain('"doctor"');
+    expect(pkgJson).toContain('"seed:demo"');
     expect(pkgJson).not.toContain('"check:publish"');
     expect(pkgJson).not.toContain('"test:create"');
     expect(pkgJson).not.toContain('"modules:plan"');
@@ -271,12 +281,189 @@ describe("scaffold", () => {
     expect(await readFile(join(dir, "wrangler.jsonc"), "utf8")).not.toContain('"kv_namespaces"');
     expect(await readFile(join(dir, "wrangler.jsonc"), "utf8")).not.toContain('"r2_buckets"');
     expect(await readFile(join(dir, "README.md"), "utf8")).toContain("# regional-ops");
-    expect(await readFile(join(dir, "README.md"), "utf8")).toContain("Example Features: なし");
-    expect(await readFile(join(dir, "README.md"), "utf8")).toContain("このリポジトリは core-only 構成で始める前提です。");
+    expect(await readFile(join(dir, "README.md"), "utf8")).toContain("Optional Examples: なし");
+    expect(await readFile(join(dir, "README.md"), "utf8")).toContain("このリポジトリは core-first 構成で始める前提です。");
+    expect(await readFile(join(dir, "README.md"), "utf8")).not.toContain("create-cf-starter");
+    expect(await readFile(join(dir, "README.md"), "utf8")).not.toContain("app:scaffold");
+    expect(await readFile(join(dir, "README.md"), "utf8")).not.toContain("modules:plan");
+    expect(await readFile(join(dir, "README.md"), "utf8")).toContain("npm run seed:demo");
+    expect(await readFile(join(dir, "README.md"), "utf8")).toContain("npm run doctor");
     expect(await readFile(join(dir, "README.md"), "utf8")).not.toContain("wrangler kv namespace create KV");
     expect(await readFile(join(dir, "README.md"), "utf8")).not.toContain("| Storage | R2 |");
     expect(await readFile(join(dir, "README.md"), "utf8")).not.toContain("| Cache | KV |");
     expect(await readFile(join(dir, "app/App.tsx"), "utf8")).toContain("regional-ops");
+  });
+
+  it("removes starter-only files and rewrites CI for generated apps", async () => {
+    const sourceDir = await mkdtemp(join(tmpdir(), "cf-starter-clean-source-"));
+    const targetParent = await mkdtemp(join(tmpdir(), "cf-starter-clean-target-"));
+    const targetDir = join(targetParent, "generated-app");
+    tempDirs.push(sourceDir, targetParent);
+
+    await mkdir(join(sourceDir, "app"), { recursive: true });
+    await mkdir(join(sourceDir, "src"), { recursive: true });
+    await mkdir(join(sourceDir, "scripts/lib"), { recursive: true });
+    await mkdir(join(sourceDir, "scripts/internal"), { recursive: true });
+    await mkdir(join(sourceDir, "test"), { recursive: true });
+    await mkdir(join(sourceDir, ".github/workflows"), { recursive: true });
+    await writeFile(join(sourceDir, "package.json"), JSON.stringify({ name: "cf-starter" }, null, 2));
+    await writeFile(join(sourceDir, "wrangler.jsonc"), '{ "name": "cf-starter", "d1_databases": [{ "database_name": "cf-starter-db" }] }\n');
+    await writeFile(join(sourceDir, "README.md"), "# cf-starter\n\n### 新しい app を切る\n\nnode scripts/create-cf-starter.mjs my-app\n\n### Cloudflare へデプロイ\n");
+    await writeFile(join(sourceDir, "app/App.tsx"), "cf-starter\nStarter Core\n");
+    await writeFile(join(sourceDir, "src/index.ts"), 'app.route("/api/auth", auth)\n');
+    await writeFile(join(sourceDir, "CLAUDE.md"), "# starter claude\n");
+    await writeFile(join(sourceDir, "ARCHITECTURE.md"), "# starter architecture\n");
+    await writeFile(join(sourceDir, "ROADMAP.md"), "# starter roadmap\n");
+    await writeFile(join(sourceDir, "scripts/create-cf-starter.mjs"), "console.log('starter');\n");
+    await mkdir(join(sourceDir, "scripts/compat"), { recursive: true });
+    await writeFile(join(sourceDir, "scripts/compat/scaffold-app.mjs"), "console.log('starter');\n");
+    await writeFile(join(sourceDir, "scripts/compat/modules-plan.mjs"), "console.log('starter');\n");
+    await writeFile(join(sourceDir, "scripts/compat/app-plan.mjs"), "console.log('starter');\n");
+    await writeFile(join(sourceDir, "scripts/check-publish-ready.mjs"), "console.log('starter');\n");
+    await writeFile(join(sourceDir, "scripts/test-create.mjs"), "console.log('starter');\n");
+    await writeFile(join(sourceDir, "scripts/internal/app-plan.mjs"), "console.log('starter');\n");
+    await writeFile(join(sourceDir, "scripts/internal/modules-plan.mjs"), "console.log('starter');\n");
+    await writeFile(join(sourceDir, "scripts/internal/scaffold-app.mjs"), "console.log('starter');\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/modules-plan.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/app-plan.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/starter-manifest.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "test/create-cf-starter.test.ts"), "test('starter', () => {})\n");
+    await writeFile(join(sourceDir, "test/deprecated-cli.test.ts"), "test('starter', () => {})\n");
+    await writeFile(join(sourceDir, "test/doctor.test.ts"), "test('starter', () => {})\n");
+    await writeFile(join(sourceDir, "test/public-surface.test.ts"), "test('starter', () => {})\n");
+    await writeFile(join(sourceDir, "test/scaffold.test.ts"), "test('starter', () => {})\n");
+    await writeFile(join(sourceDir, "test/module-plan.test.ts"), "test('starter', () => {})\n");
+    await writeFile(join(sourceDir, "test/starter-manifest.test.ts"), "test('starter', () => {})\n");
+    await writeFile(
+      join(sourceDir, ".github/workflows/ci.yml"),
+      [
+        "name: CI",
+        "jobs:",
+        "  test-and-build:",
+        "    runs-on: ubuntu-latest",
+        "    steps:",
+        "      - name: Check publish readiness",
+        "        run: npm run check:publish",
+        "      - name: Scaffold integration test",
+        "        run: npm run test:create",
+        "        timeout-minutes: 10",
+        "      - name: Build",
+        "        run: npm run build",
+      ].join("\n")
+    );
+
+    await scaffoldStarter({
+      sourceDir,
+      targetDir,
+      appName: "generated-app",
+    });
+
+    await expect(readFile(join(targetDir, "CLAUDE.md"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "ARCHITECTURE.md"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "ROADMAP.md"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/create-cf-starter.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/compat/scaffold-app.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/internal/scaffold-app.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "test/create-cf-starter.test.ts"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "test/deprecated-cli.test.ts"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "test/public-surface.test.ts"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "test/scaffold.test.ts"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+
+    const workflow = await readFile(join(targetDir, ".github/workflows/ci.yml"), "utf8");
+    expect(workflow).not.toContain("check:publish");
+    expect(workflow).not.toContain("test:create");
+    expect(workflow).toContain("npm run build");
+  });
+
+  it("materializes selected example migrations into the generated app", async () => {
+    const sourceDir = await mkdtemp(join(tmpdir(), "cf-starter-migrations-source-"));
+    const targetParent = await mkdtemp(join(tmpdir(), "cf-starter-migrations-target-"));
+    const targetDir = join(targetParent, "generated-app");
+    tempDirs.push(sourceDir, targetParent);
+
+    await mkdir(join(sourceDir, "app"), { recursive: true });
+    await mkdir(join(sourceDir, "src"), { recursive: true });
+    await mkdir(join(sourceDir, "examples/feature-packs/items/migrations"), { recursive: true });
+    await mkdir(join(sourceDir, "migrations"), { recursive: true });
+    await writeFile(join(sourceDir, "package.json"), JSON.stringify({ name: "cf-starter" }, null, 2));
+    await writeFile(join(sourceDir, "wrangler.jsonc"), '{ "name": "cf-starter", "d1_databases": [{ "database_name": "cf-starter-db" }] }\n');
+    await writeFile(join(sourceDir, "README.md"), "# cf-starter\n");
+    await writeFile(join(sourceDir, "app/App.tsx"), "cf-starter\nStarter Core\n");
+    await writeFile(
+      join(sourceDir, "src/index.ts"),
+      'import items from "../examples/feature-packs/items/server/routes";\napp.route("/api/items", items)\n'
+    );
+    await writeFile(join(sourceDir, "migrations/0001_init.sql"), "-- core\n");
+    await writeFile(
+      join(sourceDir, "examples/feature-packs/items/migrations/0010_example_items.sql"),
+      "-- example items\n"
+    );
+
+    await scaffoldStarter({
+      sourceDir,
+      targetDir,
+      appName: "generated-app",
+      include: ["items"],
+    });
+
+    expect(await readFile(join(targetDir, "migrations/0001_init.sql"), "utf8")).toContain("-- core");
+    expect(await readFile(join(targetDir, "migrations/0010_example_items.sql"), "utf8")).toContain("-- example items");
+  });
+
+  it("keeps generated app doctor runnable without starter-only manifest files", async () => {
+    const sourceDir = await mkdtemp(join(tmpdir(), "cf-starter-doctor-source-"));
+    const targetParent = await mkdtemp(join(tmpdir(), "cf-starter-doctor-target-"));
+    const targetDir = join(targetParent, "generated-app");
+    tempDirs.push(sourceDir, targetParent);
+
+    await mkdir(join(sourceDir, "app"), { recursive: true });
+    await mkdir(join(sourceDir, "src"), { recursive: true });
+    await mkdir(join(sourceDir, "scripts"), { recursive: true });
+    await mkdir(join(sourceDir, "scripts/lib"), { recursive: true });
+    await mkdir(join(sourceDir, "test"), { recursive: true });
+    await writeFile(
+      join(sourceDir, "package.json"),
+      JSON.stringify(
+        {
+          name: "cf-starter",
+          scripts: {
+            doctor: "node scripts/doctor.mjs",
+            "seed:demo": "node scripts/seed-demo.mjs",
+          },
+        },
+        null,
+        2
+      )
+    );
+    await writeFile(join(sourceDir, "wrangler.jsonc"), '{ "name": "cf-starter", "d1_databases": [{ "database_name": "cf-starter-db" }] }\n');
+    await writeFile(join(sourceDir, "README.md"), "# cf-starter\n");
+    await writeFile(join(sourceDir, "app/App.tsx"), "cf-starter\nStarter Core\n");
+    await writeFile(join(sourceDir, "src/index.ts"), 'app.route("/api/auth", auth)\n');
+    await writeFile(join(sourceDir, "scripts/doctor.mjs"), await readFile(join(process.cwd(), "scripts/doctor.mjs"), "utf8"));
+    await writeFile(join(sourceDir, "scripts/seed-demo.mjs"), await readFile(join(process.cwd(), "scripts/seed-demo.mjs"), "utf8"));
+    await writeFile(join(sourceDir, "scripts/lib/doctor.mjs"), await readFile(join(process.cwd(), "scripts/lib/doctor.mjs"), "utf8"));
+    await writeFile(join(sourceDir, "scripts/lib/wrangler-config.mjs"), await readFile(join(process.cwd(), "scripts/lib/wrangler-config.mjs"), "utf8"));
+    await writeFile(join(sourceDir, "scripts/create-cf-starter.mjs"), "console.log('starter');\n");
+    await writeFile(join(sourceDir, "scripts/lib/starter-manifest.mjs"), "export const starter = true;\n");
+
+    await scaffoldStarter({
+      sourceDir,
+      targetDir,
+      appName: "generated-app",
+    });
+
+    await expect(readFile(join(targetDir, "scripts/lib/starter-manifest.mjs"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+
+    const result = spawnSync(process.execPath, ["scripts/doctor.mjs"], {
+      cwd: targetDir,
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
   });
 
   it("resolves selected features from include and exclude lists", () => {
@@ -333,18 +520,21 @@ describe("scaffold", () => {
     tempDirs.push(dir);
 
     await mkdir(join(dir, "src"), { recursive: true });
+    await mkdir(join(dir, "src/db"), { recursive: true });
     await mkdir(join(dir, "app"), { recursive: true });
-    await mkdir(join(dir, "src/features/example/items"), { recursive: true });
-    await mkdir(join(dir, "src/features/example/kv"), { recursive: true });
-    await mkdir(join(dir, "src/features/example/upload"), { recursive: true });
-    await mkdir(join(dir, "app/features/example/items"), { recursive: true });
-    await mkdir(join(dir, "shared/features/example/items"), { recursive: true });
+    await mkdir(join(dir, "app/pages"), { recursive: true });
+    await mkdir(join(dir, "migrations"), { recursive: true });
+    await mkdir(join(dir, "examples/feature-packs/items/server"), { recursive: true });
+    await mkdir(join(dir, "examples/feature-packs/kv/server"), { recursive: true });
+    await mkdir(join(dir, "examples/feature-packs/upload/server"), { recursive: true });
+    await mkdir(join(dir, "examples/feature-packs/items/app/hooks"), { recursive: true });
+    await mkdir(join(dir, "examples/feature-packs/items/shared"), { recursive: true });
     await writeFile(
       join(dir, "src/index.ts"),
       [
-        'import items from "./features/example/items/routes";',
-        'import kv from "./features/example/kv/routes";',
-        'import upload from "./features/example/upload/routes";',
+        'import items from "../examples/feature-packs/items/server/routes";',
+        'import kv from "../examples/feature-packs/kv/server/routes";',
+        'import upload from "../examples/feature-packs/upload/server/routes";',
         'app.route("/api/items", items)',
         'app.route("/api/kv", kv)',
         'app.route("/api/upload", upload)',
@@ -357,7 +547,7 @@ describe("scaffold", () => {
         'import {',
         '  useItems,',
         '  useCreateItem,',
-        '} from "./features/example/items/hooks/useItems";',
+        '} from "../examples/feature-packs/items/app/hooks/useItems";',
         '// scaffold:items-import:end',
         '  // scaffold:items-state:start',
         '  const [name, setName] = useState("");',
@@ -385,16 +575,47 @@ describe("scaffold", () => {
         '            {/* scaffold:items-panel:end */}',
       ].join("\n")
     );
+    await writeFile(
+      join(dir, "app/pages/HomePage.tsx"),
+      [
+        '// scaffold:items-home-import:start',
+        'import { useItems } from "../../examples/feature-packs/items/app/hooks/useItems";',
+        '// scaffold:items-home-import:end',
+        'export function HomePage() {',
+        '  // scaffold:items-home-hooks:start',
+        '  const { data: items = [], isLoading } = useItems(true);',
+        '  // scaffold:items-home-hooks:end',
+        '  return <div>{items.length}{isLoading ? "loading" : "ready"}</div>;',
+        '}',
+      ].join("\n")
+    );
+    await writeFile(
+      join(dir, "src/db/schema.ts"),
+      [
+        'export const organizations = {};',
+        '// scaffold:items-schema:start',
+        'export { items } from "../../examples/feature-packs/items/server/db-schema";',
+        '// scaffold:items-schema:end',
+      ].join("\n")
+    );
+    await writeFile(join(dir, "migrations/0010_example_items.sql"), "-- items\n");
 
     await applyFeatureSelection(dir, ["kv", "upload"]);
 
     const indexSource = await readFile(join(dir, "src/index.ts"), "utf8");
     const appSource = await readFile(join(dir, "app/App.tsx"), "utf8");
+    const homePageSource = await readFile(join(dir, "app/pages/HomePage.tsx"), "utf8");
+    const dbSchemaSource = await readFile(join(dir, "src/db/schema.ts"), "utf8");
 
     expect(indexSource).not.toContain("/api/items");
     expect(indexSource).toContain("/api/kv");
     expect(appSource).not.toContain("D1 Items");
     expect(appSource).not.toContain("useItems");
+    expect(homePageSource).toContain("generated without the example items feature");
+    expect(dbSchemaSource).not.toContain("db-schema");
+    await expect(readFile(join(dir, "migrations/0010_example_items.sql"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
   });
 
   it("builds scaffold summary with required bindings and next steps", () => {
@@ -405,8 +626,29 @@ describe("scaffold", () => {
     });
 
     expect(summary.requiredBindings).toEqual(["DB", "JOBS", "RATE_LIMITER", "BUCKET"]);
+    expect(summary.profile).toBe("optional-examples");
     expect(summary.nextSteps).toContain("Run npm install");
+    expect(summary.nextSteps).toContain("Run npm run doctor");
+    expect(summary.nextSteps).toContain("Set real d1 database_id and queue name in wrangler.jsonc");
+    expect(summary.nextSteps).toContain("Create or wire the R2 bucket, then set the BUCKET binding in wrangler.jsonc");
+    expect(summary.nextSteps).not.toContain("Create or wire the KV namespace, then set the KV binding in wrangler.jsonc");
     expect(summary.nextSteps.at(-1)).toContain("items, upload");
+  });
+
+  it("keeps core-first next steps free of optional KV and R2 setup", () => {
+    const summary = buildScaffoldSummary({
+      appName: "regional-ops",
+      coreOnly: true,
+      selectedFeatures: [],
+    });
+
+    expect(summary.requiredBindings).toEqual(["DB", "JOBS", "RATE_LIMITER"]);
+    expect(summary.profile).toBe("core-only");
+    expect(summary.nextSteps).toContain("Run npm run doctor");
+    expect(summary.nextSteps).toContain("Set real d1 database_id and queue name in wrangler.jsonc");
+    expect(summary.nextSteps).not.toContain("Create or wire the KV namespace, then set the KV binding in wrangler.jsonc");
+    expect(summary.nextSteps).not.toContain("Create or wire the R2 bucket, then set the BUCKET binding in wrangler.jsonc");
+    expect(summary.nextSteps.at(-1)).toContain("src/routes or src/features");
   });
 
   it("builds a scaffold plan without copying files", () => {
@@ -417,6 +659,7 @@ describe("scaffold", () => {
     });
 
     expect(plan.mode).toBe("starter");
+    expect(plan.profile).toBe("optional-examples");
     expect(plan.selectedFeatures).toEqual(["items"]);
     expect(plan.removedFeatures).toEqual(["kv", "upload"]);
     expect(plan.requiredBindings).toEqual(["DB", "JOBS", "RATE_LIMITER"]);
@@ -435,22 +678,45 @@ describe("scaffold", () => {
       "JOBS binding remains required for invite, password reset, email verification, and welcome mail flows."
     );
     expect(plan.filesRemoved).toEqual([
-      "src/features/example/kv/",
-      "app/features/example/kv/",
-      "shared/features/example/kv/",
-      "src/features/example/upload/",
-      "app/features/example/upload/",
-      "shared/features/example/upload/",
+      "bin/create-cf-starter",
+      "scripts/check-publish-ready.mjs",
+      "scripts/compat/app-plan.mjs",
+      "scripts/compat/modules-plan.mjs",
+      "scripts/compat/scaffold-app.mjs",
+      "scripts/create-cf-starter.mjs",
+      "scripts/internal/app-plan.mjs",
+      "scripts/internal/modules-plan.mjs",
+      "scripts/internal/scaffold-app.mjs",
+      "scripts/lib/app-plan.mjs",
+      "scripts/lib/modules-plan.mjs",
+      "scripts/lib/scaffold.mjs",
+      "scripts/lib/starter-manifest.mjs",
+      "scripts/test-create.mjs",
+      "test/create-cf-starter.test.ts",
+      "test/deprecated-cli.test.ts",
+      "test/doctor.test.ts",
+      "test/module-plan.test.ts",
+      "test/public-surface.test.ts",
+      "test/scaffold.test.ts",
+      "test/starter-manifest.test.ts",
+      "ARCHITECTURE.md",
+      "CLAUDE.md",
+      "ROADMAP.md",
+      "examples/feature-packs/kv/",
+      "examples/feature-packs/upload/",
+      "examples/lib/",
     ]);
     expect(plan.filesRewritten).toEqual([
       "package.json",
       "wrangler.jsonc",
       "README.md",
       "app/App.tsx",
+      ".github/workflows/ci.yml",
       "src/index.ts",
     ]);
     expect(plan.transforms).toContain("Remove example features: kv, upload");
     expect(plan.transforms).toContain("Rewrite src/index.ts to mount only selected example routes");
+    expect(plan.transforms).toContain("Remove starter-only scripts, tests, and docs from the generated app");
   });
 
   it("adds warnings for core-only plans", () => {
@@ -522,7 +788,7 @@ describe("scaffold", () => {
       [
         "## Queue",
         "",
-        "`JOBS` Queue binding を持ち、現在は sample job として次を enqueue します。",
+        "`JOBS` Queue binding を持ち、core と optional examples の両方で job を enqueue します。",
         "",
         "- `user.welcome`",
         "- `upload.process`",
@@ -551,6 +817,7 @@ describe("scaffold", () => {
     expect(readme).not.toContain("- `upload.process`");
     expect(readme).toContain("organization.invite_email");
     expect(readme).toContain("auth.password_reset_email");
+    expect(readme).toContain("## Optional Example APIs");
   });
 
   it("tailors the feature structure section to selected features", async () => {
@@ -565,11 +832,11 @@ describe("scaffold", () => {
         "`cf-starter` は段階的に feature-based structure へ寄せています。",
         "",
         "- core routes: `src/routes/`",
-        "- example feature routes: `src/features/example/*/routes.ts`",
+        "- example feature routes: `examples/feature-packs/*/server/routes.ts`",
         "- core hooks: `app/hooks/`",
-        "- example feature hooks: `app/features/example/*/hooks/`",
+        "- example feature hooks: `examples/feature-packs/items/app/hooks/`",
         "- core schema: `shared/schemas/`",
-        "- example feature schema: `shared/features/example/`",
+        "- example feature schema: `examples/feature-packs/items/shared/`",
         "",
         "新しい業務機能を追加する場合は、まず `core` へ入れるべき共通機能か、`example` や派生アプリ固有の feature かを分けてから配置してください。",
         "example feature であっても、業務テーブルは `organization_id` を持たせて current organization で絞るのを基本にします。",
@@ -585,8 +852,8 @@ describe("scaffold", () => {
     });
 
     const readme = await readFile(join(dir, "README.md"), "utf8");
-    expect(readme).toContain("`src/features/example/kv/routes.ts`");
-    expect(readme).not.toContain("`src/features/example/items/routes.ts`");
+    expect(readme).toContain("`examples/feature-packs/kv/server/routes.ts`");
+    expect(readme).not.toContain("`examples/feature-packs/items/server/routes.ts`");
     expect(readme).toContain("- example feature hooks: なし");
     expect(readme).toContain("- example feature schema: なし");
   });
@@ -603,26 +870,23 @@ describe("scaffold", () => {
         "```text",
         "cf-starter/",
         "├── app/                    React UI",
-        "│   ├── features/example/   example feature hooks",
         "│   ├── hooks/              core hooks",
         "│   └── lib/api.ts          型付き Hono RPC client",
+        "├── examples/               selected example feature packs",
+        "│   ├── feature-packs/      app / shared / server example code",
         "├── shared/                 フロント・バック共有契約",
-        "│   ├── features/example/   example feature schema",
         "│   └── schemas/            core schema",
         "├── src/                    Worker backend",
         "│   ├── db/                 Drizzle schema",
         "│   ├── durable-objects/    rate limiter",
-        "│   ├── features/example/   example feature routes",
         "│   ├── lib/                auth, session, audit, organizations など",
         "│   ├── middleware/         auth, csrf, role, request-id",
         "│   ├── queues/             queue producer / consumer",
         "│   ├── routes/             core API routes",
         "│   └── index.ts            Worker entrypoint",
-        "├── migrations/             D1 migrations",
+        "├── migrations/             core migrations",
         "├── scripts/                補助スクリプト",
         "├── test/                   unit / integration tests",
-        "├── ARCHITECTURE.md",
-        "├── ROADMAP.md",
         "└── README.md",
         "```",
         "",
@@ -638,9 +902,8 @@ describe("scaffold", () => {
 
     const readme = await readFile(join(dir, "README.md"), "utf8");
     const [directorySection] = readme.split("\n## Core API\n");
-    expect(directorySection).toContain("selected example feature hooks");
-    expect(directorySection).toContain("selected example feature routes");
-    expect(directorySection).toContain("selected example feature schema");
+    expect(directorySection).toContain("selected example feature packs");
+    expect(directorySection).toContain("feature-packs/      app / shared / server example code");
 
     await rewriteScaffoldMetadata(dir, "regional-ops", {
       coreOnly: true,
@@ -650,8 +913,7 @@ describe("scaffold", () => {
 
     const coreOnlyReadme = await readFile(join(dir, "README.md"), "utf8");
     const [coreOnlyDirectorySection] = coreOnlyReadme.split("\n## Core API\n");
-    expect(coreOnlyDirectorySection).not.toContain("selected example feature hooks");
-    expect(coreOnlyDirectorySection).not.toContain("selected example feature routes");
-    expect(coreOnlyDirectorySection).not.toContain("selected example feature schema");
+    expect(coreOnlyDirectorySection).not.toContain("selected example feature packs");
+    expect(coreOnlyDirectorySection).not.toContain("feature-packs/      app / shared / server example code");
   });
 });

@@ -1,20 +1,5 @@
 import { sqliteTable, text, integer, primaryKey, index } from "drizzle-orm/sqlite-core";
 
-export const items = sqliteTable(
-  "items",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    organizationId: integer("organization_id")
-      .notNull()
-      .references(() => organizations.id, {
-        onDelete: "cascade",
-      }),
-    name: text("name").notNull(),
-    createdAt: text("created_at").notNull().default("(datetime('now'))"),
-  },
-  (table) => [index("items_organization_id_idx").on(table.organizationId)]
-);
-
 export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   email: text("email").notNull().unique(),
@@ -30,6 +15,10 @@ export const organizations = sqliteTable("organizations", {
   slug: text("slug").notNull().unique(),
   createdAt: text("created_at").notNull().default("(datetime('now'))"),
 });
+
+// scaffold:items-schema:start
+export { items } from "../../examples/feature-packs/items/server/db-schema";
+// scaffold:items-schema:end
 
 export const sessions = sqliteTable("sessions", {
   id: text("id").primaryKey(),

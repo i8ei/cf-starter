@@ -106,7 +106,7 @@ example feature は使い方の見本であり、すべての派生アプリに�
 - backend: `src/features/{key}/routes.ts`（生成物）
 - frontend: `app/features/{key}/hooks/`（生成物）
 - shared contracts: `shared/features/{key}/schema.ts`（生成物）
-- example（旧）: `src/features/example/`, `app/features/example/`, `shared/features/example/`
+- example feature packs: `examples/feature-packs/`
 
 ## 認証
 
@@ -267,16 +267,22 @@ AI や開発者は、次を壊さないでください。
 
 新しいアプリへ派生するときは、いきなりコードを削るのではなく次の順で判断します。
 
-1. `npm run app:plan` か `npm run app:plan:json` で core と example feature を確認する
-2. `npm run modules:plan` か `npm run modules:plan:json` で binding の導入状況を確認する
-3. `npm run app:scaffold -- --target <dir> --plan --json` で dry-run を確認する
-   `selectedFeatures` と `removedFeatures` と `coreBindingsKept` と `coreBindingReasons` と `bindingsRemoved` と `bindingRemovalReasons` と `filesRemoved` と `filesRewritten` と `warnings` と `requiredBindings` と `transforms` を見る
+1. `npx create-cf-starter <dir> --plan --json` で dry-run を確認する
+   `profile` と `selectedFeatures` と `requiredBindings` を先に見て、必要なら `removedFeatures` と `filesRemoved` と `filesRewritten` まで追う
    必要なら `--plan-out ./scaffold-plan.json` でファイル保存する
-4. `npm run app:scaffold -- --target <dir> [--app-name <slug>] [--include items,kv] [--exclude upload] [--json-out ./scaffold.json]` で派生先を作る
-   scaffold の JSON 出力で `selectedFeatures` と `requiredBindings` と `nextSteps` を確認する
-   生成先の `wrangler.jsonc` は selected features に不要な KV / R2 binding を削る
-   生成先の `README.md` は selected features に合わせて主要節を絞る
-   `--json-out` / `--plan-out` 利用時の端末 summary は短縮表示でよい
-   AI / 非対話フローでは `npx create-cf-starter <dir> [flags...]` を入口にしてよい
+   JSON には互換のため `mode` も残るが、新規利用では `profile` を優先する
+2. `npx create-cf-starter <dir> [--include items,kv] [--exclude upload] [--json-out ./scaffold.json]` で派生先を作る
+   何も付けなければ `core-first` で始まる
+   `--include` / `--exclude` で optional example feature を選択して残す
+   `--starter` は bundled example を全部入れる互換ショートカットとしてだけ残す
+3. 生成先の `wrangler.jsonc` と `README.md` が selected features に合わせて絞られていることを確認する
+   `wrangler.jsonc` は不要な KV / R2 binding を落とす
+   `README.md` は `Optional Examples` と `Optional Example APIs` を必要な範囲に絞る
+4. 生成先で `npm run doctor` を実行して、starter residue や binding mismatch が残っていないことを確認する
 5. example feature を残すか、置き換えるか、削るかを決める
 6. 新しい業務テーブルは Record Engine でレコード定義を書いて生成する（`organization_id` は自動で含まれる）
+
+補足:
+
+- 旧 wrapper は `scripts/compat/` に残るが、公開導線には含めない
+- AI / 非対話フローでも `create-cf-starter` を唯一の入口として扱う

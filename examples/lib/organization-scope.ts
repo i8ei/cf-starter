@@ -13,3 +13,4 @@ export function getExampleUploadObjectKey(
 ) {
   return `${getExampleUploadPrefix(organizationId)}${timestamp}_${fileName}`;
 }
+

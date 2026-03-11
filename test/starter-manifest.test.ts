@@ -16,6 +16,7 @@ describe("starter manifest", () => {
   it("builds a machine-readable app plan", () => {
     const plan = buildAppPlan({ coreOnly: true });
     expect(plan.mode).toBe("core-only");
+    expect(plan.profile).toBe("core-only");
     expect(plan.exampleFeatures).toHaveLength(3);
     expect(plan.nextSteps[0]).toContain("Remove example feature routes");
   });

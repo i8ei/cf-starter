@@ -22,6 +22,9 @@ describe("create-cf-starter", () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("Usage: create-cf-starter <target> [options]");
     expect(result.stdout).toContain("--core-only");
+    expect(result.stdout).toContain("--include <list>");
+    expect(result.stdout).toContain("--starter");
+    expect(result.stdout).toContain("compatibility shortcut");
     expect(result.stdout).toContain("--plan");
   });
 
@@ -56,8 +59,6 @@ describe("create-cf-starter", () => {
       [
         scriptPath,
         join(targetParent, "regional-ops"),
-        "--exclude",
-        "kv,upload",
         "--plan",
         "--json",
         "--plan-out",
@@ -70,12 +71,15 @@ describe("create-cf-starter", () => {
     );
 
     expect(result.status).toBe(0);
+    expect(result.stderr).toContain('[deprecated] JSON field "mode" remains for compatibility.');
     const stdoutJson = JSON.parse(result.stdout);
-    expect(stdoutJson.selectedFeatures).toEqual(["items"]);
+    expect(stdoutJson.mode).toBe("core-only");
+    expect(stdoutJson.profile).toBe("core-only");
+    expect(stdoutJson.selectedFeatures).toEqual([]);
     expect(stdoutJson.coreBindingsKept).toEqual(["DB", "JOBS", "RATE_LIMITER"]);
 
     const savedJson = JSON.parse(await readFile(planOut, "utf8"));
-    expect(savedJson.bindingRemovalReasons.KV).toContain("kv example feature");
+    expect(savedJson.filesRemoved).toContain("examples/");
   });
 
   it("works through npx dot entrypoint", async () => {
@@ -85,7 +89,7 @@ describe("create-cf-starter", () => {
 
     const result = spawnSync(
       "npx",
-      [".", target, "--plan", "--json", "--exclude", "kv,upload"],
+      [".", target, "--plan", "--json"],
       {
         cwd: process.cwd(),
         encoding: "utf8",
@@ -97,9 +101,12 @@ describe("create-cf-starter", () => {
     );
 
     expect(result.status).toBe(0);
+    expect(result.stderr).toContain('[deprecated] JSON field "mode" remains for compatibility.');
     const stdoutJson = JSON.parse(result.stdout);
-    expect(stdoutJson.selectedFeatures).toEqual(["items"]);
-  });
+    expect(stdoutJson.mode).toBe("core-only");
+    expect(stdoutJson.profile).toBe("core-only");
+    expect(stdoutJson.selectedFeatures).toEqual([]);
+  }, 10000);
 
   it("scaffolds an app and prints next steps", async () => {
     const targetParent = await mkdtemp(join(tmpdir(), "create-cf-starter-app-"));
@@ -108,7 +115,7 @@ describe("create-cf-starter", () => {
 
     const result = spawnSync(
       process.execPath,
-      [scriptPath, target, "--exclude", "kv,upload"],
+      [scriptPath, target],
       {
         cwd: process.cwd(),
         encoding: "utf8",
@@ -116,9 +123,15 @@ describe("create-cf-starter", () => {
     );
 
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain("Scaffolded regional-ops (starter)");
+    expect(result.stdout).toContain("Scaffolded regional-ops");
+    expect(result.stdout).toContain("Feature profile: core-only");
     expect(result.stdout).toContain("Next steps:");
+    expect(result.stdout).toContain("Run npm run doctor");
+    expect(result.stdout).toContain("Set real d1 database_id and queue name in wrangler.jsonc");
+    expect(result.stdout).not.toContain("Create or wire the KV namespace");
+    expect(result.stdout).not.toContain("Create or wire the R2 bucket");
     expect(await readFile(join(target, "README.md"), "utf8")).toContain("# regional-ops");
+    expect(await readFile(join(target, "README.md"), "utf8")).toContain("core-only 構成");
   });
 
   it("uses the package template even when invoked outside the repo cwd", async () => {
@@ -129,7 +142,7 @@ describe("create-cf-starter", () => {
 
     const result = spawnSync(
       process.execPath,
-      [scriptPath, target, "--exclude", "kv,upload"],
+      [scriptPath, target],
       {
         cwd: workDir,
         encoding: "utf8",
@@ -140,6 +153,47 @@ describe("create-cf-starter", () => {
     const generatedPackage = await readFile(join(target, "package.json"), "utf8");
     expect(generatedPackage).toContain('"name": "regional-ops"');
     expect(generatedPackage).not.toContain('"bin"');
+  });
+
+  it("keeps starter mode when explicitly requested", async () => {
+    const targetParent = await mkdtemp(join(tmpdir(), "create-cf-starter-starter-"));
+    tempDirs.push(targetParent);
+
+    const result = spawnSync(
+      process.execPath,
+      [scriptPath, join(targetParent, "regional-ops"), "--starter", "--plan", "--json"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+      }
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain('[deprecated] JSON field "mode" remains for compatibility.');
+    const stdoutJson = JSON.parse(result.stdout);
+    expect(stdoutJson.mode).toBe("starter");
+    expect(stdoutJson.profile).toBe("optional-examples");
+    expect(stdoutJson.selectedFeatures).toEqual(["items", "kv", "upload"]);
+  });
+
+  it("prints optional binding setup steps only when selected features need them", async () => {
+    const targetParent = await mkdtemp(join(tmpdir(), "create-cf-starter-include-"));
+    const target = join(targetParent, "regional-ops");
+    tempDirs.push(targetParent);
+
+    const result = spawnSync(
+      process.execPath,
+      [scriptPath, target, "--include", "upload"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+      }
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Feature profile: optional examples: upload");
+    expect(result.stdout).toContain("Create or wire the R2 bucket");
+    expect(result.stdout).not.toContain("Create or wire the KV namespace");
   });
 
   it("fails gracefully when the target directory already exists", async () => {

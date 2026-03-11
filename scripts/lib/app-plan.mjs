@@ -3,6 +3,7 @@ import { starterManifest } from "./starter-manifest.mjs";
 export function buildAppPlan({ coreOnly = false } = {}) {
   return {
     mode: coreOnly ? "core-only" : "starter",
+    profile: coreOnly ? "core-only" : "optional-examples",
     core: starterManifest.core,
     exampleFeatures: starterManifest.exampleFeatures,
     optionalBindings: starterManifest.optionalBindings,
@@ -30,7 +31,7 @@ export function formatAppPlanText(plan) {
     ...plan.core.frontendPaths.map((path) => `- frontend: ${path}`),
     ...plan.core.sharedPaths.map((path) => `- shared: ${path}`),
     "",
-    plan.mode === "core-only"
+    plan.profile === "core-only"
       ? "Remove or replace these example features"
       : "Review these example features",
   ];
