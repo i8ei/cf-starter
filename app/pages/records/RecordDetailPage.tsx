@@ -72,16 +72,20 @@ export function RecordDetailPage<T extends Record<string, unknown>>({
           <button
             type="button"
             onClick={() => navigate(`/${def.key}/${id}/edit`)}
-            className="rounded-2xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950"
+            className="rounded-xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950"
           >
             Edit
           </button>
           {onDelete ? (
             <button
               type="button"
-              onClick={onDelete}
+              onClick={() => {
+                if (window.confirm("Are you sure you want to delete this record?")) {
+                  onDelete();
+                }
+              }}
               disabled={isDeleting}
-              className="rounded-2xl bg-rose-400 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
+              className="rounded-xl bg-rose-500/10 px-4 py-3 font-semibold text-rose-400 hover:bg-rose-500/20 disabled:opacity-50"
             >
               Delete
             </button>
