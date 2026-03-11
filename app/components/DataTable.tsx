@@ -22,7 +22,7 @@ export function DataTable<T extends Record<string, unknown>>({
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead>
-          <tr className="border-b border-white/10 text-xs uppercase tracking-[0.2em] text-slate-400">
+          <tr className="border-b border-white/10 text-xs uppercase tracking-[0.2em] text-slate-300">
             {columns.map((col) => (
               <th key={col.key} className="px-4 py-3 font-medium">
                 {col.label}
