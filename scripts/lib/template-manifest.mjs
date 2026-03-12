@@ -1,3 +1,5 @@
+import { DOCTOR_REQUIRED_RUNTIME_PATHS } from "./starter-catalog.mjs";
+
 export const TEMPLATE_ROOT_PATHS = Object.freeze([
   ".gitignore",
   ".github/workflows/ci.yml",
@@ -34,17 +36,7 @@ export const TEMPLATE_ROOT_PATHS = Object.freeze([
   "wrangler.jsonc",
 ]);
 
-export const GENERATED_APP_RUNTIME_SCRIPT_PATHS = Object.freeze([
-  "scripts/d1-migrate.mjs",
-  "scripts/doctor.mjs",
-  "scripts/generate-record.mjs",
-  "scripts/seed-demo.mjs",
-  "scripts/lib/doctor.mjs",
-  "scripts/lib/example-migrations.mjs",
-  "scripts/lib/record-engine.mjs",
-  "scripts/lib/starter-catalog.mjs",
-  "scripts/lib/wrangler-config.mjs",
-]);
+export const GENERATED_APP_RUNTIME_SCRIPT_PATHS = DOCTOR_REQUIRED_RUNTIME_PATHS;
 
 export const SCAFFOLD_RUNTIME_SUPPORT_PATHS = Object.freeze([
   "bin/create-cf-starter",

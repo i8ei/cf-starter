@@ -75,9 +75,37 @@ function buildScaffoldSummaryLines(result, { modeLabel, concise = false }) {
   return lines;
 }
 
-function printScaffoldSummary(result, { modeLabel, writer = console.log, concise = false }) {
-  for (const line of buildScaffoldSummaryLines(result, { modeLabel, concise })) {
-    writer(line);
+function buildScaffoldJsonText(result) {
+  return `${JSON.stringify(result, null, 2)}\n`;
+}
+
+function createScaffoldResultWriters({
+  summaryWriter = console.log,
+  summaryErrorWriter = console.error,
+  jsonWriter = console.log,
+} = {}) {
+  return {
+    writeSummary(lines, { asError = false } = {}) {
+      const writer = asError ? summaryErrorWriter : summaryWriter;
+      for (const line of lines) {
+        writer(line);
+      }
+    },
+    writeJson(result) {
+      jsonWriter(buildScaffoldJsonText(result).trimEnd());
+    },
+  };
+}
+
+async function writeScaffoldResultFiles(result, { jsonOutPath, planOutPath }) {
+  const jsonText = buildScaffoldJsonText(result);
+
+  if (jsonOutPath) {
+    await writeFile(jsonOutPath, jsonText);
+  }
+
+  if (planOutPath) {
+    await writeFile(planOutPath, jsonText);
   }
 }
 
@@ -164,29 +192,24 @@ async function runScaffoldApp(parsedArgs) {
 async function emitScaffoldAppResult(result, parsedArgs) {
   const { asJson, planOnly, jsonOutPath, planOutPath, conciseSummary } = parsedArgs;
   const modeLabel = buildScaffoldModeLabel(planOnly);
+  const summaryLines = buildScaffoldSummaryLines(result, {
+    modeLabel,
+    concise: conciseSummary,
+  });
+  const writers = createScaffoldResultWriters();
 
   if (asJson || jsonOutPath || planOutPath) {
     warnDeprecatedModeField();
   }
 
   if (asJson) {
-    printScaffoldSummary(result, {
-      modeLabel,
-      writer: (line) => console.error(line),
-      concise: conciseSummary,
-    });
-    console.log(JSON.stringify(result, null, 2));
+    writers.writeSummary(summaryLines, { asError: true });
+    writers.writeJson(result);
   } else {
-    printScaffoldSummary(result, { modeLabel, concise: conciseSummary });
+    writers.writeSummary(summaryLines);
   }
 
-  if (jsonOutPath) {
-    await writeFile(jsonOutPath, `${JSON.stringify(result, null, 2)}\n`);
-  }
-
-  if (planOutPath) {
-    await writeFile(planOutPath, `${JSON.stringify(result, null, 2)}\n`);
-  }
+  await writeScaffoldResultFiles(result, { jsonOutPath, planOutPath });
 }
 
 export async function runScaffoldAppCli({

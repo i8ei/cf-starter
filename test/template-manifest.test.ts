@@ -2,6 +2,8 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  DOCTOR_REQUIRED_GENERATED_APP_PATHS,
+  DOCTOR_REQUIRED_RUNTIME_PATHS,
   GENERATED_APP_REMOVED_PATHS,
   OPTIONAL_EXAMPLE_PATHS,
 } from "../scripts/lib/starter-catalog.mjs";
@@ -76,6 +78,21 @@ describe("template manifest", () => {
           isCoveredByRootPath(normalizeTemplateManifestPath(path), publishedPath)
         )
       ).toBe(true);
+    }
+  });
+
+  it("keeps doctor-required paths aligned with the template manifest", () => {
+    const templateRoots = new Set(TEMPLATE_ROOT_PATHS.map(normalizeTemplateManifestPath));
+    const generatedRuntime = new Set(
+      GENERATED_APP_RUNTIME_SCRIPT_PATHS.map(normalizeTemplateManifestPath)
+    );
+
+    for (const path of DOCTOR_REQUIRED_GENERATED_APP_PATHS) {
+      expect(templateRoots.has(normalizeTemplateManifestPath(path))).toBe(true);
+    }
+
+    for (const path of DOCTOR_REQUIRED_RUNTIME_PATHS) {
+      expect(generatedRuntime.has(normalizeTemplateManifestPath(path))).toBe(true);
     }
   });
 });

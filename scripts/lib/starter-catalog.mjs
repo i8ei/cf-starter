@@ -92,6 +92,40 @@ export const EXAMPLE_RESIDUE_PATHS = Object.freeze([
   "examples/lib",
 ]);
 
+export const DOCTOR_REQUIRED_GENERATED_APP_PATHS = Object.freeze([
+  ".gitignore",
+  ".github/workflows/ci.yml",
+  "README.md",
+  "app",
+  "drizzle.config.ts",
+  "index.html",
+  "migrations",
+  "package.json",
+  "shared",
+  "src",
+  "tsconfig.json",
+  "vite.config.split.ts",
+  "vite.config.ts",
+  "vitest.config.ts",
+  "wrangler.jsonc",
+]);
+
+export const DOCTOR_REQUIRED_RUNTIME_PATHS = Object.freeze([
+  "scripts/d1-migrate.mjs",
+  "scripts/doctor.mjs",
+  "scripts/generate-record.mjs",
+  "scripts/seed-demo.mjs",
+  "scripts/lib/doctor.mjs",
+  "scripts/lib/doctor/cli.mjs",
+  "scripts/lib/doctor/checks.mjs",
+  "scripts/lib/doctor/context.mjs",
+  "scripts/lib/doctor/report.mjs",
+  "scripts/lib/example-migrations.mjs",
+  "scripts/lib/record-engine.mjs",
+  "scripts/lib/starter-catalog.mjs",
+  "scripts/lib/wrangler-config.mjs",
+]);
+
 export const OPTIONAL_EXAMPLE_PATHS = Object.freeze({
   items: Object.freeze([
     "examples/feature-packs/items/server",

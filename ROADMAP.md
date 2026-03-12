@@ -32,7 +32,7 @@
 
 状態:
 
-- 進行中
+- ほぼ完了
 
 完了済み:
 
@@ -42,11 +42,15 @@
 - Queue sample jobs
 - Cron session cleanup
 - optional module install plan
+- planner / renderers / transforms / orchestrator 分離
+- marker-first transform への寄せ
+- `doctor` の template-first 化
+- `scaffold-app` / internal maintenance CLI の整理
 
 残り:
 
 - README / architecture docs の継続改善
-- app generation path の整備
+- 細かい terminology と helper 境界の仕上げ
 
 ## Phase 3: Organization-Aware Core
 
@@ -56,7 +60,7 @@
 
 状態:
 
-- 進行中
+- 完了
 
 完了済み:
 
@@ -75,7 +79,7 @@
 次:
 
 - reference features の拡張
-- app generation path の整備
+- Record Engine vNext と実案件検証
 
 ## Phase 4: Record Engine
 
@@ -143,11 +147,9 @@
 - roadmap が現在地を示している
 - core と example の境界が明確
 
-未着手:
+状態:
 
-- APP_FACTORY.md
-- generation playbook
-- install / bootstrap scripts の強化
+- 進行中
 
 直近で追加済み:
 
@@ -156,6 +158,15 @@
 - example feature pack の `examples/feature-packs/` 分離
 - `scripts/compat/` への互換 wrapper 集約
 - `profile` 中心の scaffold plan / JSON surface
+- `template/` を source of truth にした template-first scaffold
+- `template:check` / `template:sync` / snapshot fixture
+- generated app runtime / publish surface の整理
+
+未着手:
+
+- APP_FACTORY.md
+- generation playbook
+- install / bootstrap scripts の強化
 
 ## Phase 6: Starter Simplification v2
 
@@ -174,7 +185,7 @@
 
 状態:
 
-- 実装中
+- 大枠完了
 
 現在地:
 
@@ -184,6 +195,9 @@
 - example source-of-truth は `examples/feature-packs/` へ分離済み
 - `doctor` は generated app 単独で動作する状態まで確認済み
 - compat wrapper は `scripts/compat/` に隔離済み
+- scaffold は `template-first` へ移行済み
+- internal template maintenance script は共通 report / option parsing へ整理済み
+- publish surface は template/runtime 前提で検証済み
 
 ### Workstream 1: Product Surface の整理
 

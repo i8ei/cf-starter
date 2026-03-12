@@ -36,6 +36,28 @@
 
 このリポジトリでは、次を分けて考えます。
 
+## Template-First Scaffold
+
+現在の scaffold は `template-first` です。repo root を丸ごとコピーして削るのではなく、次の 3 層で generated app を組み立てます。
+
+1. `template/` — generated app の静的 tree
+2. `scripts/lib/starter-catalog.mjs` — generated app に残す / 消す / publish で禁止する path ルール
+3. `scripts/lib/template-manifest.mjs` — template root paths、generated-app runtime scripts、scaffold runtime support
+
+役割分担は次です。
+
+- `template/` は generated app 側の source of truth
+- `scripts/lib/scaffold/*` は plan / render / transform / orchestration
+- `scripts/lib/doctor/*` は generated app completeness check
+- `scripts/internal/*` は template check / sync / snapshot など starter 保守用 CLI
+
+保守時の基本フロー:
+
+1. root source または `template/` を更新する
+2. `npm run template:check` で drift を見る
+3. 必要なら `npm run template:sync` で `template/` を再生成する
+4. `npm test` / `npm run build` / `npm run check:publish` を通す
+
 ### Starter Core
 
 - auth
@@ -49,6 +71,8 @@
 - error contract
 - queue handling
 - migration / build / test flow
+- generated app `doctor`
+- template-first scaffold runtime
 
 ### Record Engine
 
@@ -224,6 +248,25 @@ consumer は `src/queues/jobs.ts` と Worker module の `queue()` handler に集
 invite email job は `inviteUrl` を含む delivery payload を作り、現状は structured log へ出します。
 password reset email job は `resetUrl` を含む delivery payload を作り、現状は structured log へ出します。
 email verification job は `verifyUrl` を含む delivery payload を作り、現状は structured log へ出します。
+
+## Generated App Doctor
+
+generated app には `scripts/doctor.mjs` を残します。これは starter repo 専用の residue check ではなく、派生後の app が単独で成立しているかを見るための診断です。
+
+主に見るもの:
+
+- package 名が置換済みか
+- starter-only files / scripts / README 記述が残っていないか
+- generated app の必須 root paths が揃っているか
+- generated app の runtime scripts が揃っているか
+- optional examples と binding / migration の整合が取れているか
+
+実装は次の分割です。
+
+- `scripts/lib/doctor/context.mjs`
+- `scripts/lib/doctor/checks.mjs`
+- `scripts/lib/doctor/report.mjs`
+- `scripts/lib/doctor/cli.mjs`
 
 ## Security Invariants
 

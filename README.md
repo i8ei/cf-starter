@@ -97,6 +97,8 @@ npx . regional-ops --starter
 
 `create-cf-starter` は npm 公開前です。公開後は `npx create-cf-starter@latest regional-ops` を入口にします。
 
+現在の scaffold は `template-first` です。`template/` に置いた静的 app tree と、generated app が実行に必要な runtime scripts だけを組み立てて出力します。
+
 ### Cloudflare へデプロイ
 
 ```bash
@@ -127,7 +129,9 @@ npm run deploy
 | `npm run test:create` | create CLI で temp app を生成し、install + build まで確認 |
 | `npm run test:watch` | テスト watch |
 | `npm run check:publish` | npm publish 前提の package / tarball チェック |
-| `npm run doctor` | generated app に starter 残骸がないか検査 |
+| `npm run template:check` | checked-in `template/` が fresh materialization と一致するか検査 |
+| `npm run template:sync` | checked-in `template/` を fresh materialization に同期 |
+| `npm run doctor` | generated app としての必須ファイル・runtime・残骸を検査 |
 | `npm run db:generate` | Drizzle から migration 生成 |
 | `npm run db:migrate` | ローカル D1 に migration 適用 |
 | `npm run db:migrate:remote` | リモート D1 に migration 適用 |
@@ -263,7 +267,9 @@ cf-starter/
 │   └── index.ts            Worker entrypoint
 ├── scripts/
 │   ├── generate-record.mjs Record Engine コードジェネレーター
-│   └── ...
+│   ├── internal/           template / scaffold maintenance CLI
+│   └── lib/                scaffold / doctor / manifest helpers
+├── template/               generated app の checked-in template tree
 ├── examples/
 │   └── feature-packs/      optional example features
 ├── migrations/             D1 migrations
@@ -370,6 +376,7 @@ signup と verification 再送時には `auth.email_verification_email` job も 
 - `npx . ../new-app --plan --plan-out ./scaffold-plan.json`
 
 `create-cf-starter` は現在の starter を別ディレクトリへコピーします。
+内部的には repo 全体を複製するのではなく、`template/` と generated-app runtime scripts から最終 tree を materialize します。
 何も付けなければ `core-only` で始まります。
 `--include` / `--exclude` を付けると example feature を選択して残せます。
 `--starter` は bundled example feature を全部入れる互換ショートカットです。
@@ -382,6 +389,23 @@ JSON には互換のため `mode` も残りますが、新規利用では `profi
 ### Compatibility Note
 
 `scripts/compat/` には旧 CLI wrapper が残っていますが、通常の導線には含めません。新規利用では `create-cf-starter` だけを使います。
+
+## Starter Maintenance
+
+starter を保守する時の source of truth は次です。
+
+- `template/` — generated app の静的 tree
+- `scripts/lib/starter-catalog.mjs` — generated app に残す / 消す / publish で禁止する path ルール
+- `scripts/lib/template-manifest.mjs` — template root paths、generated-app runtime scripts、scaffold runtime support
+
+変更後の確認はこの順で十分です。
+
+1. `npm run template:check`
+2. `npm test`
+3. `npm run build`
+4. `npm run check:publish`
+
+`npm run template:check` が落ちる場合は、checked-in `template/` と fresh materialization がずれています。必要なら `npm run template:sync` で同期します。
 
 ## Feature Structure
 

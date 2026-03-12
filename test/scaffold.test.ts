@@ -749,10 +749,13 @@ describe("scaffold", () => {
     tempDirs.push(sourceDir, targetParent);
 
     await mkdir(join(sourceDir, "app"), { recursive: true });
+    await mkdir(join(sourceDir, "shared"), { recursive: true });
     await mkdir(join(sourceDir, "src"), { recursive: true });
+    await mkdir(join(sourceDir, "migrations"), { recursive: true });
     await mkdir(join(sourceDir, "scripts"), { recursive: true });
     await mkdir(join(sourceDir, "scripts/lib"), { recursive: true });
-    await mkdir(join(sourceDir, "test"), { recursive: true });
+    await mkdir(join(sourceDir, "scripts/lib/doctor"), { recursive: true });
+    await mkdir(join(sourceDir, ".github/workflows"), { recursive: true });
     await writeFile(
       join(sourceDir, "package.json"),
       JSON.stringify(
@@ -767,13 +770,31 @@ describe("scaffold", () => {
         2
       )
     );
+    await writeFile(join(sourceDir, ".gitignore"), "node_modules\n");
+    await writeFile(join(sourceDir, ".github/workflows/ci.yml"), "name: CI\n");
+    await writeFile(join(sourceDir, "drizzle.config.ts"), "export default {};\n");
+    await writeFile(join(sourceDir, "index.html"), "<!doctype html>\n");
     await writeFile(join(sourceDir, "wrangler.jsonc"), '{ "name": "cf-starter", "d1_databases": [{ "database_name": "cf-starter-db" }] }\n');
     await writeFile(join(sourceDir, "README.md"), "# cf-starter\n");
     await writeFile(join(sourceDir, "app/App.tsx"), "cf-starter\nStarter Core\n");
     await writeFile(join(sourceDir, "src/index.ts"), 'app.route("/api/auth", auth)\n');
+    await writeFile(join(sourceDir, "migrations/0001_init.sql"), "-- core\n");
+    await writeFile(join(sourceDir, "shared/module-catalog.mjs"), "export const modules = [];\n");
+    await writeFile(join(sourceDir, "tsconfig.json"), "{}\n");
+    await writeFile(join(sourceDir, "vite.config.ts"), "export default {};\n");
+    await writeFile(join(sourceDir, "vite.config.split.ts"), "export default {};\n");
+    await writeFile(join(sourceDir, "vitest.config.ts"), "export default {};\n");
+    await writeFile(join(sourceDir, "scripts/d1-migrate.mjs"), "console.log('migrate');\n");
     await writeFile(join(sourceDir, "scripts/doctor.mjs"), await readFile(join(process.cwd(), "scripts/doctor.mjs"), "utf8"));
+    await writeFile(join(sourceDir, "scripts/generate-record.mjs"), "console.log('record');\n");
     await writeFile(join(sourceDir, "scripts/seed-demo.mjs"), await readFile(join(process.cwd(), "scripts/seed-demo.mjs"), "utf8"));
     await writeFile(join(sourceDir, "scripts/lib/doctor.mjs"), await readFile(join(process.cwd(), "scripts/lib/doctor.mjs"), "utf8"));
+    await writeFile(join(sourceDir, "scripts/lib/doctor/cli.mjs"), await readFile(join(process.cwd(), "scripts/lib/doctor/cli.mjs"), "utf8"));
+    await writeFile(join(sourceDir, "scripts/lib/doctor/checks.mjs"), await readFile(join(process.cwd(), "scripts/lib/doctor/checks.mjs"), "utf8"));
+    await writeFile(join(sourceDir, "scripts/lib/doctor/context.mjs"), await readFile(join(process.cwd(), "scripts/lib/doctor/context.mjs"), "utf8"));
+    await writeFile(join(sourceDir, "scripts/lib/doctor/report.mjs"), await readFile(join(process.cwd(), "scripts/lib/doctor/report.mjs"), "utf8"));
+    await writeFile(join(sourceDir, "scripts/lib/example-migrations.mjs"), "export function exampleMigrations() {}\n");
+    await writeFile(join(sourceDir, "scripts/lib/record-engine.mjs"), "export function recordEngine() {}\n");
     await writeFile(join(sourceDir, "scripts/lib/starter-catalog.mjs"), await readFile(join(process.cwd(), "scripts/lib/starter-catalog.mjs"), "utf8"));
     await writeFile(join(sourceDir, "scripts/lib/wrangler-config.mjs"), await readFile(join(process.cwd(), "scripts/lib/wrangler-config.mjs"), "utf8"));
     await writeFile(join(sourceDir, "scripts/create-cf-starter.mjs"), "console.log('starter');\n");
