@@ -1,61 +1,191 @@
 import { writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  assertNoUnknownArgs,
+  takeFlag,
+  takeListOption,
+  takeOption,
+} from "../lib/cli-args.mjs";
 import { buildScaffoldPlan, scaffoldStarter } from "../lib/scaffold.mjs";
 
 function warnDeprecatedModeField(writer = console.error) {
   writer('[deprecated] JSON field "mode" remains for compatibility. Prefer "profile" and "selectedFeatures".');
 }
 
-function printScaffoldSummary(result, { modeLabel, writer = console.log, concise = false }) {
-  const featureProfile =
-    result.profile === "optional-examples"
-      ? `optional examples: ${result.selectedFeatures.join(", ")}`
-      : result.profile;
+function buildScaffoldModeLabel(planOnly) {
+  return planOnly ? "Scaffold plan for" : "Scaffolded";
+}
 
-  writer(`${modeLabel} ${result.appName}`);
-  writer(`Target: ${result.targetDir}`);
-  writer(`Feature profile: ${featureProfile}`);
-  writer(`Required bindings: ${result.requiredBindings.join(", ")}`);
+function buildScaffoldFeatureProfile(result) {
+  return result.profile === "optional-examples"
+    ? `optional examples: ${result.selectedFeatures.join(", ")}`
+    : result.profile;
+}
+
+function buildScaffoldSummaryLines(result, { modeLabel, concise = false }) {
+  const lines = [
+    `${modeLabel} ${result.appName}`,
+    `Target: ${result.targetDir}`,
+    `Feature profile: ${buildScaffoldFeatureProfile(result)}`,
+    `Required bindings: ${result.requiredBindings.join(", ")}`,
+  ];
+
   if (concise) {
-    writer(`Next steps: ${result.nextSteps.join(" | ")}`);
-    return;
+    lines.push(`Next steps: ${result.nextSteps.join(" | ")}`);
+    return lines;
   }
-  writer(`Selected features: ${result.selectedFeatures.length > 0 ? result.selectedFeatures.join(", ") : "none"}`);
-  writer(`Core bindings kept: ${result.coreBindingsKept.join(", ")}`);
+
+  lines.push(`Selected features: ${result.selectedFeatures.length > 0 ? result.selectedFeatures.join(", ") : "none"}`);
+  lines.push(`Core bindings kept: ${result.coreBindingsKept.join(", ")}`);
   if (result.coreBindingsKept.length > 0) {
-    writer("Core binding reasons:");
+    lines.push("Core binding reasons:");
     for (const binding of result.coreBindingsKept) {
-      writer(`- ${binding}: ${result.coreBindingReasons[binding]}`);
+      lines.push(`- ${binding}: ${result.coreBindingReasons[binding]}`);
     }
   }
   if (result.bindingsRemoved.length > 0) {
-    writer(`Bindings removed: ${result.bindingsRemoved.join(", ")}`);
-    writer("Binding removal reasons:");
+    lines.push(`Bindings removed: ${result.bindingsRemoved.join(", ")}`);
+    lines.push("Binding removal reasons:");
     for (const binding of result.bindingsRemoved) {
-      writer(`- ${binding}: ${result.bindingRemovalReasons[binding]}`);
+      lines.push(`- ${binding}: ${result.bindingRemovalReasons[binding]}`);
     }
   }
   if (result.removedFeatures.length > 0) {
-    writer(`Removed features: ${result.removedFeatures.join(", ")}`);
+    lines.push(`Removed features: ${result.removedFeatures.join(", ")}`);
   }
   if (result.filesRemoved.length > 0) {
-    writer(`Files removed: ${result.filesRemoved.join(", ")}`);
+    lines.push(`Files removed: ${result.filesRemoved.join(", ")}`);
   }
-  writer(`Files rewritten: ${result.filesRewritten.join(", ")}`);
+  lines.push(`Files rewritten: ${result.filesRewritten.join(", ")}`);
   if (result.warnings.length > 0) {
-    writer("Warnings:");
+    lines.push("Warnings:");
     for (const warning of result.warnings) {
-      writer(`- ${warning}`);
+      lines.push(`- ${warning}`);
     }
   }
-  writer("Transforms:");
+  lines.push("Transforms:");
   for (const transform of result.transforms) {
-    writer(`- ${transform}`);
+    lines.push(`- ${transform}`);
   }
-  writer("Next steps:");
+  lines.push("Next steps:");
   for (const step of result.nextSteps) {
-    writer(`- ${step}`);
+    lines.push(`- ${step}`);
+  }
+  return lines;
+}
+
+function printScaffoldSummary(result, { modeLabel, writer = console.log, concise = false }) {
+  for (const line of buildScaffoldSummaryLines(result, { modeLabel, concise })) {
+    writer(line);
+  }
+}
+
+function createScaffoldFailureHandler({ usage, writer = console.error } = {}) {
+  return function fail(message, { includeUsage = false } = {}) {
+    writer(message);
+    if (includeUsage && usage) {
+      writer(usage);
+    }
+    process.exit(1);
+  };
+}
+
+function parseScaffoldAppCliArgs({ argv, sourceDir, fail }) {
+  const args = [...argv];
+  const coreOnly = takeFlag(args, "--core-only");
+  const force = takeFlag(args, "--force");
+  const asJson = takeFlag(args, "--json");
+  const planOnly = takeFlag(args, "--plan");
+
+  let targetDirOption;
+  try {
+    targetDirOption = takeOption(args, "--target");
+  } catch (error) {
+    fail(error instanceof Error ? error.message : "Invalid --target option.", { includeUsage: true });
+  }
+  if (!targetDirOption) {
+    fail("Missing required --target option.", { includeUsage: true });
+  }
+
+  const resolvedTargetDir = resolve(process.cwd(), targetDirOption);
+  const sourceDirOption = takeOption(args, "--source-dir");
+  const resolvedSourceDir = sourceDirOption ? resolve(process.cwd(), sourceDirOption) : sourceDir;
+  const appName = takeOption(args, "--app-name") ?? undefined;
+  const include = takeListOption(args, "--include");
+  const exclude = takeListOption(args, "--exclude");
+  const jsonOutOption = takeOption(args, "--json-out");
+  const planOutOption = takeOption(args, "--plan-out");
+  const jsonOutPath = jsonOutOption ? resolve(process.cwd(), jsonOutOption) : undefined;
+  const planOutPath = planOutOption ? resolve(process.cwd(), planOutOption) : undefined;
+
+  if (planOutPath && !planOnly) {
+    fail("--plan-out can only be used together with --plan.");
+  }
+
+  if (takeFlag(args, "--repo-copy-layout")) {
+    fail("--repo-copy-layout is no longer supported.");
+  }
+
+  try {
+    assertNoUnknownArgs(args);
+  } catch (error) {
+    fail(error instanceof Error ? error.message : "Unknown scaffold arguments.", { includeUsage: true });
+  }
+
+  return {
+    resolvedSourceDir,
+    force,
+    asJson,
+    planOnly,
+    jsonOutPath,
+    planOutPath,
+    conciseSummary: Boolean(jsonOutPath || planOutPath),
+    options: {
+      targetDir: resolvedTargetDir,
+      appName,
+      coreOnly,
+      include: include.length > 0 ? include : undefined,
+      exclude: exclude.length > 0 ? exclude : undefined,
+    },
+  };
+}
+
+async function runScaffoldApp(parsedArgs) {
+  return parsedArgs.planOnly
+    ? buildScaffoldPlan(parsedArgs.options)
+    : scaffoldStarter({
+        sourceDir: parsedArgs.resolvedSourceDir,
+        ...parsedArgs.options,
+        force: parsedArgs.force,
+      });
+}
+
+async function emitScaffoldAppResult(result, parsedArgs) {
+  const { asJson, planOnly, jsonOutPath, planOutPath, conciseSummary } = parsedArgs;
+  const modeLabel = buildScaffoldModeLabel(planOnly);
+
+  if (asJson || jsonOutPath || planOutPath) {
+    warnDeprecatedModeField();
+  }
+
+  if (asJson) {
+    printScaffoldSummary(result, {
+      modeLabel,
+      writer: (line) => console.error(line),
+      concise: conciseSummary,
+    });
+    console.log(JSON.stringify(result, null, 2));
+  } else {
+    printScaffoldSummary(result, { modeLabel, concise: conciseSummary });
+  }
+
+  if (jsonOutPath) {
+    await writeFile(jsonOutPath, `${JSON.stringify(result, null, 2)}\n`);
+  }
+
+  if (planOutPath) {
+    await writeFile(planOutPath, `${JSON.stringify(result, null, 2)}\n`);
   }
 }
 
@@ -69,101 +199,12 @@ export async function runScaffoldAppCli({
     deprecationNotice();
   }
 
-  const args = argv;
-  const targetIndex = args.findIndex((arg) => arg === "--target");
-  const appNameIndex = args.findIndex((arg) => arg === "--app-name");
-  const sourceDirIndex = args.findIndex((arg) => arg === "--source-dir");
-  const coreOnly = args.includes("--core-only");
-  const force = args.includes("--force");
-  const asJson = args.includes("--json");
-  const planOnly = args.includes("--plan");
-  const includeIndex = args.findIndex((arg) => arg === "--include");
-  const excludeIndex = args.findIndex((arg) => arg === "--exclude");
-  const jsonOutIndex = args.findIndex((arg) => arg === "--json-out");
-  const planOutIndex = args.findIndex((arg) => arg === "--plan-out");
-
-  function fail(message, { includeUsage = false } = {}) {
-    console.error(message);
-    if (includeUsage && usage) {
-      console.error(usage);
-    }
-    process.exit(1);
-  }
-
-  if (targetIndex === -1 || !args[targetIndex + 1]) {
-    fail("Missing required --target option.", { includeUsage: true });
-  }
-
-  const resolvedTargetDir = resolve(process.cwd(), args[targetIndex + 1]);
-  const resolvedSourceDir =
-    sourceDirIndex === -1 || !args[sourceDirIndex + 1]
-      ? sourceDir
-      : resolve(process.cwd(), args[sourceDirIndex + 1]);
-  const appName = appNameIndex === -1 ? undefined : args[appNameIndex + 1];
-  const include =
-    includeIndex === -1 || !args[includeIndex + 1]
-      ? undefined
-      : args[includeIndex + 1].split(",").map((value) => value.trim()).filter(Boolean);
-  const exclude =
-    excludeIndex === -1 || !args[excludeIndex + 1]
-      ? undefined
-      : args[excludeIndex + 1].split(",").map((value) => value.trim()).filter(Boolean);
-  const jsonOutPath =
-    jsonOutIndex === -1 || !args[jsonOutIndex + 1]
-      ? undefined
-      : resolve(process.cwd(), args[jsonOutIndex + 1]);
-  const planOutPath =
-    planOutIndex === -1 || !args[planOutIndex + 1]
-      ? undefined
-      : resolve(process.cwd(), args[planOutIndex + 1]);
-
-  if (planOutPath && !planOnly) {
-    fail("--plan-out can only be used together with --plan.");
-  }
-
-  const options = {
-    targetDir: resolvedTargetDir,
-    appName,
-    coreOnly,
-    include,
-    exclude,
-  };
-
-  const conciseSummary = Boolean(jsonOutPath || planOutPath);
+  const fail = createScaffoldFailureHandler({ usage });
+  const parsedArgs = parseScaffoldAppCliArgs({ argv, sourceDir, fail });
 
   try {
-    const result = planOnly
-      ? buildScaffoldPlan(options)
-      : await scaffoldStarter({
-          sourceDir: resolvedSourceDir,
-          ...options,
-          force,
-        });
-
-    if (asJson || jsonOutPath || planOutPath) {
-      warnDeprecatedModeField();
-    }
-
-    if (asJson) {
-      printScaffoldSummary(result, {
-        modeLabel: planOnly ? "Scaffold plan for" : "Scaffolded",
-        writer: (line) => console.error(line),
-        concise: conciseSummary,
-      });
-      console.log(JSON.stringify(result, null, 2));
-    } else if (planOnly) {
-      printScaffoldSummary(result, { modeLabel: "Scaffold plan for", concise: conciseSummary });
-    } else {
-      printScaffoldSummary(result, { modeLabel: "Scaffolded", concise: conciseSummary });
-    }
-
-    if (jsonOutPath) {
-      await writeFile(jsonOutPath, `${JSON.stringify(result, null, 2)}\n`);
-    }
-
-    if (planOutPath) {
-      await writeFile(planOutPath, `${JSON.stringify(result, null, 2)}\n`);
-    }
+    const result = await runScaffoldApp(parsedArgs);
+    await emitScaffoldAppResult(result, parsedArgs);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown scaffold error.";
     console.error(`create-cf-starter failed: ${message}`);

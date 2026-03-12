@@ -26,6 +26,11 @@ async function removeUnselectedFeaturePacks(targetDir, selectedFeatures) {
 }
 
 async function removeUnneededExampleSupport(targetDir, selectedFeatures) {
+  if (!selectedFeatures.some((featureKey) => EXAMPLE_FEATURE_KEYS.includes(featureKey))) {
+    await rm(join(targetDir, "examples"), { recursive: true, force: true });
+    return;
+  }
+
   if (!hasFeature(selectedFeatures, "kv") && !hasFeature(selectedFeatures, "upload")) {
     await rm(join(targetDir, "examples/lib"), { recursive: true, force: true });
   }

@@ -47,10 +47,15 @@ describe("public surface", () => {
     expect(packedPaths).not.toContain("scripts/compat/app-plan.mjs");
     expect(packedPaths).not.toContain("scripts/compat/modules-plan.mjs");
     expect(packedPaths).not.toContain("scripts/compat/scaffold-app.mjs");
+    expect(packedPaths).not.toContain("scripts/internal/check-template-directory.mjs");
     expect(packedPaths).not.toContain("scripts/internal/app-plan.mjs");
     expect(packedPaths).not.toContain("scripts/internal/modules-plan.mjs");
+    expect(packedPaths).not.toContain("scripts/internal/template-report-cli.mjs");
+    expect(packedPaths).not.toContain("scripts/internal/template-cli-options.mjs");
     expect(packedPaths).not.toContain("scripts/lib/app-plan.mjs");
     expect(packedPaths).not.toContain("scripts/lib/modules-plan.mjs");
+    expect(packedPaths).not.toContain("scripts/lib/deprecation.mjs");
+    expect(packedPaths).not.toContain("template/app/App.tsx");
     expect(packedPaths).not.toContain("test/create-cf-starter.test.ts");
     expect(packedPaths).not.toContain("test/deprecated-cli.test.ts");
     expect(packedPaths).not.toContain("test/doctor.test.ts");
@@ -58,5 +63,10 @@ describe("public surface", () => {
     expect(packedPaths).not.toContain("test/public-surface.test.ts");
     expect(packedPaths).not.toContain("test/scaffold.test.ts");
     expect(packedPaths).not.toContain("test/starter-manifest.test.ts");
+    expect(packedPaths).not.toContain("test/template-candidate.test.ts");
+    expect(packedPaths).not.toContain("test/template-manifest.test.ts");
+    expect(packedPaths).not.toContain("test/template-snapshot.test.ts");
+    expect(packedPaths).not.toContain("test/fixtures/template-snapshots/core-only.json");
+    expect(packedPaths).not.toContain("test/fixtures/template-snapshots/items-upload.json");
   });
 });

@@ -154,7 +154,7 @@ describe("scaffold", () => {
     expect(schemaTemplate).toContain("// scaffold:items-schema:start");
   });
 
-  it("scaffolds a starter copy without node_modules", async () => {
+  it("supports partial fixture sources without copying node_modules", async () => {
     const sourceDir = await mkdtemp(join(tmpdir(), "cf-starter-source-"));
     const targetDir = await mkdtemp(join(tmpdir(), "cf-starter-target-parent-"));
     const target = join(targetDir, "generated");
@@ -162,8 +162,10 @@ describe("scaffold", () => {
 
     await mkdir(join(sourceDir, "src"), { recursive: true });
     await mkdir(join(sourceDir, "node_modules/pkg"), { recursive: true });
+    await mkdir(join(sourceDir, "template/app"), { recursive: true });
     await writeFile(join(sourceDir, "src/index.ts"), "export const ok = true;");
     await writeFile(join(sourceDir, "node_modules/pkg/index.js"), "ignored");
+    await writeFile(join(sourceDir, "template/app/App.tsx"), "ignored template");
     await writeFile(join(sourceDir, "package-lock.json"), "{}\n");
 
     await scaffoldStarter({ sourceDir, targetDir: target });
@@ -173,9 +175,87 @@ describe("scaffold", () => {
     await expect(readFile(join(target, "node_modules/pkg/index.js"), "utf8")).rejects.toMatchObject({
       code: "ENOENT",
     });
+    await expect(readFile(join(target, "template/app/App.tsx"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
     await expect(readFile(join(target, "package-lock.json"), "utf8")).rejects.toMatchObject({
       code: "ENOENT",
     });
+  });
+
+  it("scaffolds from the checked-in template layout by default", async () => {
+    const targetParent = await mkdtemp(join(tmpdir(), "cf-starter-template-layout-"));
+    const target = join(targetParent, "regional-ops");
+    tempDirs.push(targetParent);
+
+    await scaffoldStarter({
+      sourceDir: process.cwd(),
+      targetDir: target,
+      appName: "regional-ops",
+      include: ["upload"],
+    });
+
+    expect(await readFile(join(target, "package.json"), "utf8")).toContain('"name": "regional-ops"');
+    expect(await readFile(join(target, "README.md"), "utf8")).toContain("# regional-ops");
+    expect(await readFile(join(target, "scripts/doctor.mjs"), "utf8")).toContain("#!/usr/bin/env node");
+    expect(await readFile(join(target, "examples/feature-packs/upload/server/routes.ts"), "utf8")).toContain(
+      'type: "upload.process"'
+    );
+    await expect(readFile(join(target, "examples/feature-packs/items/server/routes.ts"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await expect(readFile(join(target, "bin/create-cf-starter"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  it("scaffolds a core-only app from the checked-in template layout", async () => {
+    const targetParent = await mkdtemp(join(tmpdir(), "cf-starter-template-core-only-"));
+    const target = join(targetParent, "regional-ops");
+    tempDirs.push(targetParent);
+
+    await scaffoldStarter({
+      sourceDir: process.cwd(),
+      targetDir: target,
+      appName: "regional-ops",
+      coreOnly: true,
+    });
+
+    expect(await readFile(join(target, "package.json"), "utf8")).toContain('"name": "regional-ops"');
+    expect(await readFile(join(target, "app/App.tsx"), "utf8")).toContain("Record Engine");
+    await expect(readFile(join(target, "examples/feature-packs/items/server/routes.ts"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await expect(readFile(join(target, "app/pages/HomePage.tsx"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  it("rejects the removed repo-copy compatibility flag on the internal scaffold CLI", async () => {
+    const targetParent = await mkdtemp(join(tmpdir(), "cf-starter-internal-repo-copy-layout-"));
+    const target = join(targetParent, "regional-ops");
+    tempDirs.push(targetParent);
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        "scripts/internal/scaffold-app.mjs",
+        "--source-dir",
+        process.cwd(),
+        "--target",
+        target,
+        "--include",
+        "upload",
+        "--repo-copy-layout",
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+      }
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("--repo-copy-layout is no longer supported.");
   });
 
   it("passes selected features through scaffold metadata rewrites", async () => {
@@ -501,6 +581,7 @@ describe("scaffold", () => {
     await mkdir(join(sourceDir, "scripts/lib/scaffold/renderers"), { recursive: true });
     await mkdir(join(sourceDir, "scripts/lib/scaffold/transforms"), { recursive: true });
     await mkdir(join(sourceDir, "test"), { recursive: true });
+    await mkdir(join(sourceDir, ".claude"), { recursive: true });
     await mkdir(join(sourceDir, ".github/workflows"), { recursive: true });
     await writeFile(join(sourceDir, "package.json"), JSON.stringify({ name: "cf-starter" }, null, 2));
     await writeFile(join(sourceDir, "wrangler.jsonc"), '{ "name": "cf-starter", "d1_databases": [{ "database_name": "cf-starter-db" }] }\n');
@@ -508,6 +589,7 @@ describe("scaffold", () => {
     await writeFile(join(sourceDir, "app/App.tsx"), "cf-starter\nStarter Core\n");
     await writeFile(join(sourceDir, "src/index.ts"), 'app.route("/api/auth", auth)\n');
     await writeFile(join(sourceDir, "CLAUDE.md"), "# starter claude\n");
+    await writeFile(join(sourceDir, ".claude/settings.local.json"), "{}\n");
     await writeFile(join(sourceDir, "ARCHITECTURE.md"), "# starter architecture\n");
     await writeFile(join(sourceDir, "ROADMAP.md"), "# starter roadmap\n");
     await writeFile(join(sourceDir, "scripts/create-cf-starter.mjs"), "console.log('starter');\n");
@@ -518,8 +600,12 @@ describe("scaffold", () => {
     await writeFile(join(sourceDir, "scripts/check-publish-ready.mjs"), "console.log('starter');\n");
     await writeFile(join(sourceDir, "scripts/test-create.mjs"), "console.log('starter');\n");
     await writeFile(join(sourceDir, "scripts/internal/app-plan.mjs"), "console.log('starter');\n");
+    await writeFile(join(sourceDir, "scripts/internal/check-template-directory.mjs"), "console.log('starter');\n");
+    await writeFile(join(sourceDir, "scripts/internal/materialize-template-candidate.mjs"), "console.log('starter');\n");
     await writeFile(join(sourceDir, "scripts/internal/modules-plan.mjs"), "console.log('starter');\n");
     await writeFile(join(sourceDir, "scripts/internal/scaffold-app.mjs"), "console.log('starter');\n");
+    await writeFile(join(sourceDir, "scripts/internal/snapshot-template.mjs"), "console.log('starter');\n");
+    await writeFile(join(sourceDir, "scripts/internal/sync-template-directory.mjs"), "console.log('starter');\n");
     await writeFile(join(sourceDir, "scripts/lib/scaffold.mjs"), "export const starter = true;\n");
     await writeFile(join(sourceDir, "scripts/lib/scaffold/orchestrator.mjs"), "export const starter = true;\n");
     await writeFile(join(sourceDir, "scripts/lib/scaffold/planner.mjs"), "export const starter = true;\n");
@@ -541,9 +627,14 @@ describe("scaffold", () => {
     await writeFile(join(sourceDir, "scripts/lib/scaffold/transforms/wrangler.mjs"), "export const starter = true;\n");
     await writeFile(join(sourceDir, "scripts/lib/scaffold/transforms/wrangler-metadata.mjs"), "export const starter = true;\n");
     await writeFile(join(sourceDir, "scripts/lib/modules-plan.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/deprecation.mjs"), "export const starter = true;\n");
     await writeFile(join(sourceDir, "scripts/lib/app-plan.mjs"), "export const starter = true;\n");
     await writeFile(join(sourceDir, "scripts/lib/starter-catalog.mjs"), "export const starter = true;\n");
     await writeFile(join(sourceDir, "scripts/lib/starter-manifest.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/template-candidate.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/template-directory.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/template-snapshot.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/template-manifest.mjs"), "export const starter = true;\n");
     await writeFile(join(sourceDir, "test/create-cf-starter.test.ts"), "test('starter', () => {})\n");
     await writeFile(join(sourceDir, "test/deprecated-cli.test.ts"), "test('starter', () => {})\n");
     await writeFile(join(sourceDir, "test/doctor.test.ts"), "test('starter', () => {})\n");
@@ -576,11 +667,16 @@ describe("scaffold", () => {
     });
 
     await expect(readFile(join(targetDir, "CLAUDE.md"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, ".claude/settings.local.json"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "ARCHITECTURE.md"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "ROADMAP.md"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "scripts/create-cf-starter.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "scripts/compat/scaffold-app.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/internal/check-template-directory.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/internal/materialize-template-candidate.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "scripts/internal/scaffold-app.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/internal/snapshot-template.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/internal/sync-template-directory.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "scripts/lib/scaffold/orchestrator.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "scripts/lib/scaffold/planner.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "scripts/lib/scaffold/renderers/app-template.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
@@ -595,6 +691,11 @@ describe("scaffold", () => {
     await expect(readFile(join(targetDir, "scripts/lib/scaffold/transforms/scaffold-markers.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "scripts/lib/scaffold/transforms/wrangler.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "scripts/lib/scaffold/transforms/wrangler-metadata.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/template-candidate.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/deprecation.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/template-directory.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/template-snapshot.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/template-manifest.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "test/create-cf-starter.test.ts"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "test/deprecated-cli.test.ts"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "test/public-surface.test.ts"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
@@ -1006,10 +1107,17 @@ describe("scaffold", () => {
       "scripts/compat/modules-plan.mjs",
       "scripts/compat/scaffold-app.mjs",
       "scripts/create-cf-starter.mjs",
+      "scripts/internal/check-template-directory.mjs",
       "scripts/internal/app-plan.mjs",
+      "scripts/internal/materialize-template-candidate.mjs",
       "scripts/internal/modules-plan.mjs",
       "scripts/internal/scaffold-app.mjs",
+      "scripts/internal/snapshot-template.mjs",
+      "scripts/internal/template-report-cli.mjs",
+      "scripts/internal/sync-template-directory.mjs",
+      "scripts/internal/template-cli-options.mjs",
       "scripts/lib/app-plan.mjs",
+      "scripts/lib/cli-args.mjs",
       "scripts/lib/scaffold/orchestrator.mjs",
       "scripts/lib/scaffold/planner.mjs",
       "scripts/lib/scaffold/renderers/app-template.mjs",
@@ -1031,7 +1139,13 @@ describe("scaffold", () => {
       "scripts/lib/scaffold/transforms/wrangler-metadata.mjs",
       "scripts/lib/modules-plan.mjs",
       "scripts/lib/scaffold.mjs",
+      "scripts/lib/deprecation.mjs",
       "scripts/lib/starter-manifest.mjs",
+      "scripts/lib/template-candidate.mjs",
+      "scripts/lib/template-directory.mjs",
+      "scripts/lib/template-snapshot.mjs",
+      "scripts/lib/template-manifest.mjs",
+      "scripts/lib/template-source.mjs",
       "scripts/test-create.mjs",
       "test/create-cf-starter.test.ts",
       "test/deprecated-cli.test.ts",
@@ -1040,6 +1154,10 @@ describe("scaffold", () => {
       "test/public-surface.test.ts",
       "test/scaffold.test.ts",
       "test/starter-manifest.test.ts",
+      "test/template-candidate.test.ts",
+      "test/template-manifest.test.ts",
+      "test/template-snapshot.test.ts",
+      "test/fixtures/template-snapshots",
       "ARCHITECTURE.md",
       "CLAUDE.md",
       "ROADMAP.md",

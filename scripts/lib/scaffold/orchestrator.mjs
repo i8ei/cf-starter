@@ -1,7 +1,7 @@
-import { cp, mkdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { materializeFeatureMigrations } from "../example-migrations.mjs";
-import { COPY_EXCLUDES } from "../starter-catalog.mjs";
+import { resolveTemplateSource } from "../template-source.mjs";
 import { buildValidationError, buildScaffoldPlan } from "./planner.mjs";
 import { buildCoreOnlyAppTemplate } from "./renderers/app-template.mjs";
 import {
@@ -15,9 +15,27 @@ import {
 } from "./transforms/cleanup.mjs";
 import { rewriteScaffoldMetadata } from "./transforms/metadata.mjs";
 
-function shouldCopy(sourcePath) {
-  const parts = sourcePath.split("/").filter(Boolean);
-  return !parts.some((part) => COPY_EXCLUDES.includes(part));
+async function scaffoldFromTemplate({
+  sourceDir,
+  targetDir,
+  appName,
+  coreOnly,
+  include,
+  exclude,
+}) {
+  const { materializeTemplateCandidate } = await import("../template-candidate.mjs");
+  const { templateDir, allowPartialSourceTree } = await resolveTemplateSource(sourceDir);
+
+  await materializeTemplateCandidate({
+    sourceDir,
+    templateDir,
+    targetDir,
+    appName,
+    coreOnly,
+    include,
+    exclude,
+    allowPartialSourceTree,
+  });
 }
 
 async function ensureTargetReady(targetDir, { force }) {
@@ -59,13 +77,17 @@ export async function scaffoldStarter({
   const { createdByScaffold } = await ensureTargetReady(targetDir, { force });
 
   try {
-    await cp(sourceDir, targetDir, {
-      recursive: true,
-      filter: (sourcePath) => shouldCopy(sourcePath.replace(sourceDir, "")),
-    });
-
     const plan = buildScaffoldPlan({ targetDir, appName, coreOnly, include, exclude });
     const { selectedFeatures } = plan;
+
+    await scaffoldFromTemplate({
+      sourceDir,
+      targetDir,
+      appName,
+      coreOnly,
+      include,
+      exclude,
+    });
 
     if (coreOnly) {
       await applyCoreOnlyTransforms(targetDir);

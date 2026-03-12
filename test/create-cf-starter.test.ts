@@ -196,6 +196,45 @@ describe("create-cf-starter", () => {
     expect(result.stdout).not.toContain("Create or wire the KV namespace");
   });
 
+  it("uses the template layout by default", async () => {
+    const targetParent = await mkdtemp(join(tmpdir(), "create-cf-starter-template-default-"));
+    const target = join(targetParent, "regional-ops");
+    tempDirs.push(targetParent);
+
+    const result = spawnSync(
+      process.execPath,
+      [scriptPath, target, "--include", "upload"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+      }
+    );
+
+    expect(result.status).toBe(0);
+    expect(await readFile(join(target, "README.md"), "utf8")).toContain("# regional-ops");
+    expect(await readFile(join(target, "scripts/doctor.mjs"), "utf8")).toContain("#!/usr/bin/env node");
+    await expect(readFile(join(target, "examples/feature-packs/items/server/routes.ts"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    expect(await readFile(join(target, "examples/feature-packs/upload/server/routes.ts"), "utf8")).toContain(
+      'type: "upload.process"'
+    );
+  });
+
+  it("does not expose internal layout overrides on the public CLI", () => {
+    const result = spawnSync(
+      process.execPath,
+      [scriptPath, "regional-ops", "--repo-copy-layout"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+      }
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("Unknown option '--repo-copy-layout'");
+  });
+
   it("fails gracefully when the target directory already exists", async () => {
     const targetParent = await mkdtemp(join(tmpdir(), "create-cf-starter-existing-"));
     tempDirs.push(targetParent);
