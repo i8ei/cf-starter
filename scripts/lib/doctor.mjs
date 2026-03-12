@@ -1,73 +1,17 @@
-const STARTER_ONLY_PATHS = [
-  "bin/create-cf-starter",
-  "scripts/check-publish-ready.mjs",
-  "scripts/compat/app-plan.mjs",
-  "scripts/compat/modules-plan.mjs",
-  "scripts/compat/scaffold-app.mjs",
-  "scripts/create-cf-starter.mjs",
-  "scripts/internal/app-plan.mjs",
-  "scripts/internal/modules-plan.mjs",
-  "scripts/internal/scaffold-app.mjs",
-  "scripts/test-create.mjs",
-  "test/create-cf-starter.test.ts",
-  "test/deprecated-cli.test.ts",
-  "test/doctor.test.ts",
-  "test/module-plan.test.ts",
-  "test/public-surface.test.ts",
-  "test/scaffold.test.ts",
-  "test/starter-manifest.test.ts",
-  "ARCHITECTURE.md",
-  "CLAUDE.md",
-  "ROADMAP.md",
-];
-
-const STARTER_ONLY_SCRIPTS = [
-  "test:create",
-  "check:publish",
-  "modules:plan",
-  "modules:plan:json",
-  "app:plan",
-  "app:plan:core",
-  "app:plan:json",
-  "app:plan:core:json",
-  "app:scaffold",
-];
-
-const README_PATTERNS = [
-  "create-cf-starter",
-  "app:scaffold",
-  "modules:plan",
-  "app:plan",
-];
-
-const EXAMPLE_RESIDUE_PATHS = [
-  "examples",
-  "examples/feature-packs",
-  "examples/lib",
-];
-
-const OPTIONAL_EXAMPLE_PATHS = {
-  items: [
-    "examples/feature-packs/items/server",
-    "examples/feature-packs/items/app",
-    "examples/feature-packs/items/shared",
-  ],
-  kv: [
-    "examples/feature-packs/kv/server",
-  ],
-  upload: [
-    "examples/feature-packs/upload/server",
-  ],
-};
-
-function normalizePath(filePath) {
-  return filePath.replace(/\/+$/, "");
-}
+import {
+  EXAMPLE_RESIDUE_PATHS,
+  GENERATED_APP_REMOVED_PATHS,
+  OPTIONAL_EXAMPLE_PATHS,
+  README_PATTERNS,
+  STARTER_ONLY_SCRIPTS,
+  STARTER_REPO_SENTINEL_PATH,
+  normalizeCatalogPath,
+} from "./starter-catalog.mjs";
 
 function detectSelectedExampleFeatures(pathSet) {
   return Object.entries(OPTIONAL_EXAMPLE_PATHS)
     .filter(([, candidatePaths]) =>
-      candidatePaths.some((candidatePath) => pathSet.has(normalizePath(candidatePath)))
+      candidatePaths.some((candidatePath) => pathSet.has(normalizeCatalogPath(candidatePath)))
     )
     .map(([featureKey]) => featureKey);
 }
@@ -79,11 +23,11 @@ export function analyzeGeneratedApp({
   existingPaths = [],
 }) {
   const checks = [];
-  const pathSet = new Set(existingPaths.map(normalizePath));
+  const pathSet = new Set(existingPaths.map(normalizeCatalogPath));
   const scripts = packageJson?.scripts ?? {};
   const packageName = packageJson?.name ?? "";
   const isStarterRepo =
-    packageName === "create-cf-starter" && pathSet.has("bin/create-cf-starter");
+    packageName === "create-cf-starter" && pathSet.has(STARTER_REPO_SENTINEL_PATH);
 
   if (isStarterRepo) {
     checks.push({
@@ -108,7 +52,7 @@ export function analyzeGeneratedApp({
     });
   }
 
-  const starterPaths = STARTER_ONLY_PATHS.filter((filePath) => pathSet.has(filePath));
+  const starterPaths = GENERATED_APP_REMOVED_PATHS.filter((filePath) => pathSet.has(filePath));
   if (starterPaths.length > 0) {
     checks.push({
       level: "fail",

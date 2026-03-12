@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { PUBLISH_FORBIDDEN_STARTER_PATHS } from "./lib/starter-catalog.mjs";
 
 const MAX_PACKAGE_BYTES = 150 * 1024;
 const MAX_UNPACKED_BYTES = 400 * 1024;
@@ -16,27 +17,7 @@ const FORBIDDEN_PACKED_PATH_PATTERNS = [
   /(^|\/)\.wrangler\//,
   /(^|\/)dist\//,
 ];
-const FORBIDDEN_PACKED_PATHS = new Set([
-  "ARCHITECTURE.md",
-  "ROADMAP.md",
-  "scripts/check-publish-ready.mjs",
-  "scripts/test-create.mjs",
-  "scripts/compat/app-plan.mjs",
-  "scripts/compat/modules-plan.mjs",
-  "scripts/compat/scaffold-app.mjs",
-  "scripts/internal/app-plan.mjs",
-  "scripts/internal/modules-plan.mjs",
-  "scripts/lib/app-plan.mjs",
-  "scripts/lib/deprecation.mjs",
-  "scripts/lib/modules-plan.mjs",
-  "test/create-cf-starter.test.ts",
-  "test/deprecated-cli.test.ts",
-  "test/doctor.test.ts",
-  "test/module-plan.test.ts",
-  "test/public-surface.test.ts",
-  "test/scaffold.test.ts",
-  "test/starter-manifest.test.ts",
-]);
+const FORBIDDEN_PACKED_PATHS = new Set(PUBLISH_FORBIDDEN_STARTER_PATHS);
 
 function fail(message) {
   console.error(`publish-ready check failed: ${message}`);

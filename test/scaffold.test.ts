@@ -23,7 +23,7 @@ afterEach(async () => {
 });
 
 describe("scaffold", () => {
-  it("rewrites index for core-only mode", async () => {
+  it("keeps legacy line-based index fixtures working in core-only mode", async () => {
     const dir = await mkdtemp(join(tmpdir(), "cf-starter-index-"));
     tempDirs.push(dir);
     const indexPath = join(dir, "index.ts");
@@ -48,6 +48,56 @@ describe("scaffold", () => {
     expect(updated).not.toContain("/api/kv");
     expect(updated).not.toContain("/api/upload");
     expect(updated).toContain("/api/auth");
+  });
+
+  it("rewrites marker-based feature blocks in index for core-only mode", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "cf-starter-index-markers-"));
+    tempDirs.push(dir);
+    const indexPath = join(dir, "index.ts");
+
+    await writeFile(
+      indexPath,
+      [
+        '// scaffold:feature-import:start items',
+        'import items from "../examples/feature-packs/items/server/routes";',
+        '// scaffold:feature-import:end items',
+        '// scaffold:feature-import:start kv',
+        'import kv from "../examples/feature-packs/kv/server/routes";',
+        '// scaffold:feature-import:end kv',
+        'app',
+        '// scaffold:feature-route:start items',
+        '  .route("/api/items", items)',
+        '// scaffold:feature-route:end items',
+        '// scaffold:feature-route:start kv',
+        '  .route("/api/kv", kv)',
+        '// scaffold:feature-route:end kv',
+        '  .route("/api/auth", auth)',
+      ].join("\n")
+    );
+
+    await rewriteIndexForCoreOnly(indexPath);
+    const updated = await readFile(indexPath, "utf8");
+
+    expect(updated).not.toContain('scaffold:feature-import:start items');
+    expect(updated).not.toContain("/api/items");
+    expect(updated).not.toContain("/api/kv");
+    expect(updated).toContain("/api/auth");
+  });
+
+  it("rewrites the source index template through marker-based core-only transform", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "cf-starter-index-template-"));
+    tempDirs.push(dir);
+    const indexPath = join(dir, "index.ts");
+
+    await writeFile(indexPath, await readFile(join(process.cwd(), "src/index.ts"), "utf8"));
+
+    await rewriteIndexForCoreOnly(indexPath);
+    const updated = await readFile(indexPath, "utf8");
+
+    expect(updated).toContain('.route("/api/auth", auth)');
+    expect(updated).toContain('.route("/api/orgs", orgs)');
+    expect(updated).not.toContain("scaffold:feature-import:start");
+    expect(updated).not.toContain("scaffold:feature-route:start");
   });
 
   it("applies core-only transforms to a copied app", async () => {
@@ -87,6 +137,21 @@ describe("scaffold", () => {
     await expect(readFile(join(dir, "migrations/0010_example_items.sql"), "utf8")).rejects.toMatchObject({
       code: "ENOENT",
     });
+  });
+
+  it("keeps marker contracts in source templates for scaffold transforms", async () => {
+    const indexTemplate = await readFile(join(process.cwd(), "src/index.ts"), "utf8");
+    const appTemplate = await readFile(join(process.cwd(), "app/App.tsx"), "utf8");
+    const homePageTemplate = await readFile(join(process.cwd(), "app/pages/HomePage.tsx"), "utf8");
+    const schemaTemplate = await readFile(join(process.cwd(), "src/db/schema.ts"), "utf8");
+
+    expect(indexTemplate).toContain("// scaffold:feature-import:start items");
+    expect(indexTemplate).toContain("// scaffold:feature-route:start upload");
+    expect(appTemplate).toContain("// scaffold:items-import:start");
+    expect(appTemplate).toContain("{/* scaffold:items-panel:start */}");
+    expect(homePageTemplate).toContain("// scaffold:items-home-import:start");
+    expect(homePageTemplate).toContain("// scaffold:items-home-hooks:start");
+    expect(schemaTemplate).toContain("// scaffold:items-schema:start");
   });
 
   it("scaffolds a starter copy without node_modules", async () => {
@@ -294,6 +359,135 @@ describe("scaffold", () => {
     expect(await readFile(join(dir, "app/App.tsx"), "utf8")).toContain("regional-ops");
   });
 
+  it("strips scaffold markers from generated app files", async () => {
+    const sourceDir = await mkdtemp(join(tmpdir(), "cf-starter-source-markers-"));
+    const targetDir = await mkdtemp(join(tmpdir(), "cf-starter-target-markers-parent-"));
+    const target = join(targetDir, "generated");
+    tempDirs.push(sourceDir, targetDir);
+
+    await mkdir(join(sourceDir, "app/pages"), { recursive: true });
+    await mkdir(join(sourceDir, "src/db"), { recursive: true });
+    await writeFile(
+      join(sourceDir, "package.json"),
+      JSON.stringify(
+        {
+          name: "cf-starter",
+          scripts: {},
+        },
+        null,
+        2
+      )
+    );
+    await writeFile(
+      join(sourceDir, "wrangler.jsonc"),
+      [
+        "{",
+        '  "name": "cf-starter",',
+        '  "d1_databases": [{ "binding": "DB", "database_name": "cf-starter-db" }],',
+        '  "queues": { "producers": [{ "queue": "cf-starter-jobs" }], "consumers": [{ "queue": "cf-starter-jobs" }] },',
+        '  "vars": { "EMAIL_FROM": "cf-starter <noreply@example.com>" }',
+        "}",
+      ].join("\n")
+    );
+    await writeFile(join(sourceDir, "README.md"), "# cf-starter\n");
+    await writeFile(
+      join(sourceDir, "src/index.ts"),
+      [
+        "// scaffold:feature-import:start items",
+        "// scaffold:feature-import:end items",
+        "export const app = createApp()",
+        "  // scaffold:feature-route:start items",
+        "  // scaffold:feature-route:end items",
+        '  .route("/api/auth", auth);',
+      ].join("\n")
+    );
+    await writeFile(
+      join(sourceDir, "app/App.tsx"),
+      [
+        "export default function App() {",
+        "  // scaffold:items-state:start",
+        "  // scaffold:items-state:end",
+        "  return (",
+        "    <>",
+        "      {/* scaffold:items-panel:start */}",
+        "      {/* scaffold:items-panel:end */}",
+        "      <div>cf-starter</div>",
+        "    </>",
+        "  );",
+        "}",
+      ].join("\n")
+    );
+    await writeFile(
+      join(sourceDir, "app/pages/HomePage.tsx"),
+      [
+        "// scaffold:items-home-import:start",
+        "// scaffold:items-home-import:end",
+        "export function HomePage() {",
+        "  // scaffold:items-home-hooks:start",
+        "  // scaffold:items-home-hooks:end",
+        "  return <div>home</div>;",
+        "}",
+      ].join("\n")
+    );
+    await writeFile(
+      join(sourceDir, "src/db/schema.ts"),
+      [
+        "export const organizations = {};",
+        "// scaffold:items-schema:start",
+        "// scaffold:items-schema:end",
+      ].join("\n")
+    );
+
+    await scaffoldStarter({ sourceDir, targetDir: target });
+
+    for (const relativePath of [
+      "src/index.ts",
+      "app/App.tsx",
+      "app/pages/HomePage.tsx",
+      "src/db/schema.ts",
+    ]) {
+      const source = await readFile(join(target, relativePath), "utf8");
+      expect(source).not.toContain("scaffold:");
+    }
+  });
+
+  it("rewrites wrangler metadata based on parsed current values while preserving comments", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "cf-starter-wrangler-structured-"));
+    tempDirs.push(dir);
+
+    await mkdir(join(dir, "app"), { recursive: true });
+    await writeFile(join(dir, "package.json"), JSON.stringify({ name: "cf-starter" }, null, 2));
+    await writeFile(
+      join(dir, "wrangler.jsonc"),
+      [
+        "{",
+        '  "name": "ops-template",',
+        '  // KV stays commented until needed',
+        '  "d1_databases": [{ "database_name": "ops-template-main" }],',
+        '  "r2_buckets": [{ "bucket_name": "ops-template-files" }],',
+        '  "queues": { "producers": [{ "queue": "ops-template-queue" }], "consumers": [{ "queue": "ops-template-queue" }] },',
+        '  "vars": { "EMAIL_FROM": "ops-template <hello@example.com>" }',
+        "}",
+      ].join("\n")
+    );
+    await writeFile(join(dir, "README.md"), "# cf-starter\n");
+    await writeFile(join(dir, "app/App.tsx"), "cf-starter\nStarter Core\n");
+
+    await rewriteScaffoldMetadata(dir, "regional-ops", {
+      coreOnly: false,
+      selectedFeatures: ["upload"],
+      requiredBindings: ["DB", "JOBS", "RATE_LIMITER", "BUCKET"],
+    });
+
+    const wrangler = await readFile(join(dir, "wrangler.jsonc"), "utf8");
+    expect(wrangler).toContain('"name": "regional-ops"');
+    expect(wrangler).toContain('"database_name": "regional-ops-db"');
+    expect(wrangler).toContain('"bucket_name": "regional-ops-bucket"');
+    expect(wrangler).toContain('"queue": "regional-ops-jobs"');
+    expect(wrangler).toContain('"EMAIL_FROM": "regional-ops <noreply@example.com>"');
+    expect(wrangler).toContain("// KV stays commented until needed");
+  });
+
   it("removes starter-only files and rewrites CI for generated apps", async () => {
     const sourceDir = await mkdtemp(join(tmpdir(), "cf-starter-clean-source-"));
     const targetParent = await mkdtemp(join(tmpdir(), "cf-starter-clean-target-"));
@@ -304,6 +498,8 @@ describe("scaffold", () => {
     await mkdir(join(sourceDir, "src"), { recursive: true });
     await mkdir(join(sourceDir, "scripts/lib"), { recursive: true });
     await mkdir(join(sourceDir, "scripts/internal"), { recursive: true });
+    await mkdir(join(sourceDir, "scripts/lib/scaffold/renderers"), { recursive: true });
+    await mkdir(join(sourceDir, "scripts/lib/scaffold/transforms"), { recursive: true });
     await mkdir(join(sourceDir, "test"), { recursive: true });
     await mkdir(join(sourceDir, ".github/workflows"), { recursive: true });
     await writeFile(join(sourceDir, "package.json"), JSON.stringify({ name: "cf-starter" }, null, 2));
@@ -325,8 +521,28 @@ describe("scaffold", () => {
     await writeFile(join(sourceDir, "scripts/internal/modules-plan.mjs"), "console.log('starter');\n");
     await writeFile(join(sourceDir, "scripts/internal/scaffold-app.mjs"), "console.log('starter');\n");
     await writeFile(join(sourceDir, "scripts/lib/scaffold.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/orchestrator.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/planner.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/renderers/app-template.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/renderers/readme.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/renderers/workflow.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/transforms/cleanup.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/transforms/app-metadata.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/transforms/file-ops.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/transforms/feature-selection.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/transforms/helpers.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/transforms/index-selection.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/transforms/items-selection.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/transforms/jsonc.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/transforms/metadata.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/transforms/package-metadata.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/transforms/readme-metadata.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/transforms/scaffold-markers.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/transforms/wrangler.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/scaffold/transforms/wrangler-metadata.mjs"), "export const starter = true;\n");
     await writeFile(join(sourceDir, "scripts/lib/modules-plan.mjs"), "export const starter = true;\n");
     await writeFile(join(sourceDir, "scripts/lib/app-plan.mjs"), "export const starter = true;\n");
+    await writeFile(join(sourceDir, "scripts/lib/starter-catalog.mjs"), "export const starter = true;\n");
     await writeFile(join(sourceDir, "scripts/lib/starter-manifest.mjs"), "export const starter = true;\n");
     await writeFile(join(sourceDir, "test/create-cf-starter.test.ts"), "test('starter', () => {})\n");
     await writeFile(join(sourceDir, "test/deprecated-cli.test.ts"), "test('starter', () => {})\n");
@@ -365,6 +581,20 @@ describe("scaffold", () => {
     await expect(readFile(join(targetDir, "scripts/create-cf-starter.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "scripts/compat/scaffold-app.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "scripts/internal/scaffold-app.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/scaffold/orchestrator.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/scaffold/planner.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/scaffold/renderers/app-template.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/scaffold/transforms/app-metadata.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/scaffold/transforms/file-ops.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/scaffold/transforms/index-selection.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/scaffold/transforms/items-selection.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/scaffold/transforms/jsonc.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/scaffold/transforms/metadata.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/scaffold/transforms/package-metadata.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/scaffold/transforms/readme-metadata.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/scaffold/transforms/scaffold-markers.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/scaffold/transforms/wrangler.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(targetDir, "scripts/lib/scaffold/transforms/wrangler-metadata.mjs"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "test/create-cf-starter.test.ts"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "test/deprecated-cli.test.ts"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(targetDir, "test/public-surface.test.ts"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
@@ -443,6 +673,7 @@ describe("scaffold", () => {
     await writeFile(join(sourceDir, "scripts/doctor.mjs"), await readFile(join(process.cwd(), "scripts/doctor.mjs"), "utf8"));
     await writeFile(join(sourceDir, "scripts/seed-demo.mjs"), await readFile(join(process.cwd(), "scripts/seed-demo.mjs"), "utf8"));
     await writeFile(join(sourceDir, "scripts/lib/doctor.mjs"), await readFile(join(process.cwd(), "scripts/lib/doctor.mjs"), "utf8"));
+    await writeFile(join(sourceDir, "scripts/lib/starter-catalog.mjs"), await readFile(join(process.cwd(), "scripts/lib/starter-catalog.mjs"), "utf8"));
     await writeFile(join(sourceDir, "scripts/lib/wrangler-config.mjs"), await readFile(join(process.cwd(), "scripts/lib/wrangler-config.mjs"), "utf8"));
     await writeFile(join(sourceDir, "scripts/create-cf-starter.mjs"), "console.log('starter');\n");
     await writeFile(join(sourceDir, "scripts/lib/starter-manifest.mjs"), "export const starter = true;\n");
@@ -618,6 +849,97 @@ describe("scaffold", () => {
     });
   });
 
+  it("removes marker-based excluded feature blocks from index", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "cf-starter-feature-markers-"));
+    tempDirs.push(dir);
+
+    await mkdir(join(dir, "examples/feature-packs/items/server"), { recursive: true });
+    await mkdir(join(dir, "examples/feature-packs/kv/server"), { recursive: true });
+    await mkdir(join(dir, "src"), { recursive: true });
+    await writeFile(
+      join(dir, "src/index.ts"),
+      [
+        '// scaffold:feature-import:start items',
+        'import items from "../examples/feature-packs/items/server/routes";',
+        '// scaffold:feature-import:end items',
+        '// scaffold:feature-import:start kv',
+        'import kv from "../examples/feature-packs/kv/server/routes";',
+        '// scaffold:feature-import:end kv',
+        'app',
+        '// scaffold:feature-route:start items',
+        '  .route("/api/items", items)',
+        '// scaffold:feature-route:end items',
+        '// scaffold:feature-route:start kv',
+        '  .route("/api/kv", kv)',
+        '// scaffold:feature-route:end kv',
+        '  .route("/api/auth", auth)',
+      ].join("\n")
+    );
+
+    await applyFeatureSelection(dir, ["kv"]);
+
+    const indexSource = await readFile(join(dir, "src/index.ts"), "utf8");
+    expect(indexSource).not.toContain('scaffold:feature-import:start items');
+    expect(indexSource).not.toContain("/api/items");
+    expect(indexSource).toContain("/api/kv");
+    expect(indexSource).toContain("/api/auth");
+  });
+
+  it("removes marker-based items blocks from app and schema without content-specific patterns", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "cf-starter-items-markers-"));
+    tempDirs.push(dir);
+
+    await mkdir(join(dir, "src"), { recursive: true });
+    await mkdir(join(dir, "src/db"), { recursive: true });
+    await mkdir(join(dir, "app"), { recursive: true });
+    await writeFile(join(dir, "src/index.ts"), 'app.route("/api/auth", auth);\n');
+    await writeFile(
+      join(dir, "app/App.tsx"),
+      [
+        "import { AppShell } from './components/AppShell';",
+        "// scaffold:items-import:start",
+        "import { useExperimentalItems } from '../examples/feature-packs/items/app/hooks/useExperimentalItems';",
+        "// scaffold:items-import:end",
+        "export default function App() {",
+        "  // scaffold:items-state:start",
+        "  const [draftItemName, setDraftItemName] = useState('');",
+        "  // scaffold:items-state:end",
+        "  // scaffold:items-hooks:start",
+        "  const itemsQuery = useExperimentalItems();",
+        "  // scaffold:items-hooks:end",
+        "  return (",
+        "    <AppShell>",
+        "      {/* scaffold:items-panel:start */}",
+        "      <section>Experimental items panel</section>",
+        "      {/* scaffold:items-panel:end */}",
+        "    </AppShell>",
+        "  );",
+        "}",
+      ].join("\n")
+    );
+    await writeFile(
+      join(dir, "src/db/schema.ts"),
+      [
+        "export const organizations = {};",
+        "// scaffold:items-schema:start",
+        'export const experimentalItems = sqliteTable("experimental_items", {});',
+        "// scaffold:items-schema:end",
+      ].join("\n")
+    );
+
+    await applyFeatureSelection(dir, []);
+
+    const appSource = await readFile(join(dir, "app/App.tsx"), "utf8");
+    const dbSchemaSource = await readFile(join(dir, "src/db/schema.ts"), "utf8");
+
+    expect(appSource).not.toContain("useExperimentalItems");
+    expect(appSource).not.toContain("Experimental items panel");
+    expect(appSource).not.toContain("scaffold:items-import:start");
+    expect(dbSchemaSource).not.toContain("experimental_items");
+    expect(dbSchemaSource).not.toContain("scaffold:items-schema:start");
+    expect(dbSchemaSource).toContain("organizations");
+  });
+
   it("builds scaffold summary with required bindings and next steps", () => {
     const summary = buildScaffoldSummary({
       appName: "regional-ops",
@@ -688,6 +1010,25 @@ describe("scaffold", () => {
       "scripts/internal/modules-plan.mjs",
       "scripts/internal/scaffold-app.mjs",
       "scripts/lib/app-plan.mjs",
+      "scripts/lib/scaffold/orchestrator.mjs",
+      "scripts/lib/scaffold/planner.mjs",
+      "scripts/lib/scaffold/renderers/app-template.mjs",
+      "scripts/lib/scaffold/renderers/readme.mjs",
+      "scripts/lib/scaffold/renderers/workflow.mjs",
+      "scripts/lib/scaffold/transforms/cleanup.mjs",
+      "scripts/lib/scaffold/transforms/app-metadata.mjs",
+      "scripts/lib/scaffold/transforms/file-ops.mjs",
+      "scripts/lib/scaffold/transforms/feature-selection.mjs",
+      "scripts/lib/scaffold/transforms/helpers.mjs",
+      "scripts/lib/scaffold/transforms/index-selection.mjs",
+      "scripts/lib/scaffold/transforms/items-selection.mjs",
+      "scripts/lib/scaffold/transforms/jsonc.mjs",
+      "scripts/lib/scaffold/transforms/metadata.mjs",
+      "scripts/lib/scaffold/transforms/package-metadata.mjs",
+      "scripts/lib/scaffold/transforms/readme-metadata.mjs",
+      "scripts/lib/scaffold/transforms/scaffold-markers.mjs",
+      "scripts/lib/scaffold/transforms/wrangler.mjs",
+      "scripts/lib/scaffold/transforms/wrangler-metadata.mjs",
       "scripts/lib/modules-plan.mjs",
       "scripts/lib/scaffold.mjs",
       "scripts/lib/starter-manifest.mjs",

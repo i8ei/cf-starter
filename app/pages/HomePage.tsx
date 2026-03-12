@@ -1,9 +1,13 @@
 import { useSession } from "../hooks/useSession";
 import { Panel } from "../components/Panel";
+// scaffold:items-home-import:start
+// scaffold:items-home-import:end
 
 export function HomePage() {
   const { data: session } = useSession();
   const primaryOrg = session?.organizations?.[0];
+  // scaffold:items-home-hooks:start
+  // scaffold:items-home-hooks:end
 
   const nextSteps = [
     "Add your first domain route under src/routes or examples/feature-packs.",

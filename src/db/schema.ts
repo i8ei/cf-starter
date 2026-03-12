@@ -116,3 +116,6 @@ export const auditLogs = sqliteTable("audit_logs", {
   metadataJson: text("metadata_json"),
   createdAt: text("created_at").notNull().default("(datetime('now'))"),
 });
+
+// scaffold:items-schema:start
+// scaffold:items-schema:end

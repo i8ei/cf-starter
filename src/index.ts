@@ -18,6 +18,12 @@ import { RateLimiter } from "./durable-objects/rate-limiter";
 import { requestId } from "./middleware/request-id";
 import { jsonError } from "./lib/http";
 import { handleJobBatch } from "./queues/jobs";
+// scaffold:feature-import:start items
+// scaffold:feature-import:end items
+// scaffold:feature-import:start kv
+// scaffold:feature-import:end kv
+// scaffold:feature-import:start upload
+// scaffold:feature-import:end upload
 
 export const app = new Hono<AppContextEnv>()
   .use("*", requestId)
@@ -56,6 +62,12 @@ export const app = new Hono<AppContextEnv>()
   .route("/api/health", health)
   .route("/api/modules", modules)
   .route("/api/orgs", orgs)
+  // scaffold:feature-route:start items
+  // scaffold:feature-route:end items
+  // scaffold:feature-route:start kv
+  // scaffold:feature-route:end kv
+  // scaffold:feature-route:start upload
+  // scaffold:feature-route:end upload
   .route("/api/auth", auth);
 
 export type AppType = typeof app;

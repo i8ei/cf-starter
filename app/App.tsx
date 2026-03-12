@@ -5,6 +5,8 @@ import { AppShell } from "./components/AppShell";
 import { AuthPage } from "./pages/AuthPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { HomePage } from "./pages/HomePage";
+// scaffold:items-import:start
+// scaffold:items-import:end
 
 const queryClient = new QueryClient();
 
@@ -42,6 +44,10 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
+  // scaffold:items-state:start
+  // scaffold:items-state:end
+  // scaffold:items-hooks:start
+  // scaffold:items-hooks:end
   return (
     <Switch>
       {/*
@@ -57,6 +63,8 @@ function AppRoutes() {
             <Switch>
               <Route path="/settings" component={SettingsPage} />
               <Route path="/" component={HomePage} />
+              {/* scaffold:items-panel:start */}
+              {/* scaffold:items-panel:end */}
               {/* record-engine:routes */}
               <Route>
                 <div className="mx-auto max-w-3xl py-20 text-center">
