@@ -44,9 +44,13 @@ describe("session helpers", () => {
     await rotateSession(repository, 7, 10, Date.UTC(2026, 0, 1));
     const rotated = await rotateSession(repository, 7, 11, Date.UTC(2026, 0, 2));
 
-    expect(sessions.get(7)).toEqual([rotated]);
-    expect(rotated.id).toBe("second-session");
+    expect(rotated.rawId).toBe("second-session");
+    expect(rotated.id).not.toBe("second-session"); // id is hashed
     expect(rotated.currentOrgId).toBe(11);
+    // DB stores the hashed session, not the raw one
+    const stored = sessions.get(7);
+    expect(stored).toHaveLength(1);
+    expect(stored![0].id).toBe(rotated.id);
 
     uuidSpy.mockRestore();
   });

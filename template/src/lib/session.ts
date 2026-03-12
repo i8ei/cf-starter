@@ -2,6 +2,7 @@ import { getCookie } from "hono/cookie";
 import type { Context } from "hono";
 import type { Env } from "../types";
 import { getAppConfig } from "./config";
+import { hashOpaqueToken } from "./crypto";
 
 export const HOST_SESSION_COOKIE_NAME = "__Host-session";
 export const LEGACY_SESSION_COOKIE_NAME = "session";
@@ -45,16 +46,19 @@ export async function rotateSession(
   userId: number,
   currentOrgId: number | null,
   now = Date.now()
-): Promise<SessionRecord> {
+): Promise<SessionRecord & { rawId: string }> {
   await repository.deleteSessionsForUser(userId);
 
+  const rawId = crypto.randomUUID();
+  const hashedId = await hashOpaqueToken(rawId);
+
   const session = {
-    id: crypto.randomUUID(),
+    id: hashedId,
     userId,
     currentOrgId,
     expiresAt: new Date(now + SESSION_MAX_AGE_SECONDS * 1000).toISOString(),
   };
 
   await repository.createSession(session);
-  return session;
+  return { ...session, rawId };
 }

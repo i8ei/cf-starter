@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Route, Switch } from "wouter";
 import { useSession } from "./hooks/useSession";
 import { AppShell } from "./components/AppShell";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AuthPage } from "./pages/AuthPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { HomePage } from "./pages/HomePage";
@@ -83,7 +84,9 @@ function AppRoutes() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppRoutes />
+      <ErrorBoundary>
+        <AppRoutes />
+      </ErrorBoundary>
     </QueryClientProvider>
   );
 }

@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { sessions } from "../db/schema";
 import type { AppContextEnv } from "../types";
 import { getSessionCookie } from "../lib/session";
+import { hashOpaqueToken } from "../lib/crypto";
 import { jsonError } from "../lib/http";
 import { getUserRoleNames } from "../lib/rbac";
 import {
@@ -13,16 +14,17 @@ import {
 } from "../lib/organizations";
 
 export const requireAuth = createMiddleware<AppContextEnv>(async (c, next) => {
-  const sessionId = getSessionCookie(c);
-  if (!sessionId) {
+  const rawSessionId = getSessionCookie(c);
+  if (!rawSessionId) {
     return jsonError(c, 401, "unauthorized", "Authentication required");
   }
 
+  const hashedSessionId = await hashOpaqueToken(rawSessionId);
   const db = drizzle(c.env.DB);
   const [session] = await db
     .select()
     .from(sessions)
-    .where(eq(sessions.id, sessionId))
+    .where(eq(sessions.id, hashedSessionId))
     .limit(1);
 
   if (!session || session.expiresAt < new Date().toISOString()) {

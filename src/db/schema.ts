@@ -101,21 +101,28 @@ export const userRoles = sqliteTable(
   (table) => [primaryKey({ columns: [table.userId, table.roleId] })]
 );
 
-export const auditLogs = sqliteTable("audit_logs", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  actorUserId: integer("actor_user_id").references(() => users.id),
-  organizationId: integer("organization_id").references(() => organizations.id),
-  action: text("action").notNull(),
-  resourceType: text("resource_type").notNull(),
-  resourceId: text("resource_id"),
-  requestId: text("request_id").notNull(),
-  method: text("method").notNull(),
-  path: text("path").notNull(),
-  ip: text("ip"),
-  status: integer("status").notNull(),
-  metadataJson: text("metadata_json"),
-  createdAt: text("created_at").notNull().default("(datetime('now'))"),
-});
+export const auditLogs = sqliteTable(
+  "audit_logs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    actorUserId: integer("actor_user_id").references(() => users.id),
+    organizationId: integer("organization_id").references(() => organizations.id),
+    action: text("action").notNull(),
+    resourceType: text("resource_type").notNull(),
+    resourceId: text("resource_id"),
+    requestId: text("request_id").notNull(),
+    method: text("method").notNull(),
+    path: text("path").notNull(),
+    ip: text("ip"),
+    status: integer("status").notNull(),
+    metadataJson: text("metadata_json"),
+    createdAt: text("created_at").notNull().default("(datetime('now'))"),
+  },
+  (table) => [
+    index("idx_audit_logs_created_at").on(table.createdAt),
+    index("idx_audit_logs_actor_user_id").on(table.actorUserId),
+  ]
+);
 
 // scaffold:items-schema:start
 // scaffold:items-schema:end

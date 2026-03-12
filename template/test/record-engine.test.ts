@@ -4,6 +4,7 @@ import {
   camelCase,
   snakeCase,
   findRecordDef,
+  validateRecordDef,
   schemaHasTable,
   indexHasRoute,
   generateDrizzleColumn,
@@ -677,5 +678,77 @@ function AppRoutes() {
   it("removes the example comment when adding first nav item", () => {
     const result = registerAppRoute(baseApp, sampleDef);
     expect(result.content).not.toContain("// Example:");
+  });
+});
+
+// ── validateRecordDef ─────────────────────────────
+
+describe("validateRecordDef", () => {
+  it("returns empty array for a valid definition", () => {
+    expect(validateRecordDef(sampleDef)).toEqual([]);
+  });
+
+  it("detects invalid listView.columns referencing unknown fields", () => {
+    const def = {
+      ...sampleDef,
+      listView: { columns: ["title", "nonExistent"] },
+    };
+    const errors = validateRecordDef(def);
+    expect(errors.length).toBe(1);
+    expect(errors[0]).toContain("nonExistent");
+  });
+
+  it("allows status field name in listView.columns", () => {
+    const def = {
+      ...sampleDef,
+      listView: { columns: ["title", "status"] },
+    };
+    expect(validateRecordDef(def)).toEqual([]);
+  });
+
+  it("detects invalid formView.sections fields", () => {
+    const def = {
+      ...sampleDef,
+      formView: {
+        sections: [{ label: "Info", fields: ["title", "ghost"] }],
+      },
+    };
+    const errors = validateRecordDef(def);
+    expect(errors.length).toBe(1);
+    expect(errors[0]).toContain("ghost");
+  });
+
+  it("detects status.defaultValue not in status.options", () => {
+    const def = {
+      ...sampleDef,
+      status: { field: "status", options: ["open", "closed"], defaultValue: "pending" },
+    };
+    const errors = validateRecordDef(def);
+    expect(errors.length).toBe(1);
+    expect(errors[0]).toContain("pending");
+  });
+
+  it("detects select field without options", () => {
+    const def = {
+      ...sampleDef,
+      fields: {
+        ...sampleDef.fields,
+        badSelect: { type: "select", label: "Bad", options: [] },
+      },
+    };
+    const errors = validateRecordDef(def);
+    expect(errors.some((e: string) => e.includes("badSelect"))).toBe(true);
+  });
+
+  it("detects invalid field type", () => {
+    const def = {
+      ...sampleDef,
+      fields: {
+        ...sampleDef.fields,
+        weird: { type: "blob", label: "Weird" },
+      },
+    };
+    const errors = validateRecordDef(def);
+    expect(errors.some((e: string) => e.includes("blob"))).toBe(true);
   });
 });

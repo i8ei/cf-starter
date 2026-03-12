@@ -1,8 +1,9 @@
+import type { Context } from "hono";
 import { setCookie } from "hono/cookie";
 import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import { sessions } from "../../db/schema";
-import type { Env } from "../../types";
+import type { AppContextEnv, Env } from "../../types";
 import {
   resolveCookieOptions,
   resolveSessionCookieName,
@@ -10,7 +11,7 @@ import {
   SESSION_MAX_AGE_SECONDS,
 } from "../../lib/session";
 
-export function setSessionCookie(c: any, env: Env, sessionId: string) {
+export function setSessionCookie(c: Context<AppContextEnv>, env: Env, sessionId: string) {
   const { sameSite, secure } = resolveCookieOptions(env);
   setCookie(c, resolveSessionCookieName(env), sessionId, {
     httpOnly: true,
@@ -22,7 +23,7 @@ export function setSessionCookie(c: any, env: Env, sessionId: string) {
 }
 
 export async function issueSession(
-  c: any,
+  c: Context<AppContextEnv>,
   env: Env,
   db: ReturnType<typeof drizzle>,
   userId: number,
@@ -40,5 +41,5 @@ export async function issueSession(
     userId,
     currentOrgId
   );
-  setSessionCookie(c, env, session.id);
+  setSessionCookie(c, env, session.rawId);
 }

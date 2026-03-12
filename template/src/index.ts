@@ -34,6 +34,15 @@ export const app = new Hono<AppContextEnv>()
       xFrameOptions: "DENY",
       xContentTypeOptions: "nosniff",
       referrerPolicy: "strict-origin-when-cross-origin",
+      contentSecurityPolicy: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:"],
+        fontSrc: ["'self'"],
+        connectSrc: ["'self'"],
+        frameAncestors: ["'none'"],
+      },
     })
   )
   .use(

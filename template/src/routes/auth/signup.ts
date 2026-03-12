@@ -43,10 +43,19 @@ const app = new Hono<AppContextEnv>().post(
     }
 
     const passwordHash = await hashPassword(password);
-    const [user] = await db
-      .insert(users)
-      .values({ email, passwordHash, name })
-      .returning();
+    let user: typeof users.$inferSelect;
+    try {
+      [user] = await db
+        .insert(users)
+        .values({ email, passwordHash, name })
+        .returning();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message.includes("UNIQUE")) {
+        logRequestEvent("warn", "auth.signup_conflict", c, {});
+        return jsonError(c, 409, "email_taken", "Email already registered");
+      }
+      throw e;
+    }
 
     const roles = await ensureDefaultUserRole(db, user.id);
     const organization = await ensurePersonalOrganization(db, user.id, user.name);

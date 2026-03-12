@@ -54,6 +54,7 @@ type CreateInviteResult = {
 export function useSession() {
   return useQuery({
     queryKey: SESSION_QUERY_KEY,
+    retry: false,
     queryFn: async () => {
       const res = await client.api.auth.me.$get();
       if (res.status === 401) return null;

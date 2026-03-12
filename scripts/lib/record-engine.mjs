@@ -43,6 +43,64 @@ export function resolveDefExportName(key, actualExportName) {
   return { name: expected, warning: null };
 }
 
+// ── Record definition validation ────────────────
+
+const VALID_FIELD_TYPES = ["text", "number", "date", "select", "relation", "file"];
+
+/**
+ * Validate a record definition for referential integrity.
+ * Returns an array of error messages (empty = valid).
+ * @param {object} def - Record definition object from defineRecord()
+ * @returns {string[]}
+ */
+export function validateRecordDef(def) {
+  const errors = [];
+  const fieldKeys = Object.keys(def.fields || {});
+  const statusFieldName = def.status?.field ? camelCase(def.status.field) : null;
+
+  // Validate field types
+  for (const [name, field] of Object.entries(def.fields || {})) {
+    if (!VALID_FIELD_TYPES.includes(field.type)) {
+      errors.push(`Field "${name}" has invalid type "${field.type}". Valid types: ${VALID_FIELD_TYPES.join(", ")}`);
+    }
+    if (field.type === "select" && (!field.options || field.options.length === 0)) {
+      errors.push(`Select field "${name}" must have a non-empty "options" array`);
+    }
+    if (field.type === "relation" && !field.relatedRecord) {
+      errors.push(`Relation field "${name}" must have a "relatedRecord" property`);
+    }
+  }
+
+  // Validate status
+  if (def.status) {
+    if (def.status.defaultValue && def.status.options && !def.status.options.includes(def.status.defaultValue)) {
+      errors.push(`status.defaultValue "${def.status.defaultValue}" is not in status.options [${def.status.options.join(", ")}]`);
+    }
+  }
+
+  // Validate listView.columns
+  if (def.listView?.columns) {
+    for (const col of def.listView.columns) {
+      if (!fieldKeys.includes(col) && col !== statusFieldName) {
+        errors.push(`listView.columns references unknown field "${col}". Valid fields: ${[...fieldKeys, ...(statusFieldName ? [statusFieldName] : [])].join(", ")}`);
+      }
+    }
+  }
+
+  // Validate formView.sections
+  if (def.formView?.sections) {
+    for (const section of def.formView.sections) {
+      for (const f of section.fields || []) {
+        if (!fieldKeys.includes(f)) {
+          errors.push(`formView section "${section.label}" references unknown field "${f}". Valid fields: ${fieldKeys.join(", ")}`);
+        }
+      }
+    }
+  }
+
+  return errors;
+}
+
 // ── Duplicate detection ─────────────────────────
 
 /**

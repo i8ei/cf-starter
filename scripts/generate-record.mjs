@@ -19,6 +19,7 @@ import { parseArgs } from "node:util";
 import {
   findRecordDef,
   resolveDefExportName,
+  validateRecordDef,
   pascalCase,
   camelCase,
   snakeCase,
@@ -79,6 +80,17 @@ if (!found) {
 }
 
 const { def, exportName } = found;
+
+// Validate record definition integrity
+const validationErrors = validateRecordDef(def);
+if (validationErrors.length > 0) {
+  console.error("Record definition validation failed:");
+  for (const err of validationErrors) {
+    console.error(`  - ${err}`);
+  }
+  process.exit(1);
+}
+
 const { name: defExportName, warning: namingWarning } = resolveDefExportName(def.key, exportName);
 if (namingWarning) {
   console.warn(`  [warn] ${namingWarning}`);
