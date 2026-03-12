@@ -16,6 +16,27 @@ const FORBIDDEN_PACKED_PATH_PATTERNS = [
   /(^|\/)\.wrangler\//,
   /(^|\/)dist\//,
 ];
+const FORBIDDEN_PACKED_PATHS = new Set([
+  "ARCHITECTURE.md",
+  "ROADMAP.md",
+  "scripts/check-publish-ready.mjs",
+  "scripts/test-create.mjs",
+  "scripts/compat/app-plan.mjs",
+  "scripts/compat/modules-plan.mjs",
+  "scripts/compat/scaffold-app.mjs",
+  "scripts/internal/app-plan.mjs",
+  "scripts/internal/modules-plan.mjs",
+  "scripts/lib/app-plan.mjs",
+  "scripts/lib/deprecation.mjs",
+  "scripts/lib/modules-plan.mjs",
+  "test/create-cf-starter.test.ts",
+  "test/deprecated-cli.test.ts",
+  "test/doctor.test.ts",
+  "test/module-plan.test.ts",
+  "test/public-surface.test.ts",
+  "test/scaffold.test.ts",
+  "test/starter-manifest.test.ts",
+]);
 
 function fail(message) {
   console.error(`publish-ready check failed: ${message}`);
@@ -75,6 +96,11 @@ const forbiddenPath = files.find((file) =>
 );
 if (forbiddenPath) {
   fail(`forbidden file included in tarball: ${forbiddenPath}`);
+}
+
+const forbiddenStarterPath = files.find((file) => FORBIDDEN_PACKED_PATHS.has(file));
+if (forbiddenStarterPath) {
+  fail(`starter-only file included in tarball: ${forbiddenStarterPath}`);
 }
 
 console.log("publish-ready checks passed");
