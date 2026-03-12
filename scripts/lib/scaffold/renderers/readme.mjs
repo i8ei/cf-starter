@@ -1,11 +1,3 @@
-function renderSelectedFeaturesIntro(selectedFeatures) {
-  if (selectedFeatures.length === 0) {
-    return "- Core: 認証、セッション、権限、organization context、API 契約、DB、ログ、テスト、Cloudflare bindings\n- Optional Examples: なし";
-  }
-
-  return `- Core: 認証、セッション、権限、organization context、API 契約、DB、ログ、テスト、Cloudflare bindings\n- Optional Examples: ${selectedFeatures.map((feature) => `\`${feature}\``).join("、")}`;
-}
-
 function renderDeployBlock(requiredBindings) {
   const lines = [
     "```bash",
@@ -50,62 +42,10 @@ function renderStackTable(requiredBindings) {
     rows.push("| Cache | KV |");
   }
 
-  rows.push("| Rate limit | Durable Object |");
-  rows.push("| Async jobs | Cloudflare Queues |");
   rows.push("| Validation | Zod |");
   rows.push("| Build | Vite + `@cloudflare/vite-plugin` |");
   rows.push("| Testing | Vitest |");
   return rows;
-}
-
-function renderExampleFeatureTable(selectedFeatures) {
-  const featureRows = {
-    items: [
-      "| `GET /api/items` | current organization の item 一覧 |",
-      "| `POST /api/items` | current organization に item 作成 |",
-    ],
-    upload: [
-      "| `GET /api/upload` | current organization prefix の R2 ファイル一覧取得 |",
-      "| `POST /api/upload` | current organization prefix に R2 アップロード |",
-    ],
-    kv: [
-      "| `GET /api/kv/:key` | current organization scope の KV 読み取り |",
-      "| `PUT /api/kv/:key` | current organization scope の KV 書き込み |",
-    ],
-  };
-
-  if (selectedFeatures.length === 0) {
-    return ["この app は core-only 構成です。example feature API は含みません。"];
-  }
-
-  return [
-    "| エンドポイント | 内容 |",
-    "|---|---|",
-    ...selectedFeatures.flatMap((feature) => featureRows[feature] ?? []),
-  ];
-}
-
-function renderOptionalExamplesSection(selectedFeatures) {
-  const lines = ["## Optional Examples", ""];
-
-  if (selectedFeatures.length === 0) {
-    lines.push("この app は core-first 構成です。optional example は含みません。");
-    return lines.join("\n");
-  }
-
-  lines.push("この app には次の optional example を含めています。", "");
-
-  if (selectedFeatures.includes("items")) {
-    lines.push("- `items`: D1 + organization scope の最小 CRUD");
-  }
-  if (selectedFeatures.includes("kv")) {
-    lines.push("- `kv`: organization scope の KV read/write");
-  }
-  if (selectedFeatures.includes("upload")) {
-    lines.push("- `upload`: R2 upload/list と queue enqueue");
-  }
-
-  return lines.join("\n");
 }
 
 function renderProductionChecklist(requiredBindings) {
@@ -123,161 +63,14 @@ function renderProductionChecklist(requiredBindings) {
 
   lines.push('- [ ] `CORS_ORIGIN` を本番 origin にする');
   lines.push('- [ ] `COOKIE_SAME_SITE` / `COOKIE_SECURE` を運用に合わせる');
-  lines.push('- [ ] Durable Object migration tag を必要に応じて更新する');
-  if (requiredBindings.includes("JOBS")) {
-    lines.push('- [ ] Queue 名を変更した場合は producer / consumer を揃える');
-  }
-  lines.push('- [ ] auth rate limit の閾値を要件に合わせる');
-  lines.push('- [ ] `scheduled` cleanup が本番でも動くことを確認する');
   return lines;
 }
 
-function renderQueueSection(selectedFeatures) {
-  const jobs = ["`user.welcome`"];
-  if (selectedFeatures.includes("upload")) {
-    jobs.push("`upload.process`");
-  }
-
-  const lines = [
-    "`JOBS` Queue binding を持ち、core と optional examples の両方で job を enqueue します。",
-    "",
-    ...jobs.map((job) => `- ${job}`),
-    "",
-    "consumer は Worker module の `queue()` handler で処理します。",
-    "",
-    "organization invite 作成時には `organization.invite_email` job も enqueue されます。",
-    "password reset request 時には `auth.password_reset_email` job も enqueue されます。",
-    "signup と verification 再送時には `auth.email_verification_email` job も enqueue されます。",
-    "`EMAIL_PROVIDER=resend`、`RESEND_API_KEY`、`EMAIL_FROM` を設定すると Resend 経由で実送信します。未設定時は `log` fallback です。",
-  ];
-
-  if (selectedFeatures.includes("upload")) {
-    lines.push("");
-    lines.push("`upload.process` は `upload` example feature に含まれる job です。");
-  }
-
-  return lines.join("\n");
-}
-
-function renderFeatureStructureSection(selectedFeatures, appName) {
-  const lines = [
-    "## Feature Structure",
-    "",
-    `\`${appName}\` は core と feature を分けて拡張する前提です。`,
-    "",
-    "- core routes: `src/routes/`",
-    "- core hooks: `app/hooks/`",
-    "- core schema: `shared/schemas/`",
-  ];
-
-  if (selectedFeatures.length === 0) {
-    lines.push("- example features: なし");
-  } else {
-    lines.push(
-      `- example feature routes: ${selectedFeatures.map((feature) => `\`examples/feature-packs/${feature}/server/routes.ts\``).join("、")}`
-    );
-    if (selectedFeatures.includes("items")) {
-      lines.push("- example feature hooks: `examples/feature-packs/items/app/hooks/`");
-      lines.push("- example feature schema: `examples/feature-packs/items/shared/`");
-      lines.push("- example feature migrations: `migrations/0010_example_items.sql`");
-    } else {
-      lines.push("- example feature hooks: なし");
-      lines.push("- example feature schema: なし");
-      lines.push("- example feature migrations: なし");
-    }
-  }
-
-  lines.push("");
-  lines.push("新しい業務機能を追加する場合は、まず `core` へ入れるべき共通機能か、`example` や派生アプリ固有の feature かを分けてから配置してください。");
-  if (selectedFeatures.length > 0) {
-    lines.push("example feature であっても、業務テーブルは `organization_id` を持たせて current organization で絞るのを基本にします。");
-  }
-
-  return lines.join("\n");
-}
-
-function renderDirectoryStructureSection(selectedFeatures, appName) {
-  const lines = ["## ディレクトリ構成", "", "```text", `${appName}/`, "├── app/                    React UI"];
-
-  lines.push("│   ├── hooks/              core hooks");
-  lines.push("│   └── lib/api.ts          型付き Hono RPC client");
-  if (selectedFeatures.length > 0) {
-    lines.push("├── examples/               selected example feature packs");
-    lines.push("│   ├── feature-packs/      app / shared / server example code");
-  }
-  lines.push(
-    selectedFeatures.includes("items")
-      ? "├── migrations/             core + selected example migrations"
-      : "├── migrations/             core migrations"
-  );
-  lines.push("├── shared/                 フロント・バック共有契約");
-  lines.push("│   └── schemas/            core schema");
-  lines.push("├── src/                    Worker backend");
-  lines.push("│   ├── db/                 Drizzle schema");
-  lines.push("│   ├── durable-objects/    rate limiter");
-  lines.push("│   ├── lib/                auth, session, audit, organizations など");
-  lines.push("│   ├── middleware/         auth, csrf, role, request-id");
-  lines.push("│   ├── queues/             queue producer / consumer");
-  lines.push("│   ├── routes/             core API routes");
-  lines.push("│   └── index.ts            Worker entrypoint");
-  lines.push("├── scripts/                補助スクリプト");
-  lines.push("├── test/                   unit / integration tests");
-  lines.push("└── README.md");
-  lines.push("```");
-
-  return lines.join("\n");
-}
-
 export function renderGeneratedAppReadme({ appName, coreOnly, selectedFeatures, requiredBindings }) {
-  const introHeading = coreOnly
-    ? "このリポジトリは core-first 構成で始める前提です。"
-    : "このリポジトリは core を中心に、必要な example だけを足す前提です。";
-  const introBody = coreOnly
-    ? "- Core: 認証、セッション、権限、organization context、API 契約、DB、ログ、テスト、Cloudflare bindings\n- Optional Examples: なし"
-    : renderSelectedFeaturesIntro(selectedFeatures);
-
   const lines = [
     `# ${appName}`,
     "",
-    "Cloudflare Workers 上で動く業務アプリの土台です。",
-    "",
-    "この生成先リポジトリは starter 本体ではなく、すぐに業務機能追加へ入るための app です。",
-    "",
-    introHeading,
-    "",
-    introBody,
-    "",
-    "## 何が入っているか",
-    "",
-    "- React + TypeScript + Tailwind CSS v4",
-    "- Hono on Cloudflare Workers",
-    "- D1 + Drizzle ORM",
-    "- Zod による shared schema",
-    "- Hono RPC client による型付き API 呼び出し",
-    "- D1 session + HttpOnly Cookie 認証",
-    "- CSRF 保護",
-    "- request id",
-    "- 構造化 JSON ログ",
-    "- 統一 API エラー形式",
-    "- Durable Object ベースの auth rate limit",
-    "- organization / membership / current organization context",
-    "- password reset request / confirm flow",
-    "- email verification request / confirm flow",
-    "- Vitest ベースの自動テスト",
-    "",
-    "## スタック",
-    "",
-    ...renderStackTable(requiredBindings),
-    "",
-    "## クイックスタート",
-    "",
-    "### 前提",
-    "",
-    "- Node.js 20+",
-    "- npm",
-    "- Wrangler CLI",
-    "",
-    "### ローカル開発",
+    "## セットアップ",
     "",
     "```bash",
     "npm install",
@@ -285,73 +78,27 @@ export function renderGeneratedAppReadme({ appName, coreOnly, selectedFeatures, 
     "npm run dev",
     "```",
     "",
-    "### Cloudflare へデプロイ",
-    "",
-    ...renderDeployBlock(requiredBindings),
-    "",
     "## コマンド",
     "",
     "| コマンド | 内容 |",
     "|---|---|",
-    "| `npm run dev` | 統合開発モード |",
-    "| `npm run dev:split` | Wrangler と Vite を分離起動 |",
+    "| `npm run dev` | ローカル開発 |",
     "| `npm run build` | ビルド |",
-    "| `npm run preview` | ビルド後プレビュー |",
     "| `npm run deploy` | Cloudflare にデプロイ |",
-    "| `npm test` | 自動テスト |",
-    "| `npm run test:watch` | テスト watch |",
+    "| `npm test` | テスト |",
     "| `npm run db:generate` | Drizzle から migration 生成 |",
     "| `npm run db:migrate` | ローカル D1 に migration 適用 |",
     "| `npm run db:migrate:remote` | リモート D1 に migration 適用 |",
-    "| `npm run seed:demo` | ローカル D1 に demo user を投入 |",
-    "| `npm run doctor` | generated app としての整合性チェック |",
+    "| `npm run seed:demo` | demo user を投入 |",
     "| `npm run record:generate -- --record shared/records/xxx.ts` | Record Engine でコード生成 |",
     "",
-    renderOptionalExamplesSection(selectedFeatures),
+    "## スタック",
     "",
-    renderDirectoryStructureSection(selectedFeatures, appName),
+    ...renderStackTable(requiredBindings),
     "",
-    "## Core API",
+    "## デプロイ",
     "",
-    "| エンドポイント | 内容 |",
-    "|---|---|",
-    "| `GET /api/health` | DB / KV / R2 / Env の基本チェック |",
-    "| `GET /api/modules` | core / optional module の runtime status |",
-    "| `GET /api/orgs` | 所属 organization 一覧と current organization |",
-    "| `POST /api/orgs` | organization 作成 + current organization 切替 |",
-    "| `GET /api/orgs/current/invites` | current organization の招待一覧 |",
-    "| `POST /api/orgs/current/invites` | current organization の招待作成 |",
-    "| `POST /api/orgs/invites/accept` | organization 招待承諾 |",
-    "| `POST /api/auth/signup` | ユーザー登録 |",
-    "| `POST /api/auth/login` | ログイン |",
-    "| `POST /api/auth/logout` | ログアウト |",
-    "| `POST /api/auth/switch-org` | current organization 切替 |",
-    "| `POST /api/auth/password-reset/request` | password reset 開始 |",
-    "| `POST /api/auth/password-reset/confirm` | password reset 完了 |",
-    "| `POST /api/auth/email-verification/request` | verification mail 再送 |",
-    "| `POST /api/auth/email-verification/confirm` | email verification 完了 |",
-    "| `GET /api/auth/me` | 現在のユーザー取得 |",
-    "",
-    "## Security Invariants",
-    "",
-    "- session cookie は HttpOnly",
-    "- パスワードは PBKDF2 で保存",
-    "- write 系 API は CSRF 保護",
-    "- auth API は rate limit 付き",
-    "- すべてのエラーは `{ error: { code, message, requestId, details? } }`",
-    "- 監査ログは `audit_logs` に保存",
-    "- `X-Request-Id` をレスポンスとログに載せる",
-    "- organization context は `memberships` と `sessions.current_org_id` で解決",
-    "",
-    "## Queue",
-    "",
-    renderQueueSection(selectedFeatures),
-    "",
-    renderFeatureStructureSection(selectedFeatures, appName),
-    "",
-    "## Optional Example APIs",
-    "",
-    ...renderExampleFeatureTable(selectedFeatures),
+    ...renderDeployBlock(requiredBindings),
     "",
     "## 本番チェックリスト",
     "",

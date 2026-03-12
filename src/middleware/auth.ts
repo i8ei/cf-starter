@@ -14,6 +14,11 @@ import {
 } from "../lib/organizations";
 
 export const requireAuth = createMiddleware<AppContextEnv>(async (c, next) => {
+  if (c.env.AUTH_ENABLED === "false") {
+    await next();
+    return;
+  }
+
   const rawSessionId = getSessionCookie(c);
   if (!rawSessionId) {
     return jsonError(c, 401, "unauthorized", "Authentication required");

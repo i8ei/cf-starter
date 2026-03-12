@@ -1,8 +1,7 @@
 import { cp, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
-import { getPrimaryD1DatabaseName, readWranglerConfig } from "./lib/wrangler-config.mjs";
+import { execWrangler, getPrimaryD1DatabaseName, readWranglerConfig } from "./lib/wrangler-config.mjs";
 import { materializeFeatureMigrations } from "./lib/example-migrations.mjs";
 
 const mode = process.argv[2] === "remote" ? "--remote" : "--local";
@@ -29,7 +28,10 @@ try {
   });
 
   const args = ["d1", "migrations", "apply", dbName, mode];
-  const result = spawnSync("wrangler", args, { stdio: "inherit", cwd: tempDir });
+  if (mode === "--local") {
+    args.push("--persist-to", resolve(cwd, ".wrangler/state"));
+  }
+  const result = execWrangler(args, { stdio: "inherit", cwd: tempDir });
   if (result.error) {
     console.error(result.error.message);
     process.exit(1);

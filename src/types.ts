@@ -15,6 +15,7 @@ export interface Env {
   EMAIL_FROM?: string;
   EMAIL_REPLY_TO?: string;
   RESEND_API_KEY?: string;
+  AUTH_ENABLED?: string;
 }
 
 export interface OrganizationMembershipSummary {

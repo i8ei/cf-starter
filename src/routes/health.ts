@@ -53,7 +53,8 @@ const app = new Hono<AppContextEnv>().get("/", async (c) => {
   }
 
   const status = Object.values(checks).every((v) => v === "ok") ? "ok" : "degraded";
-  return c.json({ status, checks, modules });
+  const authEnabled = c.env.AUTH_ENABLED !== "false";
+  return c.json({ status, checks, modules, authEnabled });
 });
 
 export default app;

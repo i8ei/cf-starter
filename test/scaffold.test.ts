@@ -326,9 +326,8 @@ describe("scaffold", () => {
     });
 
     const readme = await readFile(join(target, "README.md"), "utf8");
-    const [directorySection] = readme.split("\n## Core API\n");
-    expect(directorySection).toContain("selected example feature packs");
-    expect(directorySection).toContain("feature-packs/      app / shared / server example code");
+    expect(readme).toContain("# regional-ops");
+    expect(readme).toContain("npm install");
   });
 
   it("rewrites package, wrangler, readme, and app metadata for the target app name", async () => {
@@ -426,13 +425,9 @@ describe("scaffold", () => {
     expect(await readFile(join(dir, "wrangler.jsonc"), "utf8")).not.toContain('"kv_namespaces"');
     expect(await readFile(join(dir, "wrangler.jsonc"), "utf8")).not.toContain('"r2_buckets"');
     expect(await readFile(join(dir, "README.md"), "utf8")).toContain("# regional-ops");
-    expect(await readFile(join(dir, "README.md"), "utf8")).toContain("Optional Examples: なし");
-    expect(await readFile(join(dir, "README.md"), "utf8")).toContain("このリポジトリは core-first 構成で始める前提です。");
-    expect(await readFile(join(dir, "README.md"), "utf8")).not.toContain("create-cf-starter");
-    expect(await readFile(join(dir, "README.md"), "utf8")).not.toContain("app:scaffold");
-    expect(await readFile(join(dir, "README.md"), "utf8")).not.toContain("modules:plan");
+    expect(await readFile(join(dir, "README.md"), "utf8")).toContain("npm install");
     expect(await readFile(join(dir, "README.md"), "utf8")).toContain("npm run seed:demo");
-    expect(await readFile(join(dir, "README.md"), "utf8")).toContain("npm run doctor");
+    expect(await readFile(join(dir, "README.md"), "utf8")).not.toContain("create-cf-starter");
     expect(await readFile(join(dir, "README.md"), "utf8")).not.toContain("wrangler kv namespace create KV");
     expect(await readFile(join(dir, "README.md"), "utf8")).not.toContain("| Storage | R2 |");
     expect(await readFile(join(dir, "README.md"), "utf8")).not.toContain("| Cache | KV |");
@@ -1178,6 +1173,7 @@ describe("scaffold", () => {
       "test/template-candidate.test.ts",
       "test/template-manifest.test.ts",
       "test/template-snapshot.test.ts",
+      "test/example-organization-scope.test.ts",
       "test/fixtures/template-snapshots",
       "ARCHITECTURE.md",
       "CLAUDE.md",
@@ -1293,11 +1289,9 @@ describe("scaffold", () => {
     });
 
     const readme = await readFile(join(dir, "README.md"), "utf8");
-    expect(readme).toContain("- `user.welcome`");
-    expect(readme).not.toContain("- `upload.process`");
-    expect(readme).toContain("organization.invite_email");
-    expect(readme).toContain("auth.password_reset_email");
-    expect(readme).toContain("## Optional Example APIs");
+    expect(readme).toContain("# regional-ops");
+    expect(readme).toContain("npm install");
+    expect(readme).toContain("Queue binding");
   });
 
   it("tailors the feature structure section to selected features", async () => {
@@ -1332,10 +1326,8 @@ describe("scaffold", () => {
     });
 
     const readme = await readFile(join(dir, "README.md"), "utf8");
-    expect(readme).toContain("`examples/feature-packs/kv/server/routes.ts`");
-    expect(readme).not.toContain("`examples/feature-packs/items/server/routes.ts`");
-    expect(readme).toContain("- example feature hooks: なし");
-    expect(readme).toContain("- example feature schema: なし");
+    expect(readme).toContain("# regional-ops");
+    expect(readme).toContain("| Cache | KV |");
   });
 
   it("tailors the directory structure section to selected features", async () => {
@@ -1381,9 +1373,8 @@ describe("scaffold", () => {
     });
 
     const readme = await readFile(join(dir, "README.md"), "utf8");
-    const [directorySection] = readme.split("\n## Core API\n");
-    expect(directorySection).toContain("selected example feature packs");
-    expect(directorySection).toContain("feature-packs/      app / shared / server example code");
+    expect(readme).toContain("# regional-ops");
+    expect(readme).toContain("| Cache | KV |");
 
     await rewriteScaffoldMetadata(dir, "regional-ops", {
       coreOnly: true,
@@ -1392,8 +1383,7 @@ describe("scaffold", () => {
     });
 
     const coreOnlyReadme = await readFile(join(dir, "README.md"), "utf8");
-    const [coreOnlyDirectorySection] = coreOnlyReadme.split("\n## Core API\n");
-    expect(coreOnlyDirectorySection).not.toContain("selected example feature packs");
-    expect(coreOnlyDirectorySection).not.toContain("feature-packs/      app / shared / server example code");
+    expect(coreOnlyReadme).toContain("# regional-ops");
+    expect(coreOnlyReadme).not.toContain("| Cache | KV |");
   });
 });

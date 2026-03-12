@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
@@ -56,4 +57,8 @@ export async function readWranglerConfig(cwd = process.cwd()) {
 
 export function getPrimaryD1DatabaseName(config) {
   return config?.d1_databases?.[0]?.database_name;
+}
+
+export function execWrangler(args, options = {}) {
+  return spawnSync("npx", ["wrangler", ...args], options);
 }

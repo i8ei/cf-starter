@@ -149,6 +149,7 @@
     "test/create-cf-starter.test.ts",
     "test/deprecated-cli.test.ts",
     "test/doctor.test.ts",
+    "test/example-organization-scope.test.ts",
     "test/fixtures/template-snapshots",
     "test/module-plan.test.ts",
     "test/public-surface.test.ts",

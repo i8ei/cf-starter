@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
 import { pbkdf2Sync, randomBytes } from "node:crypto";
-import { spawnSync } from "node:child_process";
 import { parseArgs } from "node:util";
-import { getPrimaryD1DatabaseName, readWranglerConfig } from "./lib/wrangler-config.mjs";
+import { execWrangler, getPrimaryD1DatabaseName, readWranglerConfig } from "./lib/wrangler-config.mjs";
 
 const { values } = parseArgs({
   options: {
@@ -63,7 +62,7 @@ const sql = [
   "COMMIT;",
 ].join("\n");
 
-const result = spawnSync("wrangler", ["d1", "execute", dbName, mode, "--command", sql], {
+const result = execWrangler(["d1", "execute", dbName, mode, "--command", sql], {
   stdio: "inherit",
 });
 

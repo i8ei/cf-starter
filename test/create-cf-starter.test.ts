@@ -131,7 +131,7 @@ describe("create-cf-starter", () => {
     expect(result.stdout).not.toContain("Create or wire the KV namespace");
     expect(result.stdout).not.toContain("Create or wire the R2 bucket");
     expect(await readFile(join(target, "README.md"), "utf8")).toContain("# regional-ops");
-    expect(await readFile(join(target, "README.md"), "utf8")).toContain("core-only 構成");
+    expect(await readFile(join(target, "README.md"), "utf8")).toContain("npm install");
   });
 
   it("uses the package template even when invoked outside the repo cwd", async () => {

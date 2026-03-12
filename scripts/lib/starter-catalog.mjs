@@ -57,6 +57,7 @@ export const GENERATED_APP_REMOVED_PATHS = Object.freeze([
   "test/template-candidate.test.ts",
   "test/template-manifest.test.ts",
   "test/template-snapshot.test.ts",
+  "test/example-organization-scope.test.ts",
   "test/fixtures/template-snapshots",
   "ARCHITECTURE.md",
   "CLAUDE.md",

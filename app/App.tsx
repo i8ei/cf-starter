@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Route, Switch } from "wouter";
 import { useSession } from "./hooks/useSession";
+import { useHealth } from "./hooks/useHealth";
 import { AppShell } from "./components/AppShell";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AuthPage } from "./pages/AuthPage";
@@ -20,7 +21,17 @@ const recordNavItems: { label: string; href: string }[] = [
 ];
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { data: health } = useHealth();
   const { data: session, isLoading } = useSession();
+
+  if (health?.authEnabled === false) {
+    return (
+      <AppShell navItems={recordNavItems}>
+        {children}
+      </AppShell>
+    );
+  }
+
   if (isLoading) {
     return (
       <AppShell>
