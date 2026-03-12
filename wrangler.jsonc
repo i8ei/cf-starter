@@ -1,6 +1,7 @@
 {
   "name": "cf-starter",
-  "compatibility_date": "2025-01-01",
+  "compatibility_date": "2025-12-30",
+  "compatibility_flags": ["nodejs_compat"],
   "main": "./src/index.ts",
   "d1_databases": [
     {
@@ -10,12 +11,13 @@
       "migrations_dir": "./migrations"
     }
   ],
-  "kv_namespaces": [
-    {
-      "binding": "KV",
-      "id": "TODO"
-    }
-  ],
+  // KV — uncomment if needed. Remove KV from src/types.ts Env if not used.
+  // "kv_namespaces": [
+  //   {
+  //     "binding": "KV",
+  //     "id": "TODO"
+  //   }
+  // ],
   "r2_buckets": [
     {
       "binding": "BUCKET",

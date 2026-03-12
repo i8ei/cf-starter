@@ -43,25 +43,32 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   return (
-    <AuthGuard>
-      <Switch>
-        <Route path="/settings" component={SettingsPage} />
-        <Route path="/" component={HomePage} />
-        {/*
-          Record Engine routes will be added here by the generator:
-          <Route path="/:record" component={...} />
-          <Route path="/:record/new" component={...} />
-          <Route path="/:record/:id" component={...} />
-          <Route path="/:record/:id/edit" component={...} />
-        */}
-        <Route>
-          <div className="mx-auto max-w-3xl py-20 text-center">
-            <h2 className="text-xl font-semibold text-white">404</h2>
-            <p className="mt-2 text-sm text-slate-400">Page not found</p>
-          </div>
-        </Route>
-      </Switch>
-    </AuthGuard>
+    <Switch>
+      {/*
+        Public pages (no auth required) — mount at /p/* prefix:
+        <Route path="/p/about" component={AboutPage} />
+        Backend: register public API routes without requireAuth in src/index.ts
+      */}
+
+      {/* Authenticated pages */}
+      <Route>
+        {() => (
+          <AuthGuard>
+            <Switch>
+              <Route path="/settings" component={SettingsPage} />
+              <Route path="/" component={HomePage} />
+              {/* record-engine:routes */}
+              <Route>
+                <div className="mx-auto max-w-3xl py-20 text-center">
+                  <h2 className="text-xl font-semibold text-white">404</h2>
+                  <p className="mt-2 text-sm text-slate-400">Page not found</p>
+                </div>
+              </Route>
+            </Switch>
+          </AuthGuard>
+        )}
+      </Route>
+    </Switch>
   );
 }
 

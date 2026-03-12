@@ -2,7 +2,7 @@ import type { JobMessage } from "./queues/types";
 
 export interface Env {
   DB: D1Database;
-  KV: KVNamespace;
+  KV?: KVNamespace;
   BUCKET: R2Bucket;
   RATE_LIMITER: DurableObjectNamespace;
   JOBS: Queue<JobMessage>;

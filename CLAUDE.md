@@ -7,7 +7,7 @@ Cloudflare フルスタック スターターテンプレート。
 - **Frontend**: React + TypeScript + Tailwind CSS v4 + TanStack Query
 - **Backend**: Hono on Cloudflare Workers
 - **DB**: D1 + Drizzle ORM（型安全、マイグレーション自動生成）
-- **Storage**: R2（オブジェクト）/ KV（キーバリュー）
+- **Storage**: R2（オブジェクト）/ KV（キーバリュー、オプション）
 - **Validation**: Zod + @hono/zod-validator（フロント・バック共有）
 - **統合**: @cloudflare/vite-plugin（1プロジェクト統合ビルド）
 
@@ -129,6 +129,26 @@ wouter による SPA ルーティング:
 - `/:record/:id` → 詳細（同上）
 - `/:record/:id/edit` → 編集（同上）
 - `/settings` → 組織設定
+
+## パブリックページ（認証不要）
+
+`/p/*` プレフィックスで認証不要のページを配置できる。
+
+- **フロント**: `app/App.tsx` の `Switch` 先頭（AuthGuard の外）に `<Route path="/p/xxx">` を追加
+- **バック**: `src/index.ts` に `requireAuth` なしのルートを `.route("/api/public", publicRoutes)` で登録
+- CSRF は GET のみなので問題なし
+
+## D1 パラメータ制限
+
+D1 は1クエリ ~100パラメータ上限。`inArray()` で大量 ID を渡す場合は `src/lib/d1-batch.ts` の `batchInArray()` を使う。
+
+## Record Engine — ソフトデリート
+
+レコード定義で `softDelete: true` を指定すると、生成コードが以下の動作に変わる:
+
+- Drizzle スキーマに `deletedAt` カラム追加
+- LIST / GET ONE に `isNull(deletedAt)` フィルタ追加
+- DELETE が `deletedAt = now()` のソフトデリートに変更
 
 ## 型安全チェーン
 

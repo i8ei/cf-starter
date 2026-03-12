@@ -120,6 +120,10 @@ export function generateDrizzleTableBlock(def) {
     );
   }
 
+  if (def.softDelete) {
+    cols.push(`  deletedAt: text("deleted_at")`);
+  }
+
   cols.push(
     `  createdAt: text("created_at").notNull().default("(datetime('now'))")`
   );

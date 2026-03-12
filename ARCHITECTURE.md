@@ -236,6 +236,22 @@ AI や開発者は、次を壊さないでください。
 - organization context を無視して multi-tenant data を読む route を増やさない
 - 監査対象の操作から audit log を外さない
 
+## D1 の既知制約
+
+D1 を使う際に注意すべき制約です。
+
+### パラメータ上限（~100）
+
+D1 は1クエリあたり約100個のバインドパラメータ上限があります。`inArray()` で大量の ID を渡すとクエリが失敗します。`src/lib/d1-batch.ts` の `batchInArray()` を使ってチャンキングしてください。
+
+### トランザクション非対応
+
+D1 は SQL の `BEGIN TRANSACTION` を受け付けません。複数テーブルへのアトミックな書き込みが必要な場合は、1つの `db.batch()` 呼び出しにまとめるか、アプリケーション層で冪等性を担保してください。
+
+### CASCADE DELETE と Drizzle
+
+Drizzle のマイグレーションでテーブルを再作成する際、`PRAGMA foreign_keys` が期待通りに動かないケースがあります。CASCADE DELETE に依存する設計は避け、アプリケーション層で関連レコードの削除を制御してください。
+
 ## 現在の不足
 
 現時点で未実装、または弱いものです。Record Engine vNext として優先順に整理しています。

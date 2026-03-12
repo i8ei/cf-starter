@@ -26,13 +26,13 @@ export function AppShell({
               cf-starter
             </Link>
             {session ? (
-              <nav className="flex gap-1">
+              <nav className="flex gap-1 overflow-x-auto">
                 {navItems.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
                     className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                      location.startsWith(item.href)
+                      (item.href === "/" ? location === "/" : location.startsWith(item.href))
                         ? "bg-amber-400/15 text-amber-200"
                         : "text-slate-400 hover:text-white"
                     }`}

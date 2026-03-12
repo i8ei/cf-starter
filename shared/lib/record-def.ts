@@ -120,6 +120,8 @@ export interface RecordDef<
   tableName: string;
   fields: F;
   status?: S;
+  /** Enable soft delete (deletedAt column). Default: false. */
+  softDelete?: boolean;
   listView: ListViewDef<AllowedKeys<F, S>>;
   formView: FormViewDef<Extract<keyof F, string>>;
 }

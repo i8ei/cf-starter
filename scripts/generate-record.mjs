@@ -169,9 +169,35 @@ function generateRoutes() {
   const zodImport = status ? `\nimport { z } from "zod";` : "";
 
   const sortField = getDefaultSortField(def);
+  const sd = def.softDelete;
+
+  // Drizzle imports: add isNull when softDelete is enabled
+  const drizzleImports = sd
+    ? `and, desc, eq, isNull`
+    : `and, desc, eq`;
+
+  // WHERE helpers for soft delete
+  const listWhere = sd
+    ? `and(eq(${tableVar}.organizationId, orgId), isNull(${tableVar}.deletedAt))`
+    : `eq(${tableVar}.organizationId, orgId)`;
+  const oneWhere = sd
+    ? `and(eq(${tableVar}.id, id), eq(${tableVar}.organizationId, orgId), isNull(${tableVar}.deletedAt))`
+    : `and(eq(${tableVar}.id, id), eq(${tableVar}.organizationId, orgId))`;
+
+  // DELETE body: soft delete sets deletedAt, hard delete removes the row
+  const deleteBody = sd
+    ? `const [row] = await db
+      .update(${tableVar})
+      .set({ deletedAt: new Date().toISOString() })
+      .where(and(eq(${tableVar}.id, id), eq(${tableVar}.organizationId, orgId)))
+      .returning();`
+    : `const [row] = await db
+      .delete(${tableVar})
+      .where(and(eq(${tableVar}.id, id), eq(${tableVar}.organizationId, orgId)))
+      .returning();`;
 
   const content = `import { Hono } from "hono";
-import { and, desc, eq } from "drizzle-orm";
+import { ${drizzleImports} } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";${zodImport}
 import { ${tableVar} } from "../../db/schema";
 import {
@@ -196,7 +222,7 @@ const app = new Hono<AppContextEnv>()
     const rows = await db
       .select()
       .from(${tableVar})
-      .where(eq(${tableVar}.organizationId, orgId))
+      .where(${listWhere})
       .orderBy(desc(${tableVar}.${sortField}));
     return c.json(rows);
   })
@@ -238,7 +264,7 @@ const app = new Hono<AppContextEnv>()
     const [row] = await db
       .select()
       .from(${tableVar})
-      .where(and(eq(${tableVar}.id, id), eq(${tableVar}.organizationId, orgId)));
+      .where(${oneWhere});
     if (!row) {
       return jsonError(c, 404, "not_found", "${PASCAL} not found");
     }
@@ -262,7 +288,7 @@ const app = new Hono<AppContextEnv>()
 ${updateSetFields}${statusSetField},
           updatedAt: new Date().toISOString(),
         })
-        .where(and(eq(${tableVar}.id, id), eq(${tableVar}.organizationId, orgId)))
+        .where(${oneWhere})
         .returning();
       if (!row) {
         return jsonError(c, 404, "not_found", "${PASCAL} not found");
@@ -279,7 +305,7 @@ ${updateSetFields}${statusSetField},
       return c.json(row);
     }
   )
-  // DELETE
+  // DELETE${sd ? " (soft)" : ""}
   .delete("/:id", async (c) => {
     const orgId = c.get("orgId");
     if (!orgId) {
@@ -287,10 +313,7 @@ ${updateSetFields}${statusSetField},
     }
     const db = drizzle(c.env.DB);
     const id = Number(c.req.param("id"));
-    const [row] = await db
-      .delete(${tableVar})
-      .where(and(eq(${tableVar}.id, id), eq(${tableVar}.organizationId, orgId)))
-      .returning();
+    ${deleteBody}
     if (!row) {
       return jsonError(c, 404, "not_found", "${PASCAL} not found");
     }
