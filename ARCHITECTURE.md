@@ -32,33 +32,7 @@
 - Queues
 - Cron
 
-## Starter Core と Example Features
-
-このリポジトリでは、次を分けて考えます。
-
-## Template-First Scaffold
-
-現在の scaffold は `template-first` です。repo root を丸ごとコピーして削るのではなく、次の 3 層で generated app を組み立てます。
-
-1. `template/` — generated app の静的 tree
-2. `scripts/lib/starter-catalog.mjs` — generated app に残す / 消す / publish で禁止する path ルール
-3. `scripts/lib/template-manifest.mjs` — template root paths、generated-app runtime scripts、scaffold runtime support
-
-役割分担は次です。
-
-- `template/` は generated app 側の source of truth
-- `scripts/lib/scaffold/*` は plan / render / transform / orchestration
-- `scripts/lib/doctor/*` は generated app completeness check
-- `scripts/internal/*` は template check / sync / snapshot など starter 保守用 CLI
-
-保守時の基本フロー:
-
-1. root source または `template/` を更新する
-2. `npm run template:check` で drift を見る
-3. 必要なら `npm run template:sync` で `template/` を再生成する
-4. `npm test` / `npm run build` / `npm run check:publish` を通す
-
-### Starter Core
+## Starter Core
 
 - auth
 - sessions
@@ -71,10 +45,8 @@
 - error contract
 - queue handling
 - migration / build / test flow
-- generated app `doctor`
-- template-first scaffold runtime
 
-### Record Engine
+## Record Engine
 
 レコードを「保存可能なデータ」から「運用可能な仕事単位」に昇格させる共通基盤です。
 
@@ -88,7 +60,7 @@ Record Engine は3層で構成されます。
 
 生成物はただのコード。ロックインなし。生成後に自由に編集できます。
 
-生成ロジックは `scripts/lib/record-engine.mjs` に純粋関数として分離されており、53 のユニットテストで保護されています。重複生成チェック、安全な挿入点検出、構造的なエラーメッセージを備えます。
+生成ロジックは `scripts/lib/record-engine.mjs` に純粋関数として分離されており、テストで保護されています。重複生成チェック、安全な挿入点検出、構造的なエラーメッセージを備えます。
 
 型安全の保証:
 
@@ -115,23 +87,24 @@ UI/UX 品質:
 
 汎用ページコンポーネント（`RecordListPage`, `RecordDetailPage`, `RecordFormPage`）とフィールドコンポーネント（`TextField`, `NumberField`, `DateField`, `SelectField`, `RelationField`）を組み合わせて UI を構築します。
 
-### Example Features
+### Record Engine を使わない場合
 
-- `items` — D1 CRUD の見本。フロントエンド UI あり
-- `kv` — KV read/write の見本。API のみ
-- `upload` — R2 upload の見本。API のみ
+coreからRecord Engineへの直接importはゼロ。CLAUDE.md の「Record Engine を使わない場合」セクションに従ってファイルを削除すれば、coreは壊れない。
 
-example feature は `examples/feature-packs/` に参考実装として置いてあるだけで、core には組み込まれていません。
-scaffold CLI (`create-cf-starter`) で `--include items,kv` のように指定すれば派生アプリに取り込めます。
-新しい業務機能は Record Engine でレコード定義を書いて生成するのが推奨です。
+## Feature Structure
 
-現在の配置:
+`cf-starter` は feature-based structure を採用しています。
 
-- record definitions: `shared/records/*.ts`
-- backend: `src/features/{key}/routes.ts`（生成物）
-- frontend: `app/features/{key}/hooks/`（生成物）
-- shared contracts: `shared/features/{key}/schema.ts`（生成物）
-- example feature packs: `examples/feature-packs/`
+- core routes: `src/routes/`
+- feature routes: `src/features/{key}/routes.ts`（Record Engine で生成）
+- core hooks: `app/hooks/`
+- feature hooks: `app/features/{key}/hooks/`（Record Engine で生成）
+- core schema: `shared/schemas/`
+- feature schema: `shared/features/{key}/schema.ts`（Record Engine で生成）
+- record definitions: `shared/records/{key}.ts`
+
+新しい業務機能を追加する場合は、Record Engine でレコード定義を書いてコード生成するのが最速です。
+業務テーブルは `organization_id` を持たせて current organization で絞るのを基本にします（生成物に自動で含まれます）。
 
 ## 認証
 
@@ -150,6 +123,10 @@ scaffold CLI (`create-cf-starter`) で `--include items,kv` のように指定�
 - logout で削除
 - Cron で期限切れを削除
 - password reset / email verification token も Cron で清掃する
+
+### 認証を使わない場合
+
+AUTH_ENABLED=false（.dev.varsまたはwrangler.jsonc）で実行時無効化できる。物理削除は不要。
 
 ## Organization Context
 
@@ -236,48 +213,14 @@ validation error も同じ envelope に入れます。
 
 ## Queue
 
-`JOBS` Queue binding を持ち、sample job を処理します。
+`JOBS` Queue binding を持ち、job を処理します。
 
 - `user.welcome`
-- `upload.process`
 - `organization.invite_email`
 - `auth.password_reset_email`
 - `auth.email_verification_email`
 
 consumer は `src/queues/jobs.ts` と Worker module の `queue()` handler に集約します。
-invite email job は `inviteUrl` を含む delivery payload を作り、現状は structured log へ出します。
-password reset email job は `resetUrl` を含む delivery payload を作り、現状は structured log へ出します。
-email verification job は `verifyUrl` を含む delivery payload を作り、現状は structured log へ出します。
-
-## Generated App Doctor
-
-generated app には `scripts/doctor.mjs` を残します。これは starter repo 専用の residue check ではなく、派生後の app が単独で成立しているかを見るための診断です。
-
-主に見るもの:
-
-- package 名が置換済みか
-- starter-only files / scripts / README 記述が残っていないか
-- generated app の必須 root paths が揃っているか
-- generated app の runtime scripts が揃っているか
-- optional examples と binding / migration の整合が取れているか
-
-実装は次の分割です。
-
-- `scripts/lib/doctor/context.mjs`
-- `scripts/lib/doctor/checks.mjs`
-- `scripts/lib/doctor/report.mjs`
-- `scripts/lib/doctor/cli.mjs`
-
-## Security Invariants
-
-AI や開発者は、次を壊さないでください。
-
-- password hash を平文や弱いハッシュへ戻さない
-- CSRF 保護を削らない
-- request id を外さない
-- error contract を route ごとにバラバラにしない
-- organization context を無視して multi-tenant data を読む route を増やさない
-- 監査対象の操作から audit log を外さない
 
 ## D1 の既知制約
 
@@ -315,34 +258,13 @@ Drizzle のマイグレーションでテーブルを再作成する際、`PRAGM
 
 - Computed Fields — 保存値や relation からの導出値
 
-## 次の方向
+## Security Invariants
 
-次の優先は次です。
+AI や開発者は、次を壊さないでください。
 
-1. Record Engine vNext（Tier 1 → 2 → 3 の順で拡張）
-2. 実案件で vNext を検証・改善
-3. optional module install surface の強化
-
-## App Generation Path
-
-新しいアプリへ派生するときは、いきなりコードを削るのではなく次の順で判断します。
-
-1. `npx create-cf-starter <dir> --plan --json` で dry-run を確認する
-   `profile` と `selectedFeatures` と `requiredBindings` を先に見て、必要なら `removedFeatures` と `filesRemoved` と `filesRewritten` まで追う
-   必要なら `--plan-out ./scaffold-plan.json` でファイル保存する
-   JSON には互換のため `mode` も残るが、新規利用では `profile` を優先する
-2. `npx create-cf-starter <dir> [--include items,kv] [--exclude upload] [--json-out ./scaffold.json]` で派生先を作る
-   何も付けなければ `core-first` で始まる
-   `--include` / `--exclude` で optional example feature を選択して残す
-   `--starter` は bundled example を全部入れる互換ショートカットとしてだけ残す
-3. 生成先の `wrangler.jsonc` と `README.md` が selected features に合わせて絞られていることを確認する
-   `wrangler.jsonc` は不要な KV / R2 binding を落とす
-   `README.md` は `Optional Examples` と `Optional Example APIs` を必要な範囲に絞る
-4. 生成先で `npm run doctor` を実行して、starter residue や binding mismatch が残っていないことを確認する
-5. example feature を残すか、置き換えるか、削るかを決める
-6. 新しい業務テーブルは Record Engine でレコード定義を書いて生成する（`organization_id` は自動で含まれる）
-
-補足:
-
-- 旧 wrapper は `scripts/compat/` に残るが、公開導線には含めない
-- AI / 非対話フローでも `create-cf-starter` を唯一の入口として扱う
+- password hash を平文や弱いハッシュへ戻さない
+- CSRF 保護を削らない
+- request id を外さない
+- error contract を route ごとにバラバラにしない
+- organization context を無視して multi-tenant data を読む route を増やさない
+- 監査対象の操作から audit log を外さない

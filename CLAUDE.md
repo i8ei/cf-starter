@@ -1,6 +1,6 @@
 # cf-starter
 
-Cloudflare フルスタック スターターテンプレート。
+Cloudflare フルスタック スターターテンプレート。`cp` して使うことを前提に設計。
 
 ## スタック
 
@@ -24,26 +24,26 @@ cf-starter/
 │   │   ├── StatusBadge.tsx ← ステータスバッジ
 │   │   ├── StatusFilterTabs.tsx ← ステータスフィルタータブ
 │   │   └── SummaryCards.tsx ← ステータス別件数カード（RecordListPage 上部）
-│   ├── features/           ← feature hooks（生成物もここ）
+│   ├── features/           ← feature hooks（Record Engine 生成物）
 │   ├── hooks/              ← core hooks
 │   ├── lib/api.ts          ← Hono RPC クライアント（型付き）
 │   ├── pages/              ← ページコンポーネント
 │   │   ├── records/        ← 汎用レコード画面（List/Detail/Form）
 │   │   ├── AuthPage.tsx
-│   │   ├── HomePage.tsx    ← トップページ（件数カード + 最新更新）
+│   │   ├── HomePage.tsx    ← トップページ
 │   │   └── SettingsPage.tsx
 │   ├── App.tsx             ← wouter ルーティング
 │   ├── main.tsx
 │   └── index.css
 ├── shared/                 ← フロント・バック共有
-│   ├── features/           ← feature schemas（生成物もここ）
+│   ├── features/           ← feature schemas（Record Engine 生成物）
 │   ├── lib/record-def.ts   ← Record Engine 型定義（defineRecord）
 │   ├── records/            ← レコード定義ファイル置き場
 │   └── schemas/            ← core Zod スキーマ
 ├── src/                    ← Hono バックエンド (Worker)
 │   ├── db/schema.ts        ← Drizzle スキーマ
 │   ├── durable-objects/    ← rate limiter
-│   ├── features/           ← feature routes（生成物もここ）
+│   ├── features/           ← feature routes（Record Engine 生成物）
 │   ├── lib/                ← auth, session, audit, orgs, crypto 等
 │   ├── middleware/          ← auth, csrf, rate-limit, request-id, role
 │   ├── queues/             ← queue producer / consumer
@@ -52,8 +52,9 @@ cf-starter/
 │   └── index.ts            ← エントリーポイント（ルート集約 + エラーハンドラ）
 ├── scripts/
 │   ├── generate-record.mjs ← Record Engine コードジェネレーター
-│   ├── lib/record-engine.mjs ← 生成ロジック（純粋関数、テスト付き）
-│   └── ...                 ← scaffold, plan, create CLI
+│   ├── seed-demo.mjs       ← デモデータ投入
+│   ├── d1-migrate.mjs      ← D1 マイグレーション
+│   └── lib/record-engine.mjs ← 生成ロジック（純粋関数、テスト付き）
 ├── test/                   ← Vitest テスト
 ├── migrations/             ← D1 マイグレーション
 └── ...
@@ -71,6 +72,7 @@ npm test                 # Vitest テスト
 npm run db:generate      # Drizzle スキーマからマイグレーション生成
 npm run db:migrate       # D1 ローカルマイグレーション
 npm run db:migrate:remote  # D1 リモートマイグレーション
+npm run seed:demo        # デモユーザー・組織を投入
 npm run record:generate -- --record shared/records/xxx.ts  # Record Engine でコード生成
 ```
 
@@ -172,6 +174,32 @@ hc<AppType> → TanStack Query（フロントエンド）
 
 - 通常: `npm run dev`（シンプル、認証なしなら問題なし）
 - 認証あり: `npm run dev:split`（フリッカーする場合はこちら）
+
+## Record Engine を使わない場合
+
+coreからRecord Engineへの直接importはゼロ。以下を削除すればcoreは壊れない:
+
+### ファイル削除
+- `app/pages/records/` — RecordList/Detail/FormPage
+- `app/components/fields/` — TextField, NumberField, DateField, SelectField, RelationField
+- `app/components/DataTable.tsx, SummaryCards.tsx, StatusFilterTabs.tsx, StatusBadge.tsx`
+- `shared/lib/record-def.ts, shared/records/`（task.ts含む）
+- `scripts/generate-record.mjs, scripts/lib/record-engine.mjs`
+- `scripts/seed-demo.mjs`
+- `test/record-engine.test.ts`
+- `app/features/`, `src/features/`, `shared/features/`（生成済みコードがあれば）
+- `src/db/schema.ts` 内のscaffold markersとその間の生成コード（もしあれば）
+
+### package.json
+- scripts: `record:generate`, `seed:demo` を削除
+
+### 検証
+npx tsc --noEmit && npm run build で壊れないことを確認
+
+## 認証を使わない場合
+
+AUTH_ENABLED=false（.dev.varsまたはwrangler.jsonc）で実行時無効化できる。
+物理削除は不要 — コードは残るが実行されない。ビルドサイズへの影響も無視できる。
 
 ## 変更時のチェックリスト
 
