@@ -46,6 +46,22 @@
 - queue handling
 - migration / build / test flow
 
+## Operational CLI
+
+テンプレを安全に使うための運用 CLI を持ちます。主入口は `scripts/cf-starter.mjs` と `bin/cf-starter` です。
+
+- `doctor` — ローカル前提の診断
+- `doctor --remote` — remote deploy 前提の追加診断
+- `env plan` — `wrangler.jsonc` から Cloudflare 資源と binding の不足を整理
+- `db migrate --plan` — D1 migration の apply 前確認
+- `db seed-demo --plan` — demo user / org 投入前の確認
+- `record generate --plan` — Record Engine 生成差分の確認
+- `deploy --plan` — build + Wrangler deploy 前の確認
+
+この CLI は JSON envelope を返すので、AI / CI から機械可読に扱えます。
+
+テンプレ方針として、repo 本体の `wrangler.jsonc` には `database_id` や本番 `APP_BASE_URL` を固定しません。これらはコピー先の実アプリで埋めます。
+
 ## Record Engine
 
 レコードを「保存可能なデータ」から「運用可能な仕事単位」に昇格させる共通基盤です。

@@ -4,6 +4,9 @@
   "description": "Cloudflare Workers fullstack starter template.",
   "license": "UNLICENSED",
   "type": "module",
+  "bin": {
+    "cf-starter": "./bin/cf-starter"
+  },
   "homepage": "https://github.com/i8ei/cf-starter#readme",
   "repository": {
     "type": "git",
@@ -16,18 +19,21 @@
     "node": ">=20"
   },
   "scripts": {
+    "cli": "node scripts/cf-starter.mjs",
     "dev": "vite dev",
     "dev:split": "wrangler dev src/index.ts --port 8787 --local & vite dev --config vite.config.split.ts && kill %1",
     "build": "vite build",
     "preview": "npm run build && vite preview",
-    "deploy": "npm run build && wrangler deploy",
+    "deploy": "node scripts/cf-starter.mjs deploy",
+    "doctor": "node scripts/cf-starter.mjs doctor",
+    "env:plan": "node scripts/cf-starter.mjs env plan",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node scripts/d1-migrate.mjs",
-    "db:migrate:remote": "node scripts/d1-migrate.mjs remote",
-    "seed:demo": "node scripts/seed-demo.mjs",
-    "record:generate": "node scripts/generate-record.mjs"
+    "db:migrate": "node scripts/cf-starter.mjs db migrate",
+    "db:migrate:remote": "node scripts/cf-starter.mjs db migrate --remote",
+    "seed:demo": "node scripts/cf-starter.mjs db seed-demo",
+    "record:generate": "node scripts/cf-starter.mjs record generate"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.5",

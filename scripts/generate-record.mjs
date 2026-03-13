@@ -16,6 +16,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { parseArgs } from "node:util";
+import { printReport } from "./lib/cli-report.mjs";
 import {
   findRecordDef,
   resolveDefExportName,
@@ -33,10 +34,13 @@ import {
   schemaHasTable,
   indexHasRoute,
 } from "./lib/record-engine.mjs";
+import { buildRecordGenerationPlan } from "./lib/record-plan.mjs";
 
 // ── CLI args ───────────────────────────────────
 const { values } = parseArgs({
   options: {
+    json: { type: "boolean" },
+    plan: { type: "boolean" },
     record: { type: "string" },
   },
 });
@@ -92,11 +96,13 @@ if (validationErrors.length > 0) {
 }
 
 const { name: defExportName, warning: namingWarning } = resolveDefExportName(def.key, exportName);
-if (namingWarning) {
+if (namingWarning && !values.json) {
   console.warn(`  [warn] ${namingWarning}`);
 }
 
-console.log(`\nRecord Engine: generating "${def.key}" (${def.label})\n`);
+if (!values.json) {
+  console.log(`\nRecord Engine: generating "${def.key}" (${def.label})\n`);
+}
 
 // ── Helpers ────────────────────────────────────
 function ensureDir(filePath) {
@@ -110,12 +116,60 @@ const fields = def.fields;
 const status = def.status;
 const fieldEntries = Object.entries(fields);
 
+const schemaPath = resolve(process.cwd(), "src/db/schema.ts");
+const indexPath = resolve(process.cwd(), "src/index.ts");
+const appPath = resolve(process.cwd(), "app/App.tsx");
+const existingSchema = readFileSync(schemaPath, "utf-8");
+const existingIndex = readFileSync(indexPath, "utf-8");
+const existingApp = existsSync(appPath) ? readFileSync(appPath, "utf-8") : null;
+const existingPaths = [
+  `shared/features/${KEY}/schema.ts`,
+  `src/features/${KEY}/routes.ts`,
+  `app/features/${KEY}/hooks/use${PASCAL}.ts`,
+  ...generatePages(def, defExportName).map((page) => page.path),
+].filter((relativePath) => existsSync(resolve(process.cwd(), relativePath)));
+
+const basePlanReport = buildRecordGenerationPlan({
+  def,
+  defExportName,
+  schemaContent: existingSchema,
+  indexContent: existingIndex,
+  appContent: existingApp,
+  existingPaths,
+});
+
+if (!basePlanReport.ok) {
+  const report = {
+    ok: false,
+    command: "record generate",
+    mode: values.plan ? "plan" : "apply",
+    target: "source",
+    summary: [`Record generation failed for "${def.key}".`],
+    checks: [],
+    warnings: [],
+    nextSteps: ["Fix the reported issue and rerun the generator."],
+    error: {
+      code: "record_generation_failed",
+      message: basePlanReport.reason,
+    },
+  };
+  printReport(report, { json: values.json });
+  process.exit(1);
+}
+
+const planReport = {
+  ...basePlanReport,
+  warnings: namingWarning ? [...basePlanReport.warnings, namingWarning] : basePlanReport.warnings,
+};
+
+if (values.plan) {
+  printReport(planReport, { json: values.json });
+  process.exit(0);
+}
+
 // ── 1. Drizzle table definition ────────────────
 function generateDrizzleTable() {
-  const schemaPath = resolve(process.cwd(), "src/db/schema.ts");
-  const existing = readFileSync(schemaPath, "utf-8");
-
-  const result = appendDrizzleTable(existing, def);
+  const result = appendDrizzleTable(existingSchema, def);
   if (!result.ok) {
     console.error(`  [error] ${result.reason}`);
     process.exit(1);
@@ -542,10 +596,7 @@ export function useUpdate${PASCAL}Status() {
 
 // ── 5. Route registration in src/index.ts ──────
 function registerRoute() {
-  const indexPath = resolve(process.cwd(), "src/index.ts");
-  const existing = readFileSync(indexPath, "utf-8");
-
-  const result = insertRouteRegistration(existing, KEY);
+  const result = insertRouteRegistration(existingIndex, KEY);
   if (!result.ok) {
     console.error(`  [error] ${result.reason}`);
     process.exit(1);
@@ -576,13 +627,11 @@ function generatePageWrappers() {
 
 // ── 7. App.tsx route registration ────────────
 function registerAppRoutes() {
-  const appPath = resolve(process.cwd(), "app/App.tsx");
   if (!existsSync(appPath)) {
     console.log(`  [skip] app/App.tsx not found — skipping route registration`);
     return;
   }
-  const existing = readFileSync(appPath, "utf-8");
-  const result = registerAppRoute(existing, def);
+  const result = registerAppRoute(existingApp, def);
   if (!result.ok) {
     console.error(`  [error] ${result.reason}`);
     return;
@@ -604,8 +653,16 @@ registerRoute();
 generatePageWrappers();
 registerAppRoutes();
 
-console.log(`\nDone! Next steps:`);
-console.log(`  1. npm run db:generate    # Generate migration`);
-console.log(`  2. npm run db:migrate     # Apply migration`);
-console.log(`  3. npm run dev            # Start dev server`);
-console.log("");
+if (values.json) {
+  const report = {
+    ...planReport,
+    mode: "apply",
+  };
+  printReport(report, { json: true });
+} else {
+  console.log(`\nDone! Next steps:`);
+  console.log(`  1. npm run db:generate    # Generate migration`);
+  console.log(`  2. npm run db:migrate     # Apply migration`);
+  console.log(`  3. npm run dev            # Start dev server`);
+  console.log("");
+}

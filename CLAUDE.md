@@ -68,21 +68,48 @@ npm run dev:split        # ローカル開発（分離モード: Vite + wrangler
 npm run build            # ビルド
 npm run preview          # ビルド後プレビュー
 npm run deploy           # Cloudflare にデプロイ
+npm run cli -- <...>     # unified CLI の生入口
+npm run doctor           # ローカル CLI / Wrangler 設定の診断
+npm run env:plan         # wrangler.jsonc から Cloudflare 資源計画を出す
 npm test                 # Vitest テスト
 npm run db:generate      # Drizzle スキーマからマイグレーション生成
 npm run db:migrate       # D1 ローカルマイグレーション
 npm run db:migrate:remote  # D1 リモートマイグレーション
 npm run seed:demo        # デモユーザー・組織を投入
 npm run record:generate -- --record shared/records/xxx.ts  # Record Engine でコード生成
+
+# Plan / JSON examples
+cf-starter doctor --json
+cf-starter doctor --remote --json
+cf-starter env plan --json
+cf-starter db migrate --plan --json
+cf-starter db seed-demo --plan --json
+cf-starter record generate --record shared/records/xxx.ts --plan --json
+cf-starter deploy --plan --json
+npm run cli -- doctor --json
+npm run cli -- doctor --remote --json
+npm run cli -- env plan --json
+npm run cli -- db migrate --plan --json
+npm run cli -- db seed-demo --plan --json
+npm run cli -- record generate --record shared/records/xxx.ts --plan --json
+npm run cli -- deploy --plan --json
+npm run doctor -- --json
+npm run doctor -- --remote --json
+npm run env:plan -- --json
+npm run db:migrate -- --plan --json
+npm run seed:demo -- --plan --json
+npm run record:generate -- --record shared/records/xxx.ts --plan --json
+npm run deploy -- --plan --json
 ```
 
 ## 開発の流れ
 
-1. `wrangler.jsonc` の database_id / kv id を実際の値に置換
-2. `npm run db:migrate` でローカルDB作成
-3. `npm run dev` で開発開始
-4. API追加: `src/routes/` にファイル追加 → `src/index.ts` で `.route()` 登録
-5. テーブル追加: `src/db/schema.ts` に定義 → `npm run db:generate`
+1. テンプレ repo 本体では `wrangler.jsonc` の `database_id` / `APP_BASE_URL` はプレースホルダのまま維持する
+2. 実アプリとして使うコピー先で `database_id` / URL / binding ids を実値に置換
+3. `npm run db:migrate` でローカルDB作成
+4. `npm run dev` で開発開始
+5. API追加: `src/routes/` にファイル追加 → `src/index.ts` で `.route()` 登録
+6. テーブル追加: `src/db/schema.ts` に定義 → `npm run db:generate`
 
 ## Record Engine（レコード駆動開発）
 

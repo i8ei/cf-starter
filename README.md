@@ -5,6 +5,7 @@ Cloudflare Workers 上で、小規模から中規模の業務アプリを安定�
 `cp` してすぐ開発を始められます。認証、セッション、権限、DB、ログ、テストがそろった状態からスタートできます。
 
 設計の詳細は [ARCHITECTURE.md](./ARCHITECTURE.md)、今後の進行は [ROADMAP.md](./ROADMAP.md) を参照してください。
+CLI の運用設計は [CLI_DESIGN.md](./CLI_DESIGN.md) にまとめています。
 
 ## 何が入っているか
 
@@ -71,6 +72,9 @@ npm run dev
 
 ### Cloudflare へデプロイ
 
+`cf-starter` 自体はテンプレートなので、repo 本体の `wrangler.jsonc` には `database_id` や `APP_BASE_URL` の実値を固定しません。
+実アプリとして使うコピー先で、環境ごとの値を入れます。
+
 ```bash
 # 1. リソース作成
 wrangler d1 create my-app-db
@@ -95,6 +99,9 @@ npm run deploy
 | `npm run build` | ビルド |
 | `npm run preview` | ビルド後プレビュー |
 | `npm run deploy` | Cloudflare にデプロイ |
+| `npm run cli -- <...>` | unified CLI の生入口 |
+| `npm run doctor` | ローカル CLI / Wrangler 設定の診断 |
+| `npm run env:plan` | `wrangler.jsonc` から Cloudflare 資源計画を出す |
 | `npm test` | 自動テスト |
 | `npm run test:watch` | テスト watch |
 | `npm run db:generate` | Drizzle から migration 生成 |
@@ -102,6 +109,44 @@ npm run deploy
 | `npm run db:migrate:remote` | リモート D1 に migration 適用 |
 | `npm run seed:demo` | ローカル D1 に demo user / org を投入 |
 | `npm run record:generate -- --record shared/records/xxx.ts` | Record Engine でコード生成 |
+
+### Plan / JSON モード
+
+機械可読な確認だけしたいときは `--plan --json` を使います。
+package を `npm link` または npm 公開後に入れると `cf-starter ...` でも同じ CLI を叩けます。
+テンプレ運用では `cf-starter ...` または `npm run cli -- ...` を優先し、`npm run <script>` は互換入口として扱うのが安全です。
+
+```bash
+cf-starter doctor --json
+cf-starter doctor --remote --json
+cf-starter env plan --json
+cf-starter db migrate --plan --json
+cf-starter db seed-demo --plan --json
+cf-starter record generate --record shared/records/task.ts --plan --json
+cf-starter deploy --plan --json
+
+npm run cli -- doctor --json
+npm run cli -- doctor --remote --json
+npm run cli -- env plan --json
+npm run cli -- db migrate --plan --json
+npm run cli -- db seed-demo --plan --json
+npm run cli -- record generate --record shared/records/task.ts --plan --json
+npm run cli -- deploy --plan --json
+
+npm run doctor -- --json
+npm run doctor -- --remote --json
+npm run env:plan -- --json
+npm run db:migrate -- --plan --json
+npm run seed:demo -- --plan --json
+npm run record:generate -- --record shared/records/task.ts --plan --json
+npm run deploy -- --plan --json
+```
+
+JSON に demo 認証情報も含めたいときだけ `--include-credentials` を付けます。
+
+```bash
+npm run seed:demo -- --plan --json --include-credentials
+```
 
 ## Record Engine
 

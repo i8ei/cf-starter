@@ -7,6 +7,7 @@
     {
       "binding": "DB",
       "database_name": "cf-starter-db",
+      // Template placeholder: set the real id in the generated app / deployed environment.
       "database_id": "TODO",
       "migrations_dir": "./migrations"
     }
@@ -57,6 +58,7 @@
     "CORS_ORIGIN": "http://localhost:5173",
     "COOKIE_SAME_SITE": "Lax",
     "COOKIE_SECURE": "true",
+    // Template default: replace with the deployed HTTPS origin in the generated app.
     "APP_BASE_URL": "http://localhost:5173",
     "EMAIL_PROVIDER": "log",
     "EMAIL_FROM": "cf-starter <noreply@example.com>"

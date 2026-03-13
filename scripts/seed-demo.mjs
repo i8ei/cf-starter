@@ -2,11 +2,16 @@
 
 import { pbkdf2Sync, randomBytes } from "node:crypto";
 import { parseArgs } from "node:util";
+import { printReport } from "./lib/cli-report.mjs";
+import { buildSeedDemoPlan } from "./lib/seed-demo.mjs";
 import { execWrangler, getPrimaryD1DatabaseName, readWranglerConfig } from "./lib/wrangler-config.mjs";
 
 const { values } = parseArgs({
   options: {
+    json: { type: "boolean" },
+    plan: { type: "boolean" },
     remote: { type: "boolean" },
+    "include-credentials": { type: "boolean" },
     email: { type: "string" },
     password: { type: "string" },
     name: { type: "string" },
@@ -42,6 +47,22 @@ if (!dbName) {
   process.exit(1);
 }
 
+const planReport = buildSeedDemoPlan({
+  mode,
+  email,
+  name,
+  organizationName,
+  organizationSlug,
+  config,
+  includeCredentials: Boolean(values["include-credentials"]),
+  password,
+});
+
+if (values.plan) {
+  printReport(planReport, { json: values.json });
+  process.exit(0);
+}
+
 const passwordHash = hashPassword(password);
 const sql = [
   "BEGIN TRANSACTION;",
@@ -63,16 +84,69 @@ const sql = [
 ].join("\n");
 
 const result = execWrangler(["d1", "execute", dbName, mode, "--command", sql], {
-  stdio: "inherit",
+  stdio: values.json ? "pipe" : "inherit",
 });
 
 if (result.error) {
-  console.error(result.error.message);
+  if (values.json) {
+    printReport(
+      {
+        ok: false,
+        command: "db seed-demo",
+        mode: "apply",
+        target: mode === "--remote" ? "remote" : "local",
+        summary: ["Wrangler failed to start."],
+        checks: [],
+        warnings: [],
+        nextSteps: ["Verify Wrangler is installed and rerun the command."],
+        error: {
+          code: "wrangler_spawn_failed",
+          message: result.error.message,
+        },
+      },
+      { json: true }
+    );
+  } else {
+    console.error(result.error.message);
+  }
   process.exit(1);
 }
 
 if ((result.status ?? 1) !== 0) {
+  if (values.json) {
+    const report = {
+      ...planReport,
+      ok: false,
+      mode: "apply",
+      summary: [`Demo seed failed for ${mode === "--remote" ? "remote" : "local"} D1.`],
+      artifacts: {
+        ...planReport.artifacts,
+        stdout: result.stdout?.trim() ?? "",
+        stderr: result.stderr?.trim() ?? "",
+      },
+    };
+    printReport(report, { json: true });
+  }
   process.exit(result.status ?? 1);
+}
+
+if (values.json) {
+  const report = {
+    ...planReport,
+    mode: "apply",
+    summary: [`Demo seed applied to ${mode === "--remote" ? "remote" : "local"} D1.`],
+    nextSteps:
+      mode === "--remote"
+        ? ["Deploy or verify the remote app with the seeded demo account."]
+        : ["Start the app and log in with the seeded demo account."],
+    artifacts: {
+      ...planReport.artifacts,
+      stdout: result.stdout?.trim() ?? "",
+      stderr: result.stderr?.trim() ?? "",
+    },
+  };
+  printReport(report, { json: true });
+  process.exit(0);
 }
 
 console.log("");

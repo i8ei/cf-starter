@@ -73,3 +73,12 @@
 - coreからRecord Engineへの直接importゼロを確認
 - 剥がしガイドをCLAUDE.mdに明記（Record Engine / 認証の削除手順）
 - ドキュメント整理
+
+## Phase 6: Agent-Ready CLI — 完了
+
+- `scripts/cf-starter.mjs` と `bin/cf-starter` を追加
+- `doctor` / `doctor --remote` / `env plan` / `db migrate` / `db seed-demo` / `record generate` / `deploy` を共通 CLI に統合
+- `--plan` / `--json` を主要コマンドで統一
+- テンプレ repo 本体はプレースホルダ設定を維持し、実値はコピー先で埋める方針を明記
+- 契約テストを追加して CLI 出力 shape を保護
+- 詳細は `CLI_DESIGN.md` を参照
