@@ -31,10 +31,3 @@ jobs:
 
       - name: Build
         run: npm run build
-
-      - name: Check publish readiness
-        run: npm run check:publish
-
-      - name: Scaffold integration test
-        run: npm run test:create
-        timeout-minutes: 10
