@@ -17,6 +17,10 @@ export function rateLimit(options: RateLimitOptions) {
     const windowEnd = (bucket + 1) * windowMs;
     const key = `rl:${options.namespace}:${ip}:${bucket}`;
 
+    if (!c.env.RATE_LIMITER) {
+      await next();
+      return;
+    }
     const id = c.env.RATE_LIMITER.idFromName(key);
     const stub = c.env.RATE_LIMITER.get(id);
     const res = await stub.fetch("https://rate-limiter/check", {

@@ -228,6 +228,26 @@ npx tsc --noEmit && npm run build で壊れないことを確認
 AUTH_ENABLED=false（.dev.varsまたはwrangler.jsonc）で実行時無効化できる。
 物理削除は不要 — コードは残るが実行されない。ビルドサイズへの影響も無視できる。
 
+AUTH_ENABLED=false の場合、セッション検証がスキップされ orgId が自動的に 1 にセットされる。
+ローカル開発や認証不要の公開アプリに使う。
+
+## Record Engine — 注意事項
+
+- **ハイフン入りキー**: `defineRecord()` の `key` にハイフンを含めることができる（例: `"my-record"`）。生成コードはキャメルケースに変換して使う。
+- **数値フィールド**: フォームからの入力は文字列になるため、`z.coerce.number()` を使う。`z.number()` ではバリデーションエラーになる。
+
+## オプションバインディング（Queues / Cron / DurableObjects）
+
+`wrangler.jsonc` では Queues・Cron Triggers・DurableObjects のセクションはデフォルトでコメントアウトされている。
+必要なときだけアンコメントして使う。
+
+- **DurableObjects** (`RATE_LIMITER`): レートリミットが必要なときにアンコメント。`migrations` も同時にアンコメントする。
+- **Queues** (`JOBS`): バックグラウンドジョブ（メール送信など）が必要なときにアンコメント。
+- **Cron Triggers**: 定期バッチ（セッション掃除など）が必要なときにアンコメント。
+
+`src/types.ts` の `RATE_LIMITER` と `JOBS` はオプション（`?`）なので、バインディングがない状態でもビルド・実行できる。
+health チェック (`/api/health`) もバインディングの有無を動的に確認する。
+
 ## 変更時のチェックリスト
 
 コードを変更したら、commit 前に必ず確認する。

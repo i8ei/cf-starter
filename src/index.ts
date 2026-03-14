@@ -17,6 +17,7 @@ import { RateLimiter } from "./durable-objects/rate-limiter";
 import { requestId } from "./middleware/request-id";
 import { jsonError } from "./lib/http";
 import { handleJobBatch } from "./queues/jobs";
+import type { JobMessage } from "./queues/types";
 
 export const app = new Hono<AppContextEnv>()
   .use("*", requestId)
@@ -80,5 +81,9 @@ export default {
       logEvent("info", "auth_tokens.purged", { deleted: deletedAuthTokens });
     }
   },
-  queue: handleJobBatch,
+  queue: async (batch: MessageBatch<JobMessage>, env: Env) => {
+    if (env.JOBS) {
+      await handleJobBatch(batch, env);
+    }
+  },
 };

@@ -461,7 +461,7 @@ function generateHooks() {
     return;
   }
 
-  const queryKey = `${KEY.toUpperCase()}_KEY`;
+  const queryKey = `${KEY.toUpperCase().replace(/-/g, "_")}_KEY`;
 
   // Build the record type from fields
   const typeFields = [];

@@ -25,35 +25,39 @@
       "bucket_name": "cf-starter-bucket"
     }
   ],
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "RATE_LIMITER",
-        "class_name": "RateLimiter"
-      }
-    ]
-  },
-  "queues": {
-    "producers": [
-      {
-        "binding": "JOBS",
-        "queue": "cf-starter-jobs"
-      }
-    ],
-    "consumers": [
-      {
-        "queue": "cf-starter-jobs",
-        "max_batch_size": 10,
-        "max_batch_timeout": 5
-      }
-    ]
-  },
-  "migrations": [
-    {
-      "tag": "v1",
-      "new_sqlite_classes": ["RateLimiter"]
-    }
-  ],
+  // DurableObjects — uncomment if needed (e.g. rate limiter).
+  // Also add RATE_LIMITER to src/types.ts Env and uncomment migrations below.
+  // "durable_objects": {
+  //   "bindings": [
+  //     {
+  //       "name": "RATE_LIMITER",
+  //       "class_name": "RateLimiter"
+  //     }
+  //   ]
+  // },
+  // Queues — uncomment if needed. Also add JOBS to src/types.ts Env.
+  // "queues": {
+  //   "producers": [
+  //     {
+  //       "binding": "JOBS",
+  //       "queue": "cf-starter-jobs"
+  //     }
+  //   ],
+  //   "consumers": [
+  //     {
+  //       "queue": "cf-starter-jobs",
+  //       "max_batch_size": 10,
+  //       "max_batch_timeout": 5
+  //     }
+  //   ]
+  // },
+  // DurableObject migrations — uncomment together with durable_objects above.
+  // "migrations": [
+  //   {
+  //     "tag": "v1",
+  //     "new_sqlite_classes": ["RateLimiter"]
+  //   }
+  // ],
   "vars": {
     "CORS_ORIGIN": "http://localhost:5173",
     "COOKIE_SAME_SITE": "Lax",
@@ -61,11 +65,14 @@
     // Template default: replace with the deployed HTTPS origin in the generated app.
     "APP_BASE_URL": "http://localhost:5173",
     "EMAIL_PROVIDER": "log",
-    "EMAIL_FROM": "cf-starter <noreply@example.com>"
+    "EMAIL_FROM": "cf-starter <noreply@example.com>",
+    // Set to "false" to disable authentication for local development.
+    // "AUTH_ENABLED": "false"
   },
-  "triggers": {
-    "crons": ["*/15 * * * *"]
-  },
+  // Cron triggers — uncomment if needed.
+  // "triggers": {
+  //   "crons": ["*/15 * * * *"]
+  // },
   // Static assets (React SPA)
   "assets": {
     "directory": "./dist/client",

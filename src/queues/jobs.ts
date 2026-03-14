@@ -26,7 +26,11 @@ function redactUrlToken(url: string): string {
   }
 }
 
-export async function enqueueJob(queue: Queue<JobMessage>, message: JobMessage) {
+export async function enqueueJob(
+  queue: Queue<JobMessage> | undefined,
+  message: JobMessage
+) {
+  if (!queue) return;
   await queue.send(message);
 }
 

@@ -6,8 +6,8 @@ import { getAppConfig } from "../lib/config";
 const app = new Hono<AppContextEnv>().get("/", async (c) => {
   const checks: Record<string, string> = {};
 
-  // Bindings check
-  checks.env = c.env.DB && c.env.RATE_LIMITER && c.env.JOBS ? "ok" : "missing";
+  // Bindings check — only DB is required; others are optional
+  checks.env = c.env.DB ? "ok" : "missing";
 
   try {
     await c.env.DB.prepare("SELECT 1").first();
@@ -34,13 +34,15 @@ const app = new Hono<AppContextEnv>().get("/", async (c) => {
     }
   }
 
-  try {
-    const id = c.env.RATE_LIMITER.idFromName("_health");
-    const stub = c.env.RATE_LIMITER.get(id);
-    const res = await stub.fetch("https://rate-limiter/ping");
-    checks.rateLimiter = res.ok ? "ok" : "error";
-  } catch {
-    checks.rateLimiter = "error";
+  if (c.env.RATE_LIMITER) {
+    try {
+      const id = c.env.RATE_LIMITER.idFromName("_health");
+      const stub = c.env.RATE_LIMITER.get(id);
+      const res = await stub.fetch("https://rate-limiter/ping");
+      checks.rateLimiter = res.ok ? "ok" : "error";
+    } catch {
+      checks.rateLimiter = "error";
+    }
   }
 
   try {

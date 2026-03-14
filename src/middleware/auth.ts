@@ -15,6 +15,8 @@ import {
 
 export const requireAuth = createMiddleware<AppContextEnv>(async (c, next) => {
   if (c.env.AUTH_ENABLED === "false") {
+    c.set("orgId", 1);
+    c.set("userId", 1);
     await next();
     return;
   }

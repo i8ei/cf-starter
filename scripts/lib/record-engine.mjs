@@ -15,6 +15,14 @@ export function camelCase(s) {
   return s.replace(/[-_](\w)/g, (_, c) => c.toUpperCase());
 }
 
+/**
+ * Convert a hyphenated key to camelCase for use as a JavaScript identifier.
+ * e.g. "ride-records" → "rideRecords"
+ */
+export function toCamelCase(str) {
+  return str.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+}
+
 export function snakeCase(s) {
   return s.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`).replace(/^_/, "");
 }
@@ -245,7 +253,7 @@ export function generateZodField(name, field, forUpdate) {
       if (field.required && !forUpdate) z += ".min(1)";
       break;
     case "number":
-      z = "z.number()";
+      z = "z.coerce.number()";
       if (field.min !== undefined) z += `.min(${field.min})`;
       if (field.max !== undefined) z += `.max(${field.max})`;
       break;
@@ -256,7 +264,7 @@ export function generateZodField(name, field, forUpdate) {
       z = `z.enum([${field.options.map((o) => `"${o}"`).join(", ")}])`;
       break;
     case "relation":
-      z = "z.number().int()";
+      z = "z.coerce.number().int()";
       break;
     case "file":
       z = "z.string()";
@@ -340,7 +348,8 @@ export function insertRouteRegistration(existingIndex, key) {
     };
   }
 
-  const importLine = `import ${key}Routes from "./features/${key}/routes";`;
+  const varName = toCamelCase(key);
+  const importLine = `import ${varName}Routes from "./features/${key}/routes";`;
   const lines = existingIndex.split("\n");
 
   // Find the last import statement (supports `import` and `import {`)
@@ -396,7 +405,7 @@ export function insertRouteRegistration(existingIndex, key) {
     };
   }
 
-  const routeLine = `  .route("/api/${key}", ${key}Routes)`;
+  const routeLine = `  .route("/api/${key}", ${varName}Routes)`;
   lines.splice(routeInsertIndex, 0, routeLine);
 
   return {
@@ -418,14 +427,12 @@ export function generatePages(def, defExportName) {
   const status = def.status;
   const DEF_NAME = defExportName || `${KEY}Def`;
 
-  const listPage = `import { useSession } from "~/hooks/useSession";
-import { use${PASCAL}s } from "~/features/${KEY}/hooks/use${PASCAL}";
+  const listPage = `import { use${PASCAL}s } from "~/features/${KEY}/hooks/use${PASCAL}";
 import { RecordListPage } from "~/pages/records/RecordListPage";
 import { ${DEF_NAME} } from "@shared/records/${KEY}";
 
 export function ${PASCAL}ListPage() {
-  const { data: session } = useSession();
-  const { data = [], isLoading } = use${PASCAL}s(!!session);
+  const { data = [], isLoading } = use${PASCAL}s(true);
   return <RecordListPage def={${DEF_NAME}} data={data} isLoading={isLoading} />;
 }
 `;
@@ -441,7 +448,6 @@ export function ${PASCAL}ListPage() {
     : "";
 
   const detailPage = `import { useLocation, useParams } from "wouter";
-import { useSession } from "~/hooks/useSession";
 import { use${PASCAL}, useDelete${PASCAL} } from "~/features/${KEY}/hooks/use${PASCAL}";${statusImport}
 import { RecordDetailPage } from "~/pages/records/RecordDetailPage";
 import { ${DEF_NAME} } from "@shared/records/${KEY}";
@@ -450,8 +456,7 @@ export function ${PASCAL}DetailPage() {
   const { id: idParam } = useParams<{ id: string }>();
   const id = Number(idParam);
   const [, navigate] = useLocation();
-  const { data: session } = useSession();
-  const { data, isLoading } = use${PASCAL}(id, !!session);
+  const { data, isLoading } = use${PASCAL}(id, true);
   const deleteMutation = useDelete${PASCAL}();${statusHook}
 
   return (
@@ -467,7 +472,6 @@ export function ${PASCAL}DetailPage() {
 `;
 
   const formPage = `import { useLocation, useParams } from "wouter";
-import { useSession } from "~/hooks/useSession";
 import {
   use${PASCAL},
   useCreate${PASCAL},
@@ -480,8 +484,7 @@ export function ${PASCAL}FormPage({ mode }: { mode: "create" | "edit" }) {
   const { id: idParam } = useParams<{ id: string }>();
   const id = idParam ? Number(idParam) : undefined;
   const [, navigate] = useLocation();
-  const { data: session } = useSession();
-  const { data: existing } = use${PASCAL}(id ?? 0, mode === "edit" && !!session);
+  const { data: existing } = use${PASCAL}(id ?? 0, mode === "edit");
   const createMutation = useCreate${PASCAL}();
   const updateMutation = useUpdate${PASCAL}();
 

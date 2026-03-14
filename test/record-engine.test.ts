@@ -308,12 +308,12 @@ describe("generateZodField", () => {
 
   it("generates number field with min/max (required)", () => {
     const z = generateZodField("hours", { type: "number", label: "H", required: true, min: 0, max: 100 }, false);
-    expect(z).toBe("z.number().min(0).max(100)");
+    expect(z).toBe("z.coerce.number().min(0).max(100)");
   });
 
   it("generates number field with min/max (optional)", () => {
     const z = generateZodField("hours", { type: "number", label: "H", min: 0, max: 100 }, false);
-    expect(z).toBe("z.number().min(0).max(100).optional()");
+    expect(z).toBe("z.coerce.number().min(0).max(100).optional()");
   });
 
   it("generates date field with regex", () => {
@@ -341,14 +341,14 @@ describe("generateZodField", () => {
     expect(z).toBe('z.enum(["low", "high"]).optional()');
   });
 
-  it("generates relation field as number.int() (required)", () => {
+  it("generates relation field as coerce.number.int() (required)", () => {
     const z = generateZodField("userId", { type: "relation", label: "U", required: true }, false);
-    expect(z).toBe("z.number().int()");
+    expect(z).toBe("z.coerce.number().int()");
   });
 
-  it("generates relation field as number.int() (optional)", () => {
+  it("generates relation field as coerce.number.int() (optional)", () => {
     const z = generateZodField("userId", { type: "relation", label: "U" }, false);
-    expect(z).toBe("z.number().int().optional()");
+    expect(z).toBe("z.coerce.number().int().optional()");
   });
 
   it("adds .optional() for non-required create fields", () => {
