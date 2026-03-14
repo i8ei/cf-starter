@@ -37,7 +37,7 @@ export function SettingsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <Panel title="Session">
-        <div className="space-y-2 text-sm text-slate-300">
+        <div className="space-y-2 text-sm text-gray-600">
           <div>
             {session.name} &middot; {session.email}
           </div>
@@ -74,7 +74,7 @@ export function SettingsPage() {
       >
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="space-y-3">
-            <div className="text-sm text-slate-300">Organizations</div>
+            <div className="text-sm text-gray-600">Organizations</div>
             <div className="space-y-2">
               {organizations?.organizations?.map((org) => (
                 <button
@@ -85,19 +85,19 @@ export function SettingsPage() {
                   }
                   className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left ${
                     session.currentOrganizationId === org.organizationId
-                      ? "border-amber-300/40 bg-amber-300/10"
-                      : "border-white/10 bg-slate-950/40"
+                      ? "border-amber-300 bg-amber-50"
+                      : "border-gray-200 bg-gray-50"
                   }`}
                 >
                   <span>
-                    <span className="block font-medium text-white">
+                    <span className="block font-medium text-gray-900">
                       {org.organizationName}
                     </span>
-                    <span className="block text-xs text-slate-400">
+                    <span className="block text-sm text-gray-600">
                       {org.organizationSlug}
                     </span>
                   </span>
-                  <span className="rounded-full bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-300">
+                  <span className="rounded-full bg-white px-3 py-1 text-sm uppercase tracking-[0.2em] text-gray-600">
                     {org.membershipRole}
                   </span>
                 </button>
@@ -105,8 +105,8 @@ export function SettingsPage() {
             </div>
           </div>
           <div className="space-y-4">
-            <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
-              <div className="mb-3 text-sm text-slate-300">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="mb-3 text-sm text-gray-600">
                 Create Organization
               </div>
               <div className="flex gap-2">
@@ -114,7 +114,7 @@ export function SettingsPage() {
                   value={orgName}
                   onChange={(e) => setOrgName(e.target.value)}
                   placeholder="Regional Ops"
-                  className="flex-1 rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
+                  className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
                 />
                 <button
                   type="button"
@@ -131,19 +131,19 @@ export function SettingsPage() {
                 </button>
               </div>
               {createOrganization.error ? (
-                <p className="mt-2 text-sm text-rose-300">
+                <p className="mt-2 text-sm text-rose-600">
                   {createOrganization.error.message}
                 </p>
               ) : null}
             </div>
-            <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
-              <div className="mb-3 text-sm text-slate-300">Accept Invite</div>
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="mb-3 text-sm text-gray-600">Accept Invite</div>
               <div className="flex gap-2">
                 <input
                   value={inviteToken}
                   onChange={(e) => setInviteToken(e.target.value)}
                   placeholder="Invite token"
-                  className="flex-1 rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
+                  className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
                 />
                 <button
                   type="button"
@@ -160,7 +160,7 @@ export function SettingsPage() {
                 </button>
               </div>
               {acceptInvite.error ? (
-                <p className="mt-2 text-sm text-rose-300">
+                <p className="mt-2 text-sm text-rose-600">
                   {acceptInvite.error.message}
                 </p>
               ) : null}
@@ -179,14 +179,14 @@ export function SettingsPage() {
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               placeholder="user@example.com"
-              className="rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
+              className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
             />
             <select
               value={inviteRole}
               onChange={(e) =>
                 setInviteRole(e.target.value as "admin" | "member")
               }
-              className="rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
+              className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
             >
               <option value="member">member</option>
               <option value="admin">admin</option>
@@ -212,22 +212,22 @@ export function SettingsPage() {
             </button>
           </div>
         ) : (
-          <p className="mb-4 text-sm text-slate-400">
+          <p className="mb-4 text-sm text-gray-600">
             Only owners and admins can create invites.
           </p>
         )}
         {latestToken ? (
-          <div className="mb-4 rounded-xl border border-amber-300/30 bg-amber-300/10 p-4">
-            <div className="text-xs uppercase tracking-[0.24em] text-amber-200/80">
+          <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
+            <div className="text-sm uppercase tracking-[0.24em] text-amber-800/80">
               latest invite token
             </div>
-            <div className="mt-2 break-all font-mono text-sm text-amber-100">
+            <div className="mt-2 break-all font-mono text-sm text-amber-900">
               {latestToken}
             </div>
           </div>
         ) : null}
         {createInvite.error ? (
-          <p className="mb-4 text-sm text-rose-300">
+          <p className="mb-4 text-sm text-rose-600">
             {createInvite.error.message}
           </p>
         ) : null}
@@ -236,21 +236,21 @@ export function SettingsPage() {
             invites.invites.map((invite) => (
               <div
                 key={invite.id}
-                className="flex flex-col gap-2 rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 lg:flex-row lg:items-center lg:justify-between"
+                className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 lg:flex-row lg:items-center lg:justify-between"
               >
                 <div>
-                  <div className="font-medium text-white">{invite.email}</div>
-                  <div className="text-xs text-slate-400">
+                  <div className="font-medium text-gray-900">{invite.email}</div>
+                  <div className="text-sm text-gray-600">
                     role {invite.role} &middot; expires {invite.expiresAt}
                   </div>
                 </div>
-                <span className="rounded-full bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-300">
+                <span className="rounded-full bg-white px-3 py-1 text-sm uppercase tracking-[0.2em] text-gray-600">
                   {invite.status}
                 </span>
               </div>
             ))
           ) : (
-            <p className="text-sm text-slate-400">No invites yet.</p>
+            <p className="text-sm text-gray-600">No invites yet.</p>
           )}
         </div>
       </Panel>

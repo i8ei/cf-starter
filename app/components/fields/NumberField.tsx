@@ -20,7 +20,7 @@ export function NumberField({
 
   return (
     <div>
-      <label className="mb-1.5 block text-sm text-slate-300" htmlFor={id}>
+      <label className="mb-1.5 block text-sm text-gray-600" htmlFor={id}>
         {def.label}
         {required && <span className="text-rose-400 ml-0.5">*</span>}
       </label>
@@ -34,12 +34,12 @@ export function NumberField({
         }}
         min={def.min}
         max={def.max}
-        className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 focus:border-amber-300/40"
+        className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 focus:border-amber-400"
         aria-required={required || undefined}
         aria-describedby={error && errorId ? errorId : undefined}
       />
       {error ? (
-        <p id={errorId} className="mt-1 text-xs text-rose-300" role="alert">
+        <p id={errorId} className="mt-1 text-sm text-rose-300" role="alert">
           {error}
         </p>
       ) : null}

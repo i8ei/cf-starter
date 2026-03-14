@@ -34,7 +34,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     return (
       <AppShell>
         <div className="flex justify-center py-20">
-          <p className="text-sm text-slate-400">Loading...</p>
+          <p className="text-sm text-gray-600">Loading...</p>
         </div>
       </AppShell>
     );
@@ -72,8 +72,8 @@ function AppRoutes() {
               {/* record-engine:routes */}
               <Route>
                 <div className="mx-auto max-w-3xl py-20 text-center">
-                  <h2 className="text-xl font-semibold text-white">404</h2>
-                  <p className="mt-2 text-sm text-slate-400">Page not found</p>
+                  <h2 className="text-xl font-semibold text-gray-900">404</h2>
+                  <p className="mt-2 text-sm text-gray-600">Page not found</p>
                 </div>
               </Route>
             </Switch>

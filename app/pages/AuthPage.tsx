@@ -69,7 +69,7 @@ export function AuthPage() {
   };
 
   const inputClass =
-    "w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60";
+    "w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60";
 
   return (
     <div className="mx-auto max-w-xl">
@@ -86,7 +86,7 @@ export function AuthPage() {
               className={`rounded-full px-4 py-2 text-sm font-medium ${
                 mode === value
                   ? "bg-amber-400 text-slate-950"
-                  : "bg-white/5 text-slate-300"
+                  : "bg-white text-gray-600"
               }`}
             >
               {value}
@@ -124,14 +124,14 @@ export function AuthPage() {
             {mode === "login" ? "Log In" : "Create Account"}
           </button>
           {currentMutation.error ? (
-            <p className="text-sm text-rose-300">
+            <p className="text-sm text-rose-600">
               {currentMutation.error.message}
             </p>
           ) : null}
         </div>
-        <div className="mt-6 grid gap-4 border-t border-white/10 pt-5 lg:grid-cols-3">
+        <div className="mt-6 grid gap-4 border-t border-gray-200 pt-5 lg:grid-cols-3">
           <div className="space-y-3">
-            <div className="text-sm font-medium text-white">
+            <div className="text-sm font-medium text-gray-900">
               Request Password Reset
             </div>
             <input
@@ -149,17 +149,17 @@ export function AuthPage() {
               Send Reset Link
             </button>
             {requestPasswordReset.error ? (
-              <p className="text-sm text-rose-300">
+              <p className="text-sm text-rose-600">
                 {requestPasswordReset.error.message}
               </p>
             ) : requestPasswordReset.isSuccess ? (
-              <p className="text-sm text-emerald-300">
+              <p className="text-sm text-emerald-600">
                 If the account exists, a reset email job was queued.
               </p>
             ) : null}
           </div>
           <div className="space-y-3">
-            <div className="text-sm font-medium text-white">
+            <div className="text-sm font-medium text-gray-900">
               Confirm Password Reset
             </div>
             <input
@@ -184,17 +184,17 @@ export function AuthPage() {
               Reset Password
             </button>
             {confirmPasswordReset.error ? (
-              <p className="text-sm text-rose-300">
+              <p className="text-sm text-rose-600">
                 {confirmPasswordReset.error.message}
               </p>
             ) : confirmPasswordReset.isSuccess ? (
-              <p className="text-sm text-emerald-300">
+              <p className="text-sm text-emerald-600">
                 Password updated. Log in with the new password.
               </p>
             ) : null}
           </div>
           <div className="space-y-3">
-            <div className="text-sm font-medium text-white">Confirm Email</div>
+            <div className="text-sm font-medium text-gray-900">Confirm Email</div>
             <input
               value={verifyToken}
               onChange={(e) => setVerifyToken(e.target.value)}
@@ -210,11 +210,11 @@ export function AuthPage() {
               Verify Email
             </button>
             {confirmEmailVerification.error ? (
-              <p className="text-sm text-rose-300">
+              <p className="text-sm text-rose-600">
                 {confirmEmailVerification.error.message}
               </p>
             ) : confirmEmailVerification.isSuccess ? (
-              <p className="text-sm text-emerald-300">
+              <p className="text-sm text-emerald-600">
                 Email verified. You can continue with the current session.
               </p>
             ) : null}

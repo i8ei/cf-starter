@@ -67,11 +67,11 @@ export function RecordFormPage({
         <button
           type="button"
           onClick={() => navigate(`/${def.key}`)}
-          className="text-sm text-slate-400 hover:text-white focus-visible:ring-2 focus-visible:ring-amber-400/60 rounded-lg"
+          className="text-sm text-gray-600 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-amber-400/60 rounded-lg"
         >
           &larr; Back
         </button>
-        <h1 className="text-2xl font-semibold text-white">
+        <h1 className="text-2xl font-semibold text-gray-900">
           {mode === "create" ? `New ${def.label}` : `Edit ${def.label}`}
         </h1>
       </div>
@@ -124,7 +124,7 @@ export function RecordFormPage({
           <button
             type="button"
             onClick={() => navigate(`/${def.key}`)}
-            className="rounded-xl bg-white/5 px-6 py-3 font-semibold text-slate-300 focus-visible:ring-2 focus-visible:ring-amber-400/60"
+            className="rounded-xl bg-white px-6 py-3 font-semibold text-gray-600 focus-visible:ring-2 focus-visible:ring-amber-400/60"
           >
             Cancel
           </button>
@@ -203,7 +203,7 @@ function FieldRenderer({
       return (
         <div>
           <label
-            className="mb-1.5 block text-sm text-slate-300"
+            className="mb-1.5 block text-sm text-gray-600"
             htmlFor={`field-${fieldKey}`}
           >
             {field.label}
@@ -214,7 +214,7 @@ function FieldRenderer({
             type="text"
             value={String(value ?? "")}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
+            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
             aria-required={field.required || undefined}
           />
         </div>

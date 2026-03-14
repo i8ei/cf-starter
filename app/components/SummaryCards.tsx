@@ -13,24 +13,24 @@ export function SummaryCards({ counts, options, onSelect, activeFilter }: Props)
       <button
         type="button"
         onClick={() => onSelect(null)}
-        className={`flex-1 min-w-[120px] rounded-xl border border-white/10 bg-white/5 p-4 text-left transition hover:bg-white/10 ${
+        className={`flex-1 min-w-[120px] rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:bg-gray-100 ${
           activeFilter === null ? "ring-2 ring-amber-400/60" : ""
         }`}
       >
-        <p className="text-sm text-slate-400">All</p>
-        <p className="text-2xl font-bold tabular-nums text-white">{total}</p>
+        <p className="text-sm text-gray-600">All</p>
+        <p className="text-2xl font-bold tabular-nums text-gray-900">{total}</p>
       </button>
       {options.map((opt) => (
         <button
           key={opt}
           type="button"
           onClick={() => onSelect(activeFilter === opt ? null : opt)}
-          className={`flex-1 min-w-[120px] rounded-xl border border-white/10 bg-white/5 p-4 text-left transition hover:bg-white/10 ${
+          className={`flex-1 min-w-[120px] rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:bg-gray-100 ${
             activeFilter === opt ? "ring-2 ring-amber-400/60" : ""
           }`}
         >
-          <p className="text-sm text-slate-400">{opt}</p>
-          <p className="text-2xl font-bold tabular-nums text-white">{counts[opt] ?? 0}</p>
+          <p className="text-sm text-gray-600">{opt}</p>
+          <p className="text-2xl font-bold tabular-nums text-gray-900">{counts[opt] ?? 0}</p>
         </button>
       ))}
     </div>

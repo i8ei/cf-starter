@@ -1,6 +1,5 @@
 import { Link, useLocation } from "wouter";
 import { useSession, useLogout } from "~/hooks/useSession";
-import { useHealth } from "~/hooks/useHealth";
 
 export function AppShell({
   children,
@@ -10,18 +9,17 @@ export function AppShell({
   navItems?: { label: string; href: string }[];
 }) {
   const { data: session } = useSession();
-  const { data: health } = useHealth();
   const logout = useLogout();
   const [location] = useLocation();
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.22),_transparent_32%),linear-gradient(180deg,_#0f172a_0%,_#020617_100%)] text-slate-100">
-      <header className="border-b border-white/10 bg-slate-950/70 backdrop-blur">
+    <div className="min-h-screen bg-gray-50 text-gray-800">
+      <header className="border-b border-gray-200 bg-white shadow-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-6">
             <Link
               href="/"
-              className="text-lg font-semibold tracking-tight text-white"
+              className="text-lg font-bold tracking-tight text-gray-900"
             >
               cf-starter
             </Link>
@@ -31,10 +29,10 @@ export function AppShell({
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                    className={`min-h-[44px] flex items-center rounded-lg px-4 py-2 text-base font-medium transition ${
                       (item.href === "/" ? location === "/" : location.startsWith(item.href))
-                        ? "bg-amber-400/15 text-amber-200"
-                        : "text-slate-400 hover:text-white"
+                        ? "bg-amber-100 text-amber-800"
+                        : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                   >
                     {item.label}
@@ -42,10 +40,10 @@ export function AppShell({
                 ))}
                 <Link
                   href="/settings"
-                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                  className={`min-h-[44px] flex items-center rounded-lg px-4 py-2 text-base font-medium transition ${
                     location === "/settings"
-                      ? "bg-amber-400/15 text-amber-200"
-                      : "text-slate-400 hover:text-white"
+                      ? "bg-amber-100 text-amber-800"
+                      : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
                   }`}
                 >
                   Settings
@@ -54,29 +52,13 @@ export function AppShell({
             ) : null}
           </div>
           <div className="flex items-center gap-4">
-            {health?.checks ? (
-              <div className="flex gap-2">
-                {Object.entries(health.checks).map(([k, v]) => (
-                  <span
-                    key={k}
-                    className={`rounded-full px-2 py-0.5 text-xs font-mono ${
-                      v === "ok"
-                        ? "bg-emerald-400/15 text-emerald-200"
-                        : "bg-rose-400/15 text-rose-200"
-                    }`}
-                  >
-                    {k}
-                  </span>
-                ))}
-              </div>
-            ) : null}
             {session ? (
               <div className="flex items-center gap-3">
-                <span className="text-sm text-slate-300">{session.name}</span>
+                <span className="text-sm text-gray-600">{session.name}</span>
                 <button
                   type="button"
                   onClick={() => logout.mutate()}
-                  className="rounded-full bg-white/5 px-3 py-1.5 text-xs text-slate-400 hover:text-white"
+                  className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-200 hover:text-gray-900"
                 >
                   Logout
                 </button>

@@ -2,15 +2,17 @@
 @import "tailwindcss";
 
 :root {
-  --color-status-new: theme(colors.sky.400);
-  --color-status-active: theme(colors.amber.400);
-  --color-status-done: theme(colors.emerald.400);
-  --color-status-error: theme(colors.rose.400);
-  --color-status-hold: theme(colors.slate.400);
+  --color-status-new: theme(colors.sky.600);
+  --color-status-active: theme(colors.amber.600);
+  --color-status-done: theme(colors.emerald.600);
+  --color-status-error: theme(colors.rose.600);
+  --color-status-hold: theme(colors.gray.500);
 }
 
 body {
-  font-family: 'Inter', 'Noto Sans JP', system-ui, sans-serif;
+  font-family: 'Noto Sans JP', 'Inter', system-ui, sans-serif;
+  font-size: 1.05rem;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
