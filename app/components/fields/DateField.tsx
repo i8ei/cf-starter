@@ -7,6 +7,7 @@ export function DateField({
   error,
   fieldKey,
   required,
+  onBlur,
 }: {
   def: DateFieldDef;
   value: string;
@@ -14,6 +15,7 @@ export function DateField({
   error?: string;
   fieldKey?: string;
   required?: boolean;
+  onBlur?: () => void;
 }) {
   const id = fieldKey ? `field-${fieldKey}` : undefined;
   const errorId = fieldKey ? `field-${fieldKey}-error` : undefined;
@@ -29,6 +31,7 @@ export function DateField({
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
         className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 focus:border-amber-400"
         aria-required={required || undefined}
         aria-describedby={error && errorId ? errorId : undefined}

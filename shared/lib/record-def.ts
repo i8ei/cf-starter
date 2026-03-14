@@ -51,6 +51,7 @@ export interface RelationField {
   relatedLabel: string;
 }
 
+/** Not yet implemented in UI. Will show placeholder. */
 export interface FileField {
   type: "file";
   label: string;

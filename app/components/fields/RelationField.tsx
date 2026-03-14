@@ -8,6 +8,7 @@ export function RelationField({
   error,
   fieldKey,
   required,
+  onBlur,
 }: {
   def: RelationFieldDef;
   value: number | "";
@@ -16,6 +17,7 @@ export function RelationField({
   error?: string;
   fieldKey?: string;
   required?: boolean;
+  onBlur?: () => void;
 }) {
   const id = fieldKey ? `field-${fieldKey}` : undefined;
   const errorId = fieldKey ? `field-${fieldKey}-error` : undefined;
@@ -33,6 +35,7 @@ export function RelationField({
           const v = e.target.value;
           onChange(v === "" ? "" : Number(v));
         }}
+        onBlur={onBlur}
         className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 focus:border-amber-400"
         aria-required={required || undefined}
         aria-describedby={error && errorId ? errorId : undefined}

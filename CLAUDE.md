@@ -231,10 +231,16 @@ AUTH_ENABLED=false（.dev.varsまたはwrangler.jsonc）で実行時無効化で
 AUTH_ENABLED=false の場合、セッション検証がスキップされ orgId が自動的に 1 にセットされる。
 ローカル開発や認証不要の公開アプリに使う。
 
+**重要**: AUTH_ENABLED=false では orgId=1 がハードコードされるが、organizations テーブルに id=1 の行が存在しないと外部キー制約でエラーになる。
+テンプレをコピーした後、必ず `npm run seed:demo` を実行してデモ組織（id=1）を作成すること。
+seed:demo はべき等（何度実行しても安全）なので、すでに実行済みでも問題ない。
+
 ## Record Engine — 注意事項
 
 - **ハイフン入りキー**: `defineRecord()` の `key` にハイフンを含めることができる（例: `"my-record"`）。生成コードはキャメルケースに変換して使う。
 - **数値フィールド**: フォームからの入力は文字列になるため、`z.coerce.number()` を使う。`z.number()` ではバリデーションエラーになる。
+- **FileField**: 型定義（`shared/lib/record-def.ts`）とバリデーション（Zod `z.string()`）は存在するが、UIのファイルアップロードは未実装。フォームでは「ファイルアップロードは未実装です」のプレースホルダーが表示される。R2連携の実装は将来課題。
+- **RelationField 自動解決**: 生成されるForm/Detailページは、relation型フィールドの関連レコードを自動的にフェッチし、`relationOptions`/`relationLabels` として渡す。`relatedLabel` で指定したフィールドが表示ラベルになる。
 
 ## オプションバインディング（Queues / Cron / DurableObjects）
 

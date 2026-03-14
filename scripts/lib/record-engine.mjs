@@ -427,13 +427,25 @@ export function generatePages(def, defExportName) {
   const status = def.status;
   const DEF_NAME = defExportName || `${KEY}Def`;
 
+  // Collect relation fields for auto-populating options/labels
+  const relationFields = Object.entries(def.fields)
+    .filter(([, field]) => field.type === "relation")
+    .map(([fieldKey, field]) => ({
+      fieldKey,
+      relatedRecord: field.relatedRecord,
+      relatedLabel: field.relatedLabel || "name",
+      relatedPascal: pascalCase(field.relatedRecord),
+      relatedHookName: `use${pascalCase(field.relatedRecord)}s`,
+      dataVar: camelCase(field.relatedRecord),
+    }));
+
   const listPage = `import { use${PASCAL}s } from "~/features/${KEY}/hooks/use${PASCAL}";
 import { RecordListPage } from "~/pages/records/RecordListPage";
 import { ${DEF_NAME} } from "@shared/records/${KEY}";
 
 export function ${PASCAL}ListPage() {
-  const { data = [], isLoading } = use${PASCAL}s(true);
-  return <RecordListPage def={${DEF_NAME}} data={data} isLoading={isLoading} />;
+  const { data, isLoading } = use${PASCAL}s(true);
+  return <RecordListPage def={${DEF_NAME}} data={data?.rows ?? []} isLoading={isLoading} />;
 }
 `;
 
@@ -447,8 +459,23 @@ export function ${PASCAL}ListPage() {
     ? `\n      onStatusChange={(s) => updateStatus.mutate({ id, ${camelCase(status.field)}: s })}`
     : "";
 
+  // Detail page: relation imports, hooks, and labels
+  const detailRelationImports = relationFields
+    .map((r) => `import { ${r.relatedHookName} } from "~/features/${r.relatedRecord}/hooks/use${r.relatedPascal}";`)
+    .join("\n");
+  const detailRelationImportBlock = detailRelationImports ? `\n${detailRelationImports}` : "";
+  const detailRelationHooks = relationFields
+    .map((r) => `\n  const { data: ${r.dataVar} = [] } = ${r.relatedHookName}(true);`)
+    .join("");
+  const detailRelationLabelsEntries = relationFields
+    .map((r) => `    ${r.fieldKey}: Object.fromEntries(${r.dataVar}.map((r: Record<string, unknown>) => [r.id as number, String(r.${r.relatedLabel} ?? r.id)])),`)
+    .join("\n");
+  const detailRelationLabelsProp = relationFields.length > 0
+    ? `\n      relationLabels={{\n${detailRelationLabelsEntries}\n      }}`
+    : "";
+
   const detailPage = `import { useLocation, useParams } from "wouter";
-import { use${PASCAL}, useDelete${PASCAL} } from "~/features/${KEY}/hooks/use${PASCAL}";${statusImport}
+import { use${PASCAL}, useDelete${PASCAL} } from "~/features/${KEY}/hooks/use${PASCAL}";${statusImport}${detailRelationImportBlock}
 import { RecordDetailPage } from "~/pages/records/RecordDetailPage";
 import { ${DEF_NAME} } from "@shared/records/${KEY}";
 
@@ -457,7 +484,7 @@ export function ${PASCAL}DetailPage() {
   const id = Number(idParam);
   const [, navigate] = useLocation();
   const { data, isLoading } = use${PASCAL}(id, true);
-  const deleteMutation = useDelete${PASCAL}();${statusHook}
+  const deleteMutation = useDelete${PASCAL}();${statusHook}${detailRelationHooks}
 
   return (
     <RecordDetailPage
@@ -465,18 +492,33 @@ export function ${PASCAL}DetailPage() {
       data={data}
       isLoading={isLoading}
       onDelete={() => deleteMutation.mutate(id, { onSuccess: () => navigate("/${KEY}") })}
-      isDeleting={deleteMutation.isPending}${statusProp}
+      isDeleting={deleteMutation.isPending}${statusProp}${detailRelationLabelsProp}
     />
   );
 }
 `;
+
+  // Form page: relation imports, hooks, and options
+  const formRelationImports = relationFields
+    .map((r) => `import { ${r.relatedHookName} } from "~/features/${r.relatedRecord}/hooks/use${r.relatedPascal}";`)
+    .join("\n");
+  const formRelationImportBlock = formRelationImports ? `\n${formRelationImports}` : "";
+  const formRelationHooks = relationFields
+    .map((r) => `\n  const { data: ${r.dataVar} = [] } = ${r.relatedHookName}(true);`)
+    .join("");
+  const formRelationOptionsEntries = relationFields
+    .map((r) => `    ${r.fieldKey}: ${r.dataVar}.map((r: Record<string, unknown>) => ({ id: r.id as number, label: String(r.${r.relatedLabel} ?? r.id) })),`)
+    .join("\n");
+  const formRelationOptionsProp = relationFields.length > 0
+    ? `\n      relationOptions={{\n${formRelationOptionsEntries}\n      }}`
+    : "";
 
   const formPage = `import { useLocation, useParams } from "wouter";
 import {
   use${PASCAL},
   useCreate${PASCAL},
   useUpdate${PASCAL},
-} from "~/features/${KEY}/hooks/use${PASCAL}";
+} from "~/features/${KEY}/hooks/use${PASCAL}";${formRelationImportBlock}
 import { RecordFormPage } from "~/pages/records/RecordFormPage";
 import { ${DEF_NAME} } from "@shared/records/${KEY}";
 
@@ -486,7 +528,7 @@ export function ${PASCAL}FormPage({ mode }: { mode: "create" | "edit" }) {
   const [, navigate] = useLocation();
   const { data: existing } = use${PASCAL}(id ?? 0, mode === "edit");
   const createMutation = useCreate${PASCAL}();
-  const updateMutation = useUpdate${PASCAL}();
+  const updateMutation = useUpdate${PASCAL}();${formRelationHooks}
 
   const handleSubmit = (data: Record<string, unknown>) => {
     if (mode === "create") {
@@ -509,7 +551,7 @@ export function ${PASCAL}FormPage({ mode }: { mode: "create" | "edit" }) {
       initialData={mode === "edit" ? (existing as Record<string, unknown> | undefined) : undefined}
       onSubmit={handleSubmit}
       isPending={mutation.isPending}
-      error={mutation.error?.message ?? null}
+      error={mutation.error?.message ?? null}${formRelationOptionsProp}
     />
   );
 }

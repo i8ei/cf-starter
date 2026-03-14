@@ -7,6 +7,7 @@ export function NumberField({
   error,
   fieldKey,
   required,
+  onBlur,
 }: {
   def: NumberFieldDef;
   value: number | "";
@@ -14,6 +15,7 @@ export function NumberField({
   error?: string;
   fieldKey?: string;
   required?: boolean;
+  onBlur?: () => void;
 }) {
   const id = fieldKey ? `field-${fieldKey}` : undefined;
   const errorId = fieldKey ? `field-${fieldKey}-error` : undefined;
@@ -32,6 +34,7 @@ export function NumberField({
           const v = e.target.value;
           onChange(v === "" ? "" : Number(v));
         }}
+        onBlur={onBlur}
         min={def.min}
         max={def.max}
         className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 focus:border-amber-400"

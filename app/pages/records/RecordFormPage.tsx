@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import type { AnyRecordDef, FieldDef } from "@shared/lib/record-def";
 import { Panel } from "~/components/Panel";
@@ -20,6 +20,39 @@ type Props = {
   relationOptions?: Record<string, { id: number; label: string }[]>;
 };
 
+/** Validate a single field value against its definition. Returns an error message or undefined. */
+function validateFieldValue(field: FieldDef, value: unknown): string | undefined {
+  if (
+    field.required &&
+    (value === "" || value === undefined || value === null)
+  ) {
+    return "必須項目です";
+  }
+  if (
+    field.type === "text" &&
+    field.maxLength &&
+    typeof value === "string" &&
+    value.length > field.maxLength
+  ) {
+    return `${field.maxLength}文字以内で入力してください`;
+  }
+  if (
+    field.type === "number" &&
+    value !== "" &&
+    value !== undefined &&
+    value !== null
+  ) {
+    const num = Number(value);
+    if (field.min !== undefined && num < field.min) {
+      return `${field.min}以上で入力してください`;
+    }
+    if (field.max !== undefined && num > field.max) {
+      return `${field.max}以下で入力してください`;
+    }
+  }
+  return undefined;
+}
+
 export function RecordFormPage({
   def,
   initialData,
@@ -33,21 +66,61 @@ export function RecordFormPage({
   const [formData, setFormData] = useState<Record<string, unknown>>(() =>
     buildInitial(def, initialData)
   );
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (initialData) {
       setFormData(buildInitial(def, initialData));
+      setErrors({});
     }
   }, [initialData, def]);
+
+  const runValidation = useCallback(
+    (key: string, value: unknown) => {
+      const field = def.fields[key] as FieldDef | undefined;
+      if (!field) return;
+      const msg = validateFieldValue(field, value);
+      setErrors((prev) => {
+        if (msg) return { ...prev, [key]: msg };
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    },
+    [def]
+  );
 
   const setField = (key: string, value: unknown) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleBlur = (key: string) => {
+    runValidation(key, formData[key]);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate all fields before submit
+    const newErrors: Record<string, string> = {};
+    for (const [key, field] of Object.entries(def.fields) as [
+      string,
+      FieldDef,
+    ][]) {
+      const msg = validateFieldValue(field, formData[key]);
+      if (msg) newErrors[key] = msg;
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     const cleaned: Record<string, unknown> = {};
-    for (const [key, field] of Object.entries(def.fields) as [string, FieldDef][]) {
+    for (const [key, field] of Object.entries(def.fields) as [
+      string,
+      FieldDef,
+    ][]) {
       const val = formData[key];
       if (val !== undefined && val !== "") {
         cleaned[key] = val;
@@ -90,6 +163,8 @@ export function RecordFormPage({
                     field={field}
                     value={formData[fieldKey]}
                     onChange={(v) => setField(fieldKey, v)}
+                    onBlur={() => handleBlur(fieldKey)}
+                    error={errors[fieldKey]}
                     relationOptions={
                       field.type === "relation"
                         ? relationOptions[fieldKey] ?? []
@@ -139,12 +214,16 @@ function FieldRenderer({
   field,
   value,
   onChange,
+  onBlur,
+  error,
   relationOptions,
 }: {
   fieldKey: string;
   field: FieldDef;
   value: unknown;
   onChange: (v: unknown) => void;
+  onBlur: () => void;
+  error?: string;
   relationOptions: { id: number; label: string }[];
 }) {
   switch (field.type) {
@@ -154,6 +233,8 @@ function FieldRenderer({
           def={field}
           value={String(value ?? "")}
           onChange={onChange as (v: string) => void}
+          onBlur={onBlur}
+          error={error}
           fieldKey={fieldKey}
           required={field.required}
         />
@@ -164,6 +245,8 @@ function FieldRenderer({
           def={field}
           value={value === undefined || value === "" ? "" : Number(value)}
           onChange={onChange as (v: number | "") => void}
+          onBlur={onBlur}
+          error={error}
           fieldKey={fieldKey}
           required={field.required}
         />
@@ -174,6 +257,8 @@ function FieldRenderer({
           def={field}
           value={String(value ?? "")}
           onChange={onChange as (v: string) => void}
+          onBlur={onBlur}
+          error={error}
           fieldKey={fieldKey}
           required={field.required}
         />
@@ -184,6 +269,8 @@ function FieldRenderer({
           def={field}
           value={String(value ?? "")}
           onChange={onChange as (v: string) => void}
+          onBlur={onBlur}
+          error={error}
           fieldKey={fieldKey}
           required={field.required}
         />
@@ -194,12 +281,14 @@ function FieldRenderer({
           def={field}
           value={value === undefined || value === "" ? "" : Number(value)}
           onChange={onChange as (v: number | "") => void}
+          onBlur={onBlur}
+          error={error}
           options={relationOptions}
           fieldKey={fieldKey}
           required={field.required}
         />
       );
-    default:
+    case "file":
       return (
         <div>
           <label
@@ -209,16 +298,16 @@ function FieldRenderer({
             {field.label}
             {field.required && <span className="text-rose-400 ml-0.5">*</span>}
           </label>
-          <input
-            id={`field-${fieldKey}`}
-            type="text"
-            value={String(value ?? "")}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
-            aria-required={field.required || undefined}
-          />
+          <p className="text-sm text-gray-500 bg-gray-50 rounded-lg px-4 py-3 border border-gray-200">
+            ファイルアップロードは未実装です
+          </p>
         </div>
       );
+    default: {
+      // Exhaustive check — all field types should be handled above
+      const _exhaustive: never = field;
+      return null;
+    }
   }
 }
 

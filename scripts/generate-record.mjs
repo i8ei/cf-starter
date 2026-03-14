@@ -237,10 +237,10 @@ function generateRoutes() {
   const sortField = getDefaultSortField(def);
   const sd = def.softDelete;
 
-  // Drizzle imports: add isNull when softDelete is enabled
+  // Drizzle imports: add isNull when softDelete is enabled, always include sql for count
   const drizzleImports = sd
-    ? `and, desc, eq, isNull`
-    : `and, desc, eq`;
+    ? `and, desc, eq, isNull, sql`
+    : `and, desc, eq, sql`;
 
   // WHERE helpers for soft delete
   const listWhere = sd
@@ -285,12 +285,22 @@ const app = new Hono<AppContextEnv>()
       return jsonError(c, 403, "org_context_required", "Current organization is required");
     }
     const db = drizzle(c.env.DB);
+    const limit = Math.min(Number(c.req.query("limit") || 100), 500);
+    const offset = Number(c.req.query("offset") || 0);
+
+    const [{ count: total }] = await db
+      .select({ count: sql<number>\`count(*)\` })
+      .from(${tableVar})
+      .where(${listWhere});
+
     const rows = await db
       .select()
       .from(${tableVar})
       .where(${listWhere})
-      .orderBy(desc(${tableVar}.${sortField}));
-    return c.json(rows);
+      .orderBy(desc(${tableVar}.${sortField}))
+      .limit(limit)
+      .offset(offset);
+    return c.json({ rows, total, limit, offset });
   })
   // CREATE
   .post(
@@ -502,14 +512,21 @@ export type ${PASCAL}Record = {
 ${typeFields.join("\n")}
 };
 
+export type ${PASCAL}ListResponse = {
+  rows: ${PASCAL}Record[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
 export function use${PASCAL}s(enabled: boolean) {
   return useQuery({
     queryKey: ${queryKey},
     enabled,
     queryFn: async () => {
-      const res = await client.api.${KEY}.$get();
+      const res = await client.api["${KEY}"].$get();
       if (!res.ok) throw new Error(await readApiError(res, "Failed to fetch ${KEY}"));
-      return (await res.json()) as ${PASCAL}Record[];
+      return (await res.json()) as ${PASCAL}ListResponse;
     },
   });
 }
@@ -519,7 +536,7 @@ export function use${PASCAL}(id: number, enabled: boolean) {
     queryKey: [...${queryKey}, id],
     enabled,
     queryFn: async () => {
-      const res = await client.api.${KEY}[":id"].$get({
+      const res = await client.api["${KEY}"][":id"].$get({
         param: { id: String(id) },
       });
       if (!res.ok) throw new Error(await readApiError(res, "Failed to fetch ${KEY}"));
@@ -532,7 +549,7 @@ export function useCreate${PASCAL}() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: Create${PASCAL}Input) => {
-      const res = await client.api.${KEY}.$post({ json: input });
+      const res = await client.api["${KEY}"].$post({ json: input });
       if (!res.ok) throw new Error(await readApiError(res, "Failed to create ${KEY}"));
       return (await res.json()) as ${PASCAL}Record;
     },
@@ -544,7 +561,7 @@ export function useUpdate${PASCAL}() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...input }: Update${PASCAL}Input & { id: number }) => {
-      const res = await client.api.${KEY}[":id"].$put({
+      const res = await client.api["${KEY}"][":id"].$put({
         param: { id: String(id) },
         json: input,
       });
@@ -559,7 +576,7 @@ export function useDelete${PASCAL}() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
-      const res = await client.api.${KEY}[":id"].$delete({
+      const res = await client.api["${KEY}"][":id"].$delete({
         param: { id: String(id) },
       });
       if (!res.ok) throw new Error(await readApiError(res, "Failed to delete ${KEY}"));
@@ -581,7 +598,7 @@ export function useUpdate${PASCAL}Status() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ${statusField} }: { id: number; ${statusField}: string }) => {
-      const res = await client.api.${KEY}[":id"]["status"].$patch({
+      const res = await client.api["${KEY}"][":id"]["status"].$patch({
         param: { id: String(id) },
         json: { ${statusField} },
       });

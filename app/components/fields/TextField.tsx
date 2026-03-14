@@ -7,6 +7,7 @@ export function TextField({
   error,
   fieldKey,
   required,
+  onBlur,
 }: {
   def: TextFieldDef;
   value: string;
@@ -14,6 +15,7 @@ export function TextField({
   error?: string;
   fieldKey?: string;
   required?: boolean;
+  onBlur?: () => void;
 }) {
   const id = fieldKey ? `field-${fieldKey}` : undefined;
   const errorId = fieldKey ? `field-${fieldKey}-error` : undefined;
@@ -31,6 +33,7 @@ export function TextField({
           id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
           maxLength={def.maxLength}
           rows={3}
           className={base}
@@ -57,6 +60,7 @@ export function TextField({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
         maxLength={def.maxLength}
         className={base}
         aria-required={required || undefined}
