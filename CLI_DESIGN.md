@@ -30,17 +30,18 @@
 
 - `scripts/cf-starter.mjs` に unified CLI 入口がある
 - `bin/cf-starter` から同じ CLI を叩ける
-- `doctor` / `doctor --remote`
+- `doctor` / `doctor --remote`（CORS_ORIGIN localhost警告、secrets確認ヒント含む）
 - `env plan`
 - `db migrate --plan --json`
 - `db seed-demo --plan --json`
+- `setup remote`（リモートDB一括準備）
 - `record generate --plan --json`
 - `deploy --plan --json`
 
 補足:
 
 - テンプレ repo 本体の `wrangler.jsonc` は意図的に `database_id: "TODO"` と localhost の `APP_BASE_URL` を持つ
-- これらは未整備ではなく、コピー先の実アプリで埋めるプレースホルダである
+- これらは `npm run init` がコピー先で自動的に実値を埋める（D1作成 + URL設定）
 
 ## Design Principles
 
@@ -104,16 +105,18 @@ cf-starter doctor
 cf-starter env plan
 cf-starter db migrate
 cf-starter db seed-demo
+cf-starter setup remote
 cf-starter record generate --record shared/records/task.ts
 cf-starter deploy
 ```
 
 ### Command roles
 
-- `doctor`: ローカル環境と config の診断
+- `doctor`: ローカル環境と config の診断（`--remote` でデプロイ前チェック追加）
 - `env plan`: Cloudflare 資源と binding の不足を整理
 - `db migrate`: D1 migration の plan / apply
 - `db seed-demo`: demo user / org の投入
+- `setup remote`: リモートDB一括準備（migrate + seed:demo + seed-app.sql + secrets確認）
 - `record generate`: Record Engine 生成処理
 - `deploy`: build + deploy 前の preflight と実行
 
@@ -380,10 +383,12 @@ CLI は「コマンドごとの script 群」ではなく、小さい共通基�
 ```text
 scripts/
   cf-starter.mjs
+  init-copy.mjs
   doctor.mjs
   env-plan.mjs
   d1-migrate.mjs
   seed-demo.mjs
+  setup-remote.mjs
   generate-record.mjs
   deploy.mjs
   lib/
@@ -488,9 +493,20 @@ CLI はユニットテストより契約テストを重視する。
 
 テンプレ運用では次の順で使う。
 
-1. `cf-starter doctor --json`
-2. `cf-starter env plan --json`
-3. `cf-starter db migrate --plan --json`
-4. 必要に応じて `cf-starter record generate --plan --json`
-5. remote 前は `cf-starter doctor --remote --json`
-6. `cf-starter deploy --plan --json`
+初回セットアップ:
+
+1. `cp -r cf-starter my-app && cd my-app && npm install`
+2. `npm run init` — D1作成・URL設定・DB構築まで全自動
+
+開発中:
+
+3. `cf-starter doctor --json`
+4. `cf-starter env plan --json`
+5. `cf-starter db migrate --plan --json`
+6. 必要に応じて `cf-starter record generate --plan --json`
+
+デプロイ:
+
+7. `cf-starter doctor --remote --json` — CORS/URL/secrets の事前確認
+8. `npm run setup:remote` — リモートDB一括準備
+9. `cf-starter deploy --plan --json`

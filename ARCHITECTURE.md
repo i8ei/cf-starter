@@ -50,17 +50,19 @@
 
 テンプレを安全に使うための運用 CLI を持ちます。主入口は `scripts/cf-starter.mjs` と `bin/cf-starter` です。
 
+- `init` — プロジェクト初期化（名前置換 + D1作成 + URL設定 + DB構築）
 - `doctor` — ローカル前提の診断
-- `doctor --remote` — remote deploy 前提の追加診断
+- `doctor --remote` — remote deploy 前提の追加診断（CORS_ORIGIN localhost警告、secrets確認ヒント含む）
 - `env plan` — `wrangler.jsonc` から Cloudflare 資源と binding の不足を整理
 - `db migrate --plan` — D1 migration の apply 前確認
 - `db seed-demo --plan` — demo user / org 投入前の確認
+- `setup remote` — リモートDB一括準備（migrate + seed:demo + seed-app.sql + secrets確認）
 - `record generate --plan` — Record Engine 生成差分の確認
 - `deploy --plan` — build + Wrangler deploy 前の確認
 
 この CLI は JSON envelope を返すので、AI / CI から機械可読に扱えます。
 
-テンプレ方針として、repo 本体の `wrangler.jsonc` には `database_id` や本番 `APP_BASE_URL` を固定しません。これらはコピー先の実アプリで埋めます。
+テンプレ方針として、repo 本体の `wrangler.jsonc` には `database_id` や本番 `APP_BASE_URL` を固定しません。`npm run init` がコピー先で自動的に実値を埋めます。
 
 ## Record Engine
 

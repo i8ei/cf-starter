@@ -82,3 +82,14 @@
 - テンプレ repo 本体はプレースホルダ設定を維持し、実値はコピー先で埋める方針を明記
 - 契約テストを追加して CLI 出力 shape を保護
 - 詳細は `CLI_DESIGN.md` を参照
+
+## Phase 7: Deploy DX 改善 — 完了
+
+tara-shisetsu（3本目の実アプリ）で毎回引っかかった7つのペインポイントを解消。
+
+- `npm run init` を拡張: D1自動作成 → database_id書き込み → CORS_ORIGIN/APP_BASE_URL設定 → migrations完全クリア → db:generate → db:migrate → seed:demo を一括実行
+- `npm run setup:remote` 新設: リモートmigrate + seed:demo --remote + seed-app.sql + secrets確認
+- `doctor --remote` にデプロイ前チェック追加: CORS_ORIGIN localhost only警告、必須シークレットヒント
+- `.dev.vars` にローカル用 APP_BASE_URL オーバーライドを自動生成
+- `seed-app.sql` 規約: アプリ固有シードデータを1ファイルで local/remote 共通化
+- 理想フロー: `cp -r cf-starter my-app && cd my-app && npm install && npm run init && npm run dev`

@@ -66,28 +66,38 @@ CLI の運用設計は [CLI_DESIGN.md](./CLI_DESIGN.md) にまとめています
 cp -r cf-starter my-app
 cd my-app
 npm install
-npm run db:migrate
+npm run init       # 対話で名前入力 → D1作成・URL設定・DB構築まで全自動
 npm run dev
 ```
 
+`npm run init` が自動で行うこと:
+
+1. `cf-starter` → アプリ名への参照置換
+2. D1 データベース作成 → `database_id` を `wrangler.jsonc` に書き込み
+3. `CORS_ORIGIN` / `APP_BASE_URL` を本番 URL に設定（`.dev.vars` にローカル用オーバーライドも生成）
+4. テンプレのマイグレーション削除 → `db:generate` → `db:migrate` → `seed:demo`
+
 ### Cloudflare へデプロイ
 
-`cf-starter` 自体はテンプレートなので、repo 本体の `wrangler.jsonc` には `database_id` や `APP_BASE_URL` の実値を固定しません。
-実アプリとして使うコピー先で、環境ごとの値を入れます。
+```bash
+npm run setup:remote   # リモートmigrate + seed + secrets確認
+npm run deploy
+```
+
+`setup:remote` が自動で行うこと:
+
+1. リモート D1 にマイグレーション適用
+2. `seed:demo --remote`（org id=1 作成）
+3. `seed-app.sql` があればリモートに適用（アプリ固有シード）
+4. 必須シークレット（`SESSION_SECRET` 等）の設定確認
+
+KV / R2 / Queue が必要な場合は別途手動で作成:
 
 ```bash
-# 1. リソース作成
-wrangler d1 create my-app-db
 wrangler kv namespace create KV
 wrangler r2 bucket create my-app-bucket
 wrangler queues create my-app-jobs
-
-# 2. wrangler.jsonc の bindings / ids を更新
-# 3. リモート DB へ migration 適用
-npm run db:migrate:remote
-
-# 4. デプロイ
-npm run deploy
+# wrangler.jsonc の binding ids を更新
 ```
 
 ## コマンド
@@ -108,6 +118,8 @@ npm run deploy
 | `npm run db:migrate` | ローカル D1 に migration 適用 |
 | `npm run db:migrate:remote` | リモート D1 に migration 適用 |
 | `npm run seed:demo` | ローカル D1 に demo user / org を投入 |
+| `npm run init` | 新プロジェクト初期化（D1作成・URL設定・DB構築） |
+| `npm run setup:remote` | リモートDB準備（migrate + seed + secrets確認） |
 | `npm run record:generate -- --record shared/records/xxx.ts` | Record Engine でコード生成 |
 
 ### Plan / JSON モード
@@ -246,9 +258,11 @@ cf-starter/
 │   ├── routes/             core API routes
 │   └── index.ts            Worker entrypoint
 ├── scripts/
+│   ├── init-copy.mjs       プロジェクト初期化（D1作成・URL設定・DB構築）
+│   ├── setup-remote.mjs    リモートDB一括準備
 │   ├── generate-record.mjs Record Engine コードジェネレーター
 │   ├── seed-demo.mjs       デモデータ投入
-│   └── lib/                record-engine 生成ロジック
+│   └── lib/                CLI共通ロジック・record-engine
 ├── migrations/             D1 migrations
 ├── test/                   unit / integration tests
 ├── ARCHITECTURE.md
@@ -298,12 +312,23 @@ cf-starter/
 2. `npm run db:generate`
 3. `npm run db:migrate`
 
+## アプリ固有シードデータ
+
+`seed-app.sql` をプロジェクトルートに置くと、`npm run setup:remote` で自動実行されます。
+ローカルでも手動適用できます:
+
+```bash
+npx wrangler d1 execute <db-name> --local --file seed-app.sql
+```
+
 ## 本番チェックリスト
 
-- [ ] `wrangler.jsonc` の `database_id` / KV / R2 / Queue binding を実値にする
-- [ ] `CORS_ORIGIN` を本番 origin にする
+`npm run init` + `npm run setup:remote` で大部分は自動化されます。残りの確認事項:
+
+- [ ] KV / R2 / Queue binding が必要なら作成して `wrangler.jsonc` に id を設定
 - [ ] `COOKIE_SAME_SITE` / `COOKIE_SECURE` を運用に合わせる
 - [ ] Durable Object migration tag を必要に応じて更新する
 - [ ] Queue 名を変更した場合は producer / consumer を揃える
 - [ ] auth rate limit の閾値を要件に合わせる
 - [ ] `scheduled` cleanup が本番でも動くことを確認する
+- [ ] `npm run doctor -- --remote` でデプロイ前チェック
