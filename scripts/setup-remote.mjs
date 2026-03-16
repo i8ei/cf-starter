@@ -12,7 +12,7 @@
  *   npm run setup:remote
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { readWranglerConfig, getPrimaryD1DatabaseName, resolveWranglerBinary } from "./lib/wrangler-config.mjs";
@@ -55,17 +55,12 @@ async function main() {
   const seedAppPath = resolve(ROOT, "seed-app.sql");
   if (existsSync(seedAppPath)) {
     console.log("── seed-app.sql (app-specific) ──");
-    const sql = readFileSync(seedAppPath, "utf-8").trim();
-    if (sql) {
-      const result = run(wrangler, ["d1", "execute", dbName, "--remote", "--command", sql]);
-      if ((result.status ?? 1) !== 0) {
-        console.error("✗ seed-app.sql failed. Fix the SQL and retry.");
-        process.exit(1);
-      }
-      console.log("✓ seed-app.sql applied to remote\n");
-    } else {
-      console.log("- seed-app.sql is empty, skipping\n");
+    const result = run(wrangler, ["d1", "execute", dbName, "--remote", "--file", seedAppPath]);
+    if ((result.status ?? 1) !== 0) {
+      console.error("✗ seed-app.sql failed. Fix the SQL and retry.");
+      process.exit(1);
     }
+    console.log("✓ seed-app.sql applied to remote\n");
   } else {
     console.log("- No seed-app.sql found (optional)\n");
   }

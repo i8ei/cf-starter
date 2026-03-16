@@ -232,13 +232,14 @@ cf-starter deploy
 
 ```json
 {
-  "id": "wrangler-config",
-  "status": "fail",
-  "severity": "error",
-  "message": "d1_databases[0].database_id is TODO",
-  "fix": "Update wrangler.jsonc with the real database id"
+  "id": "d1-database-id",
+  "level": "warn",
+  "message": "d1_databases[0].database_id is still TODO.",
+  "fix": "Write the real database_id after creating the remote D1 database."
 }
 ```
+
+`level` は `pass` / `fail` / `warn` / `info` のいずれか。
 
 #### Notes
 
