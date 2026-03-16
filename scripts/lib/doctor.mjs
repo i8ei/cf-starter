@@ -206,6 +206,39 @@ export function analyzeDoctorContext({
       });
     }
 
+    // CORS_ORIGIN check: warn if it only contains localhost
+    if (typeof vars.CORS_ORIGIN === "string") {
+      const origins = vars.CORS_ORIGIN.split(",").map((o) => o.trim());
+      const hasNonLocal = origins.some((o) => !o.includes("localhost") && !o.includes("127.0.0.1"));
+      if (hasNonLocal) {
+        checks.push({
+          id: "remote-cors-origin",
+          level: "pass",
+          message: "CORS_ORIGIN includes a non-localhost origin for production.",
+        });
+      } else {
+        checks.push({
+          id: "remote-cors-origin",
+          level: "warn",
+          message: "CORS_ORIGIN only contains localhost origins. Remote API calls will be blocked by CORS.",
+          fix: "Add the production URL to CORS_ORIGIN in wrangler.jsonc (e.g. 'http://localhost:5173, https://my-app.ichevi.workers.dev').",
+        });
+      }
+    }
+
+    // Required secrets check
+    const requiredSecrets = [];
+    if (vars.AUTH_ENABLED !== "false") {
+      requiredSecrets.push("SESSION_SECRET");
+    }
+    if (requiredSecrets.length > 0 && remoteProbe) {
+      checks.push({
+        id: "remote-secrets-hint",
+        level: "info",
+        message: `Required secrets for this config: ${requiredSecrets.join(", ")}. Run \`npm run setup:remote\` to verify.`,
+      });
+    }
+
     if (remoteProbe?.ok === true) {
       checks.push({
         id: "wrangler-auth",

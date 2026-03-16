@@ -34,6 +34,7 @@
     "db:migrate:remote": "node scripts/cf-starter.mjs db migrate --remote",
     "seed:demo": "node scripts/cf-starter.mjs db seed-demo",
     "record:generate": "node scripts/cf-starter.mjs record generate",
+    "setup:remote": "node scripts/cf-starter.mjs setup remote",
     "init": "node scripts/init-copy.mjs"
   },
   "dependencies": {

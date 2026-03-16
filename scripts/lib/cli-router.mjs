@@ -5,6 +5,7 @@ export function formatCliUsage() {
     "  node scripts/cf-starter.mjs env plan [--json]",
     "  node scripts/cf-starter.mjs db migrate [--plan] [--json] [--remote]",
     "  node scripts/cf-starter.mjs db seed-demo [--plan] [--json]",
+    "  node scripts/cf-starter.mjs setup remote",
     "  node scripts/cf-starter.mjs record generate --record <path> [--plan] [--json]",
     "  node scripts/cf-starter.mjs deploy [--plan] [--json]",
   ].join("\n");
@@ -61,6 +62,15 @@ export function resolveCliCommand(argv) {
       ok: true,
       command: "record generate",
       script: "generate-record.mjs",
+      args: argv.slice(2),
+    };
+  }
+
+  if (argv[0] === "setup" && argv[1] === "remote") {
+    return {
+      ok: true,
+      command: "setup remote",
+      script: "setup-remote.mjs",
       args: argv.slice(2),
     };
   }

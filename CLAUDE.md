@@ -77,6 +77,7 @@ npm run db:migrate       # D1 ローカルマイグレーション
 npm run db:migrate:remote  # D1 リモートマイグレーション
 npm run seed:demo        # デモユーザー・組織を投入
 npm run record:generate -- --record shared/records/xxx.ts  # Record Engine でコード生成
+npm run setup:remote     # リモートDB準備（migrate + seed + secrets確認）
 
 # Plan / JSON examples
 cf-starter doctor --json
@@ -104,12 +105,30 @@ npm run deploy -- --plan --json
 
 ## 開発の流れ
 
+### 新プロジェクト開始（理想の1コマンド）
+```bash
+cp -r cf-starter my-app && cd my-app && npm install && npm run init
+```
+`npm run init` が自動で:
+1. 名前置換（cf-starter → my-app）
+2. D1作成 → database_id書き込み
+3. CORS_ORIGIN / APP_BASE_URL をprod URL設定
+4. migrations クリア → db:generate → db:migrate → seed:demo
+
+### デプロイ準備
+```bash
+npm run setup:remote   # リモートmigrate + seed + seed-app.sql + secrets確認
+npm run deploy
+```
+
+### アプリ固有シードデータ
+`seed-app.sql` をプロジェクトルートに置くと、`npm run setup:remote` で自動実行される。
+ローカルでも `npx wrangler d1 execute <db-name> --local --file seed-app.sql` で適用可能。
+
+### 日常開発
 1. テンプレ repo 本体では `wrangler.jsonc` の `database_id` / `APP_BASE_URL` はプレースホルダのまま維持する
-2. 実アプリとして使うコピー先で `database_id` / URL / binding ids を実値に置換
-3. `npm run db:migrate` でローカルDB作成
-4. `npm run dev` で開発開始
-5. API追加: `src/routes/` にファイル追加 → `src/index.ts` で `.route()` 登録
-6. テーブル追加: `src/db/schema.ts` に定義 → `npm run db:generate`
+2. API追加: `src/routes/` にファイル追加 → `src/index.ts` で `.route()` 登録
+3. テーブル追加: `src/db/schema.ts` に定義 → `npm run db:generate`
 
 ## Record Engine（レコード駆動開発）
 
