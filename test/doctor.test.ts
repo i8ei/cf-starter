@@ -80,6 +80,7 @@ describe("analyzeDoctorContext", () => {
         r2_buckets: [{ binding: "BUCKET", bucket_name: "cf-starter-bucket" }],
         vars: {
           APP_BASE_URL: "http://localhost:5173",
+          CORS_ORIGIN: "http://localhost:5173",
           EMAIL_FROM: "cf-starter <noreply@example.com>",
         },
       },
@@ -100,7 +101,54 @@ describe("analyzeDoctorContext", () => {
     expect(report.ok).toBe(true);
     expect(report.summary[0]).toContain("Remote deploy prerequisites");
     expect(report.checks.find((check) => check.id === "remote-app-base-url")?.level).toBe("warn");
+    expect(report.checks.find((check) => check.id === "remote-cors-origin")?.level).toBe("warn");
+    expect(report.checks.find((check) => check.id === "remote-secrets-hint")?.level).toBe("info");
     expect(report.checks.find((check) => check.id === "wrangler-auth")?.level).toBe("warn");
+  });
+
+  it("passes CORS check when production origin is included", () => {
+    const report = analyzeDoctorContext({
+      nodeVersion: "20.11.1",
+      target: "remote",
+      remoteProbe: { ok: true, message: "Logged in." },
+      packageJson: {
+        scripts: {
+          doctor: "x",
+          "db:migrate": "x",
+          "db:migrate:remote": "x",
+          "seed:demo": "x",
+          "record:generate": "x",
+        },
+        devDependencies: { wrangler: "^4" },
+      },
+      wranglerConfig: {
+        d1_databases: [{ database_name: "my-db", database_id: "abc-123" }],
+        r2_buckets: [{ binding: "BUCKET", bucket_name: "b" }],
+        vars: {
+          APP_BASE_URL: "https://my-app.ichevi.workers.dev",
+          CORS_ORIGIN: "http://localhost:5173, https://my-app.ichevi.workers.dev",
+          AUTH_ENABLED: "false",
+        },
+      },
+      pathStatuses: {
+        "README.md": true,
+        "wrangler.jsonc": true,
+        migrations: true,
+        node_modules: true,
+        "node_modules/.bin/wrangler": true,
+        "scripts/d1-migrate.mjs": true,
+        "scripts/generate-record.mjs": true,
+        "scripts/lib/wrangler-config.mjs": true,
+        "scripts/lib/example-migrations.mjs": true,
+        "shared/records/task.ts": true,
+      },
+    });
+
+    expect(report.ok).toBe(true);
+    expect(report.checks.find((check) => check.id === "remote-cors-origin")?.level).toBe("pass");
+    expect(report.checks.find((check) => check.id === "remote-app-base-url")?.level).toBe("pass");
+    // AUTH_ENABLED=false → no secrets hint
+    expect(report.checks.find((check) => check.id === "remote-secrets-hint")).toBeUndefined();
   });
 
   it("fails when core scripts and wrangler are missing", () => {

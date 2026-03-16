@@ -12,7 +12,7 @@
  *   cp -r cf-starter my-app && cd my-app && npm install && npm run init
  */
 
-import { execSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
@@ -55,12 +55,12 @@ function replaceInFile(filePath, from, to) {
   return true;
 }
 
-function run(cmd, opts = {}) {
-  return spawnSync(cmd, { shell: true, cwd: ROOT, encoding: "utf-8", stdio: "pipe", ...opts });
+function run(cmd, args = [], opts = {}) {
+  return spawnSync(cmd, args, { cwd: ROOT, encoding: "utf-8", stdio: "pipe", ...opts });
 }
 
-function runOrDie(cmd, label) {
-  const result = run(cmd, { stdio: "inherit" });
+function runOrDie(cmd, args, label) {
+  const result = run(cmd, args, { stdio: "inherit" });
   if (result.status !== 0) {
     console.error(`\n✗ ${label} failed (exit ${result.status})`);
     process.exit(1);
@@ -73,10 +73,10 @@ function runOrDie(cmd, label) {
 
 function createD1Database(dbName) {
   console.log(`\nCreating D1 database "${dbName}" ...`);
-  const result = run(`npx wrangler d1 create "${dbName}"`);
+  const result = run("npx", ["wrangler", "d1", "create", dbName]);
   if (result.status !== 0) {
     // Already exists? Try to get id from list
-    const listResult = run(`npx wrangler d1 list --json`);
+    const listResult = run("npx", ["wrangler", "d1", "list", "--json"]);
     if (listResult.status === 0) {
       try {
         const databases = JSON.parse(listResult.stdout);
@@ -268,15 +268,15 @@ async function main() {
   cleanMigrations();
 
   console.log("\nGenerating fresh migrations from schema ...");
-  runOrDie("npx drizzle-kit generate", "db:generate");
+  runOrDie("npx", ["drizzle-kit", "generate"], "db:generate");
   console.log("✓ Generated migrations");
 
   console.log("\nApplying migrations to local D1 ...");
-  runOrDie("npm run db:migrate", "db:migrate");
+  runOrDie("npm", ["run", "db:migrate"], "db:migrate");
   console.log("✓ Migrated local D1");
 
   console.log("\nSeeding demo data ...");
-  runOrDie("npm run seed:demo", "seed:demo");
+  runOrDie("npm", ["run", "seed:demo"], "seed:demo");
   console.log("✓ Seeded demo data");
 
   // ── Done ──

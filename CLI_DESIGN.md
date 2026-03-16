@@ -333,6 +333,21 @@ Cloudflare 側リソース作成を自動で実行する前に、必要資源と
 - `--json` 時は `credentials` を明示 opt-in にする
 - 既存 user の upsert / org の再利用有無を `changes` に出す
 
+### `setup remote`
+
+リモートDBの一括準備コマンド。デプロイ前に1回実行する。
+
+#### Steps
+
+1. `db:migrate:remote` — リモートD1にマイグレーション適用
+2. `seed:demo --remote` — デモ組織（org id=1）をリモートに作成
+3. `seed-app.sql` — プロジェクトルートにあれば、アプリ固有シードをリモートD1に適用
+4. secrets check — AUTH_ENABLED設定に応じて必須シークレット（SESSION_SECRET等）の存在確認
+
+#### Design note
+
+`seed-app.sql` は規約ファイル。アプリ固有のマスタデータ等を1ファイルで管理し、ローカル・リモート共通で使う。
+
 ### `record generate`
 
 Record Engine は `cf-starter` 独自価値なので、最も agent-ready にする価値がある。
