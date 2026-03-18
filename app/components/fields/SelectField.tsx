@@ -24,7 +24,7 @@ export function SelectField({
     <div>
       <label className="mb-1.5 block text-sm text-muted" htmlFor={id}>
         {def.label}
-        {required && <span className="text-rose-400 ml-0.5">*</span>}
+        {required && <span className="text-error-text ml-0.5">*</span>}
       </label>
       <select
         id={id}
@@ -43,7 +43,7 @@ export function SelectField({
         ))}
       </select>
       {error ? (
-        <p id={errorId} className="mt-1 text-sm text-rose-300" role="alert">
+        <p id={errorId} className="mt-1 text-sm text-error-text" role="alert">
           {error}
         </p>
       ) : null}

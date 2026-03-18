@@ -380,6 +380,36 @@ health チェック (`/api/health`) もバインディングの有無を動的�
 
 チャートの `valueFormatter` に渡すことで統一的な表示になる。
 
+## 編集ガイド（AI向け）
+
+### 自由に編集してよい領域
+- `app/pages/` — ページの追加・変更・削除
+- `app/components/` — UIコンポーネントの追加・変更
+- `app/lib/format.ts` — ドメイン固有フォーマット関数
+- `src/routes/` — APIルートの追加・変更
+- `src/db/schema.ts` — テーブル追加（scaffold markers 間）
+- `shared/schemas/` — Zodスキーマ追加
+- `shared/records/` — Record Engine 定義追加
+- `app/App.tsx` — ルート追加（`recordNavItems`, `publicNavItems` の編集）
+- `seed-app.sql` — アプリ固有データ
+- `wrangler.jsonc` の `vars` セクション
+
+### 慎重に編集すべき領域
+- `src/middleware/` — セキュリティミドルウェア（CSRF, auth, rate-limit）
+- `src/lib/auth.ts`, `src/lib/session.ts` — 認証コア
+- `src/lib/crypto.ts` — 暗号処理
+- `src/index.ts` — ルート登録順序に注意（middleware適用順に影響）
+- `app/index.css` の `:root` — トークン追加は可、既存トークン削除は不可
+
+### 触らないこと
+- `src/lib/config.ts` — CORS/Cookie のバリデーション（Zodスキーマで保護）
+- `scripts/lib/` — CLI内部ロジック（契約テストで保護）
+- `test/` — 既存テストの削除
+
+### 存在しない可能性があるディレクトリ
+- `app/features/`, `src/features/`, `shared/features/` — Record Engine で生成後にのみ存在
+- `.wrangler/` — `npm run dev` 実行後にのみ存在
+
 ## 規約
 
 - API は `/api/` 以下、Hono ルーターで管理

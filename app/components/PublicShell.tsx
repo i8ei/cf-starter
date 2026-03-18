@@ -60,7 +60,7 @@ export function PublicShell({
                   href={item.href}
                   className={`px-3 py-1.5 text-sm rounded-lg no-underline transition-colors ${
                     location === item.href
-                      ? "bg-blue-600 text-white font-medium"
+                      ? "bg-primary text-white font-medium"
                       : "text-muted hover:bg-surface-hover"
                   }`}
                 >
@@ -72,22 +72,30 @@ export function PublicShell({
 
           {/* Mobile nav */}
           {menuOpen && navItems.length > 0 && (
-            <nav className="sm:hidden flex flex-col gap-1 mt-2 pb-1">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMenuOpen(false)}
-                  className={`px-3 py-2 text-sm rounded-lg no-underline transition-colors ${
-                    location === item.href
-                      ? "bg-blue-600 text-white font-medium"
-                      : "text-body hover:bg-surface-hover"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
+            <>
+              {/* Backdrop to close menu on outside tap */}
+              <div
+                className="sm:hidden fixed inset-0 z-40"
+                onClick={() => setMenuOpen(false)}
+                aria-hidden="true"
+              />
+              <nav className="sm:hidden relative z-50 flex flex-col gap-1 mt-2 pb-1">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMenuOpen(false)}
+                    className={`px-3 py-2 text-sm rounded-lg no-underline transition-colors ${
+                      location === item.href
+                        ? "bg-primary text-white font-medium"
+                        : "text-body hover:bg-surface-hover"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
+            </>
           )}
         </div>
       </header>

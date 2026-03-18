@@ -25,7 +25,7 @@ export function StackedBar({
   data,
   bars,
   xKey = "name",
-  valueFormatter = (v) => v.toLocaleString(),
+  valueFormatter = (v) => (isFinite(v) ? v.toLocaleString() : "–"),
   yTickFormatter,
   height = 300,
   layout = "horizontal",

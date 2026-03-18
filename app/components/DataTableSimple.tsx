@@ -8,6 +8,8 @@ interface Column<T> {
 interface DataTableSimpleProps<T> {
   columns: Column<T>[];
   data: T[];
+  /** Key field for stable row identity. Falls back to first column key, then index. */
+  rowKey?: string;
 }
 
 /**
@@ -16,7 +18,10 @@ interface DataTableSimpleProps<T> {
 export function DataTableSimple<T extends Record<string, unknown>>({
   columns,
   data,
+  rowKey,
 }: DataTableSimpleProps<T>) {
+  const keyField = rowKey ?? columns[0]?.key;
+
   return (
     <div className="overflow-x-auto -mx-4 px-4">
       <table className="w-full text-sm">
@@ -36,7 +41,10 @@ export function DataTableSimple<T extends Record<string, unknown>>({
         </thead>
         <tbody>
           {data.map((row, i) => (
-            <tr key={i} className="border-b border-border/50 hover:bg-surface-hover">
+            <tr
+              key={keyField ? String(row[keyField] ?? i) : i}
+              className="border-b border-border/50 hover:bg-surface-hover"
+            >
               {columns.map((col) => (
                 <td
                   key={col.key}

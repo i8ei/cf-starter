@@ -231,7 +231,7 @@ npm run db:migrate
 | date | `text()` (ISO) | `z.string().regex(...)` | `<input type="date">` |
 | select | `text()` | `z.enum([...])` | `<select>` |
 | relation | `integer()` | `z.number().int()` | `<select>` |
-| file | `text()` (R2 key) | `z.string()` | upload widget |
+| file | `text()` (R2 key) | `z.string()` | placeholder (UI未実装) |
 
 ## ディレクトリ構成
 

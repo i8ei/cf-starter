@@ -137,7 +137,7 @@ UI/UX 品質:
 
 - `KpiCard` — 数値カード（ラベル + 値 + サブテキスト + 色カスタマイズ）
 - `Section` — セクション見出し（h2 + children のシンプルラッパー）
-- `ChartTableToggle` — グラフとテーブルの切替タブ（アクセシビリティ考慮）
+- `ChartTableToggle` — グラフとテーブルの切替タブ（WAI-ARIA tablist/tabpanel対応）
 - `DataTableSimple` — 読み取り専用の軽量テーブル（DataTableのソート不要版）
 
 ### 公開 API パターン

@@ -8,6 +8,9 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AuthPage } from "./pages/AuthPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { HomePage } from "./pages/HomePage";
+import { lazy, Suspense } from "react";
+
+const DemoPage = lazy(() => import("./pages/DemoPage").then((m) => ({ default: m.DemoPage })));
 
 const queryClient = new QueryClient();
 
@@ -27,20 +30,13 @@ const publicNavItems: { label: string; href: string }[] = [
   // Example: { label: "ダッシュボード", href: "/dashboard" },
 ];
 
-function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { data: health } = useHealth();
+/**
+ * Authenticated shell — only runs useSession when auth is enabled.
+ * Prevents unnecessary /api/auth/me calls for public apps.
+ */
+function AuthShell({ children }: { children: React.ReactNode }) {
   const { data: session, isLoading } = useSession();
 
-  // AUTH_ENABLED=false → use PublicShell (mobile-first single-column)
-  if (health?.authEnabled === false) {
-    return (
-      <PublicShell navItems={publicNavItems}>
-        {children}
-      </PublicShell>
-    );
-  }
-
-  // Auth enabled → use AppShell (desktop layout with sidebar nav)
   if (isLoading) {
     return (
       <AppShell>
@@ -64,14 +60,44 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * AuthGuard — waits for health check to determine auth mode before rendering.
+ * Prevents flicker: public apps never show AppShell/AuthPage.
+ */
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { data: health, isLoading: healthLoading } = useHealth();
+
+  // Wait for health check to determine auth mode — show minimal loading
+  if (healthLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface">
+        <p className="text-sm text-muted">Loading...</p>
+      </div>
+    );
+  }
+
+  // AUTH_ENABLED=false → PublicShell (no session query)
+  if (health?.authEnabled === false) {
+    return (
+      <PublicShell navItems={publicNavItems}>
+        {children}
+      </PublicShell>
+    );
+  }
+
+  // Auth enabled → AuthShell (runs useSession)
+  return <AuthShell>{children}</AuthShell>;
+}
+
 function AppRoutes() {
   return (
     <Switch>
-      {/*
-        Public pages (no auth required) — mount at /p/* prefix:
-        <Route path="/p/about" component={AboutPage} />
-        Backend: register public API routes without requireAuth in src/index.ts
-      */}
+      {/* Public pages (no auth required) — outside AuthGuard */}
+      <Route path="/p/demo">
+        <Suspense fallback={<div className="flex justify-center py-20"><p className="text-sm text-muted">Loading...</p></div>}>
+          <DemoPage />
+        </Suspense>
+      </Route>
 
       {/* Authenticated pages */}
       <Route>

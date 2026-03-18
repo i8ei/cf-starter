@@ -23,7 +23,7 @@ export function TrendLine({
   data,
   lines,
   xKey = "year",
-  valueFormatter = (v) => v.toLocaleString(),
+  valueFormatter = (v) => (isFinite(v) ? v.toLocaleString() : "–"),
   yTickFormatter,
   height = 300,
   showGrid = true,

@@ -27,7 +27,7 @@ const DEFAULT_COLORS = [
 export function PieDonut({
   data,
   colors = DEFAULT_COLORS,
-  valueFormatter = (v) => v.toLocaleString(),
+  valueFormatter = (v) => (isFinite(v) ? v.toLocaleString() : "–"),
   height = 300,
   innerRadius = 0,
   outerRadius = 110,

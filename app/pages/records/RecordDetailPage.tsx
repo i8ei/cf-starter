@@ -39,7 +39,7 @@ export function RecordDetailPage<T extends Record<string, unknown>>({
     return (
       <div className="mx-auto max-w-3xl">
         <Panel title={def.label}>
-          <p className="text-sm text-rose-300">Not found</p>
+          <p className="text-sm text-error-text">Not found</p>
         </Panel>
       </div>
     );
@@ -85,7 +85,7 @@ export function RecordDetailPage<T extends Record<string, unknown>>({
                 }
               }}
               disabled={isDeleting}
-              className="rounded-xl bg-rose-500/10 px-4 py-3 font-semibold text-rose-400 hover:bg-rose-500/20 disabled:opacity-50"
+              className="rounded-xl bg-rose-500/10 px-4 py-3 font-semibold text-error-text hover:bg-rose-500/20 disabled:opacity-50"
             >
               Delete
             </button>

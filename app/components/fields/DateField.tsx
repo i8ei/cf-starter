@@ -24,7 +24,7 @@ export function DateField({
     <div>
       <label className="mb-1.5 block text-sm text-muted" htmlFor={id}>
         {def.label}
-        {required && <span className="text-rose-400 ml-0.5">*</span>}
+        {required && <span className="text-error-text ml-0.5">*</span>}
       </label>
       <input
         id={id}
@@ -37,7 +37,7 @@ export function DateField({
         aria-describedby={error && errorId ? errorId : undefined}
       />
       {error ? (
-        <p id={errorId} className="mt-1 text-sm text-rose-300" role="alert">
+        <p id={errorId} className="mt-1 text-sm text-error-text" role="alert">
           {error}
         </p>
       ) : null}

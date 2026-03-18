@@ -178,7 +178,7 @@ export function RecordFormPage({
         ))}
 
         {error ? (
-          <p className="text-sm text-rose-300">{error}</p>
+          <p className="text-sm text-error-text">{error}</p>
         ) : null}
 
         <div className="flex gap-3 pt-2">
@@ -296,7 +296,7 @@ function FieldRenderer({
             htmlFor={`field-${fieldKey}`}
           >
             {field.label}
-            {field.required && <span className="text-rose-400 ml-0.5">*</span>}
+            {field.required && <span className="text-error-text ml-0.5">*</span>}
           </label>
           <p className="text-sm text-muted bg-surface-alt rounded-lg px-4 py-3 border border-border">
             ファイルアップロードは未実装です

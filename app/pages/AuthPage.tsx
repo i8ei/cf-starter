@@ -124,7 +124,7 @@ export function AuthPage() {
             {mode === "login" ? "Log In" : "Create Account"}
           </button>
           {currentMutation.error ? (
-            <p className="text-sm text-rose-600">
+            <p className="text-sm text-error-text">
               {currentMutation.error.message}
             </p>
           ) : null}
@@ -149,7 +149,7 @@ export function AuthPage() {
               Send Reset Link
             </button>
             {requestPasswordReset.error ? (
-              <p className="text-sm text-rose-600">
+              <p className="text-sm text-error-text">
                 {requestPasswordReset.error.message}
               </p>
             ) : requestPasswordReset.isSuccess ? (
@@ -184,7 +184,7 @@ export function AuthPage() {
               Reset Password
             </button>
             {confirmPasswordReset.error ? (
-              <p className="text-sm text-rose-600">
+              <p className="text-sm text-error-text">
                 {confirmPasswordReset.error.message}
               </p>
             ) : confirmPasswordReset.isSuccess ? (
@@ -210,7 +210,7 @@ export function AuthPage() {
               Verify Email
             </button>
             {confirmEmailVerification.error ? (
-              <p className="text-sm text-rose-600">
+              <p className="text-sm text-error-text">
                 {confirmEmailVerification.error.message}
               </p>
             ) : confirmEmailVerification.isSuccess ? (

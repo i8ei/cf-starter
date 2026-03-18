@@ -23,7 +23,7 @@ const DEFAULT_COLORS = [
 export function HorizontalBar({
   data,
   colors = DEFAULT_COLORS,
-  valueFormatter = (v) => v.toLocaleString(),
+  valueFormatter = (v) => (isFinite(v) ? v.toLocaleString() : "–"),
   height,
 }: HorizontalBarProps) {
   const h = height ?? Math.max(250, data.length * 32);

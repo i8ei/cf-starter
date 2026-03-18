@@ -58,7 +58,7 @@ export function AppShell({
                 <button
                   type="button"
                   onClick={() => logout.mutate()}
-                  className="rounded-lg bg-surface-hover px-3 py-1.5 text-sm text-muted hover:bg-gray-200/60 hover:text-heading"
+                  className="rounded-lg bg-surface-hover px-3 py-1.5 text-sm text-muted hover:bg-surface-alt hover:text-heading"
                 >
                   Logout
                 </button>

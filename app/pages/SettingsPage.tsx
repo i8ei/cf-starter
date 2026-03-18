@@ -131,7 +131,7 @@ export function SettingsPage() {
                 </button>
               </div>
               {createOrganization.error ? (
-                <p className="mt-2 text-sm text-rose-600">
+                <p className="mt-2 text-sm text-error-text">
                   {createOrganization.error.message}
                 </p>
               ) : null}
@@ -160,7 +160,7 @@ export function SettingsPage() {
                 </button>
               </div>
               {acceptInvite.error ? (
-                <p className="mt-2 text-sm text-rose-600">
+                <p className="mt-2 text-sm text-error-text">
                   {acceptInvite.error.message}
                 </p>
               ) : null}
@@ -227,7 +227,7 @@ export function SettingsPage() {
           </div>
         ) : null}
         {createInvite.error ? (
-          <p className="mb-4 text-sm text-rose-600">
+          <p className="mb-4 text-sm text-error-text">
             {createInvite.error.message}
           </p>
         ) : null}

@@ -28,6 +28,26 @@
   /* Focus ring (accent) */
   --ring: oklch(0.831 0.15 84.429 / 0.6);
 
+  /* Action colors */
+  --primary:     #2563eb;
+  --primary-hover: #1d4ed8;
+  --success:     #22c55e;
+  --danger:      #f43f5e;
+  --warning:     #f97316;
+  --error-text:  #f87171;
+
+  /* Chart palette (10 series) */
+  --chart-1: #2563eb;
+  --chart-2: #f97316;
+  --chart-3: #22c55e;
+  --chart-4: #a855f7;
+  --chart-5: #06b6d4;
+  --chart-6: #f43f5e;
+  --chart-7: #eab308;
+  --chart-8: #ec4899;
+  --chart-9: #14b8a6;
+  --chart-10: #6366f1;
+
   /* Status (semantic) */
   --color-status-new:    theme(colors.sky.600);
   --color-status-active: theme(colors.amber.600);
@@ -54,6 +74,12 @@
   --color-input-bg:      var(--input-bg);
   --color-input-border:  var(--input-border);
   --color-ring:          var(--ring);
+  --color-primary:       var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-success:       var(--success);
+  --color-danger:        var(--danger);
+  --color-warning:       var(--warning);
+  --color-error-text:    var(--error-text);
 }
 
 body {

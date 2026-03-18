@@ -19,7 +19,7 @@ interface ChangeBarProps {
 
 export function ChangeBar({
   data,
-  valueFormatter = (v) => `${v > 0 ? "+" : ""}${v.toLocaleString()}`,
+  valueFormatter = (v) => isFinite(v) ? `${v > 0 ? "+" : ""}${v.toLocaleString()}` : "–",
   positiveColor = "#22c55e",
   negativeColor = "#f43f5e",
   height,

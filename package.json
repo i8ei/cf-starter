@@ -27,6 +27,7 @@
     "deploy": "node scripts/cf-starter.mjs deploy",
     "doctor": "node scripts/cf-starter.mjs doctor",
     "env:plan": "node scripts/cf-starter.mjs env plan",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",

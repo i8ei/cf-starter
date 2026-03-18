@@ -240,6 +240,8 @@ async function main() {
     { file: "app/components/PublicShell.tsx", label: "PublicShell.tsx" },
     { file: "app/pages/HomePage.tsx", label: "HomePage.tsx" },
     { file: "src/lib/email.ts", label: "email.ts" },
+    { file: "CLAUDE.md", label: "CLAUDE.md" },
+    { file: "README.md", label: "README.md" },
   ];
 
   for (const t of targets) {
