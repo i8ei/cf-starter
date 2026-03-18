@@ -1,8 +1,8 @@
 {
   "name": "cf-starter",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Cloudflare Workers fullstack starter template.",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "cf-starter": "./bin/cf-starter"
