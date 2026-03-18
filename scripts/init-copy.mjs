@@ -237,6 +237,7 @@ async function main() {
     { file: "package.json", label: "package.json" },
     { file: "wrangler.jsonc", label: "wrangler.jsonc" },
     { file: "app/components/AppShell.tsx", label: "AppShell.tsx" },
+    { file: "app/components/PublicShell.tsx", label: "PublicShell.tsx" },
     { file: "app/pages/HomePage.tsx", label: "HomePage.tsx" },
     { file: "src/lib/email.ts", label: "email.ts" },
   ];

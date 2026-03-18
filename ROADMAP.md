@@ -93,3 +93,18 @@ tara-shisetsu（3本目の実アプリ）で毎回引っかかった7つのペ�
 - `.dev.vars` にローカル用 APP_BASE_URL オーバーライドを自動生成
 - `seed-app.sql` 規約: アプリ固有シードデータを1ファイルで local/remote 共通化
 - 理想フロー: `cp -r cf-starter my-app && cd my-app && npm install && npm run init && npm run dev`
+
+## Phase 8: Dashboard UI Kit — 完了
+
+tara-yosan（太良町予算ダッシュボード）の開発で得た知見をテンプレに還元。
+
+- Recharts 依存追加 + チャートラッパー5種（HorizontalBar, ChangeBar, TrendLine, StackedBar, PieDonut）
+- ダッシュボード用 UI 部品（KpiCard, Section, ChartTableToggle, DataTableSimple）
+- PublicShell — AUTH_ENABLED=false 時に自動選択されるモバイルファースト1カラムレイアウト
+- AppShell / PublicShell の自動切替（App.tsx の AuthGuard が AUTH_ENABLED で判定）
+- GET-only 公開 API パターン（`src/routes/public-example.ts` + `/api/public/*` プレフィックス）
+- `app/lib/format.ts` — 数値フォーマットユーティリティ置き場
+- `init-copy.mjs` — PublicShell.tsx を名前置換対象に追加
+- CLAUDE.md の seed-demo.mjs 削除リスト修正（Record Engine 非依存のため残す）
+- パターン集ドキュメント（外部DB→D1移行、ドリルダウン、フォーマット関数）
+- ARCHITECTURE.md / README.md 更新

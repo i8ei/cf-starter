@@ -6,6 +6,7 @@ import type { AppContextEnv, Env } from "./types";
 import health from "./routes/health";
 import auth from "./routes/auth";
 import orgs from "./routes/orgs";
+import publicExample from "./routes/public-example";
 import {
   purgeExpiredSessions,
   purgeStaleAuthTokens,
@@ -64,7 +65,8 @@ export const app = new Hono<AppContextEnv>()
   })
   .route("/api/health", health)
   .route("/api/orgs", orgs)
-  .route("/api/auth", auth);
+  .route("/api/auth", auth)
+  .route("/api/public/example", publicExample);
 
 export type AppType = typeof app;
 export { RateLimiter };

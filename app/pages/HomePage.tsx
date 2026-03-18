@@ -13,22 +13,22 @@ export function HomePage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-900">Welcome to cf-starter</h1>
+      <h1 className="text-2xl font-semibold text-heading">Welcome to cf-starter</h1>
 
       <Panel title="Starter Core" subtitle="Auth, org context, DB, queues, and typed API are ready.">
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted">
             Starter 本体は example UI を初期表示しません。必要な feature pack だけ残すか、自分の業務機能へ置き換える前提です。
           </p>
-          <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600">
+          <div className="rounded-lg border border-border bg-surface px-4 py-3 text-sm text-muted">
             <p>Current user: {session?.email ?? "not signed in"}</p>
             <p>Current organization: {primaryOrg?.organizationName ?? "none"}</p>
           </div>
-          <ul className="space-y-2 text-sm text-gray-600">
+          <ul className="space-y-2 text-sm text-muted">
             {nextSteps.map((step) => (
               <li
                 key={step}
-                className="rounded-lg border border-gray-200 bg-white px-4 py-3"
+                className="rounded-lg border border-border bg-surface px-4 py-3"
               >
                 {step}
               </li>

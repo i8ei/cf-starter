@@ -13,13 +13,13 @@ export function AppShell({
   const [location] = useLocation();
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800">
-      <header className="border-b border-gray-200 bg-white shadow-sm">
+    <div className="min-h-screen bg-surface-alt text-body">
+      <header className="border-b border-border bg-surface shadow-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-6">
             <Link
               href="/"
-              className="text-lg font-bold tracking-tight text-gray-900"
+              className="text-lg font-bold tracking-tight text-heading"
             >
               cf-starter
             </Link>
@@ -32,7 +32,7 @@ export function AppShell({
                     className={`min-h-[44px] flex items-center rounded-lg px-4 py-2 text-base font-medium transition ${
                       (item.href === "/" ? location === "/" : location.startsWith(item.href))
                         ? "bg-amber-100 text-amber-800"
-                        : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                        : "text-muted hover:bg-surface-hover hover:text-heading"
                     }`}
                   >
                     {item.label}
@@ -43,7 +43,7 @@ export function AppShell({
                   className={`min-h-[44px] flex items-center rounded-lg px-4 py-2 text-base font-medium transition ${
                     location === "/settings"
                       ? "bg-amber-100 text-amber-800"
-                      : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                      : "text-muted hover:bg-surface-hover hover:text-heading"
                   }`}
                 >
                   Settings
@@ -54,11 +54,11 @@ export function AppShell({
           <div className="flex items-center gap-4">
             {session ? (
               <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-600">{session.name}</span>
+                <span className="text-sm text-muted">{session.name}</span>
                 <button
                   type="button"
                   onClick={() => logout.mutate()}
-                  className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-200 hover:text-gray-900"
+                  className="rounded-lg bg-surface-hover px-3 py-1.5 text-sm text-muted hover:bg-gray-200/60 hover:text-heading"
                 >
                   Logout
                 </button>

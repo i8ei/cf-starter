@@ -17,7 +17,7 @@ export function StatusFilterTabs({
         className={`rounded-full px-4 py-2 text-sm font-medium transition ${
           current === null
             ? "bg-amber-400 text-slate-950"
-            : "bg-white text-gray-600 hover:bg-gray-100"
+            : "bg-surface text-muted hover:bg-surface-hover"
         }`}
       >
         All{counts ? ` (${Object.values(counts).reduce((a, b) => a + b, 0)})` : ""}
@@ -30,7 +30,7 @@ export function StatusFilterTabs({
           className={`rounded-full px-4 py-2 text-sm font-medium transition ${
             current === opt
               ? "bg-amber-400 text-slate-950"
-              : "bg-white text-gray-600 hover:bg-gray-100"
+              : "bg-surface text-muted hover:bg-surface-hover"
           }`}
         >
           {opt}{counts?.[opt] !== undefined ? ` (${counts[opt]})` : ""}

@@ -44,6 +44,7 @@
     "hono": "^4",
     "react": "^19",
     "react-dom": "^19",
+    "recharts": "^3.8.0",
     "wouter": "^3.9.0",
     "zod": "^3"
   },

@@ -140,11 +140,11 @@ export function RecordFormPage({
         <button
           type="button"
           onClick={() => navigate(`/${def.key}`)}
-          className="text-sm text-gray-600 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-amber-400/60 rounded-lg"
+          className="text-sm text-muted hover:text-heading focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
         >
           &larr; Back
         </button>
-        <h1 className="text-2xl font-semibold text-gray-900">
+        <h1 className="text-2xl font-semibold text-heading">
           {mode === "create" ? `New ${def.label}` : `Edit ${def.label}`}
         </h1>
       </div>
@@ -185,7 +185,7 @@ export function RecordFormPage({
           <button
             type="submit"
             disabled={isPending}
-            className="inline-flex items-center rounded-xl bg-amber-400 px-6 py-3 font-semibold text-slate-950 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-amber-400/60"
+            className="inline-flex items-center rounded-xl bg-amber-400 px-6 py-3 font-semibold text-slate-950 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring"
           >
             {isPending ? (
               <>
@@ -199,7 +199,7 @@ export function RecordFormPage({
           <button
             type="button"
             onClick={() => navigate(`/${def.key}`)}
-            className="rounded-xl bg-white px-6 py-3 font-semibold text-gray-600 focus-visible:ring-2 focus-visible:ring-amber-400/60"
+            className="rounded-xl bg-surface px-6 py-3 font-semibold text-muted focus-visible:ring-2 focus-visible:ring-ring"
           >
             Cancel
           </button>
@@ -292,13 +292,13 @@ function FieldRenderer({
       return (
         <div>
           <label
-            className="mb-1.5 block text-sm text-gray-600"
+            className="mb-1.5 block text-sm text-muted"
             htmlFor={`field-${fieldKey}`}
           >
             {field.label}
             {field.required && <span className="text-rose-400 ml-0.5">*</span>}
           </label>
-          <p className="text-sm text-gray-500 bg-gray-50 rounded-lg px-4 py-3 border border-gray-200">
+          <p className="text-sm text-muted bg-surface-alt rounded-lg px-4 py-3 border border-border">
             ファイルアップロードは未実装です
           </p>
         </div>

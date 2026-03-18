@@ -69,7 +69,7 @@ export function AuthPage() {
   };
 
   const inputClass =
-    "w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60";
+    "w-full rounded-lg border border-input-border bg-input-bg px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
     <div className="mx-auto max-w-xl">
@@ -86,7 +86,7 @@ export function AuthPage() {
               className={`rounded-full px-4 py-2 text-sm font-medium ${
                 mode === value
                   ? "bg-amber-400 text-slate-950"
-                  : "bg-white text-gray-600"
+                  : "bg-surface text-muted"
               }`}
             >
               {value}
@@ -129,9 +129,9 @@ export function AuthPage() {
             </p>
           ) : null}
         </div>
-        <div className="mt-6 grid gap-4 border-t border-gray-200 pt-5 lg:grid-cols-3">
+        <div className="mt-6 grid gap-4 border-t border-border pt-5 lg:grid-cols-3">
           <div className="space-y-3">
-            <div className="text-sm font-medium text-gray-900">
+            <div className="text-sm font-medium text-heading">
               Request Password Reset
             </div>
             <input
@@ -159,7 +159,7 @@ export function AuthPage() {
             ) : null}
           </div>
           <div className="space-y-3">
-            <div className="text-sm font-medium text-gray-900">
+            <div className="text-sm font-medium text-heading">
               Confirm Password Reset
             </div>
             <input
@@ -194,7 +194,7 @@ export function AuthPage() {
             ) : null}
           </div>
           <div className="space-y-3">
-            <div className="text-sm font-medium text-gray-900">Confirm Email</div>
+            <div className="text-sm font-medium text-heading">Confirm Email</div>
             <input
               value={verifyToken}
               onChange={(e) => setVerifyToken(e.target.value)}

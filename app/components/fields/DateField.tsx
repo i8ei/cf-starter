@@ -22,7 +22,7 @@ export function DateField({
 
   return (
     <div>
-      <label className="mb-1.5 block text-sm text-gray-600" htmlFor={id}>
+      <label className="mb-1.5 block text-sm text-muted" htmlFor={id}>
         {def.label}
         {required && <span className="text-rose-400 ml-0.5">*</span>}
       </label>
@@ -32,7 +32,7 @@ export function DateField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onBlur={onBlur}
-        className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 focus:border-amber-400"
+        className="w-full rounded-lg border border-input-border bg-input-bg px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-amber-400"
         aria-required={required || undefined}
         aria-describedby={error && errorId ? errorId : undefined}
       />

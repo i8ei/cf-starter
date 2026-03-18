@@ -45,6 +45,9 @@
 - error contract
 - queue handling
 - migration / build / test flow
+- dashboard UI kit（Recharts チャート5種 + KPIカード + テーブル切替）
+- dual layout（AppShell: 認証あり / PublicShell: 公開アプリ）
+- public API pattern（GET-only、認証不要）
 
 ## Operational CLI
 
@@ -105,6 +108,50 @@ UI/UX 品質:
 
 汎用ページコンポーネント（`RecordListPage`, `RecordDetailPage`, `RecordFormPage`）とフィールドコンポーネント（`TextField`, `NumberField`, `DateField`, `SelectField`, `RelationField`）を組み合わせて UI を構築します。
 
+## Dashboard UI Kit
+
+認証不要の公開アプリ（ダッシュボード、データ可視化）を迅速に構築するためのコンポーネント群です。
+
+### レイアウト切替
+
+`App.tsx` の `AuthGuard` が `AUTH_ENABLED` 環境変数に基づいてレイアウトを自動選択します。
+
+- `AUTH_ENABLED=true`（デフォルト）→ `AppShell`（デスクトップ向け、サイドバーナビ）
+- `AUTH_ENABLED=false` → `PublicShell`（モバイルファースト、1カラム、ヘッダーナビ）
+
+切替は runtime で行われ、ビルド設定の変更は不要です。
+
+### チャートコンポーネント
+
+`app/components/charts/` に5種の Recharts ラッパーを提供します。
+
+- `HorizontalBar` — 横棒グラフ（ランキング等）
+- `ChangeBar` — 増減棒（正=緑、負=赤、ReferenceLine付き）
+- `TrendLine` — 折れ線（複数系列、CartesianGrid対応）
+- `StackedBar` — 積み上げ棒（vertical/horizontal切替可）
+- `PieDonut` — 円グラフ/ドーナツ（innerRadius>0でドーナツ）
+
+すべて `ResponsiveContainer` でラップ済み。`valueFormatter` prop で数値表示をカスタマイズ可能。
+
+### ダッシュボード用 UI 部品
+
+- `KpiCard` — 数値カード（ラベル + 値 + サブテキスト + 色カスタマイズ）
+- `Section` — セクション見出し（h2 + children のシンプルラッパー）
+- `ChartTableToggle` — グラフとテーブルの切替タブ（アクセシビリティ考慮）
+- `DataTableSimple` — 読み取り専用の軽量テーブル（DataTableのソート不要版）
+
+### 公開 API パターン
+
+`src/routes/public-example.ts` に GET-only の公開 API ルートのサンプルを置いています。
+
+- `/api/public/*` プレフィックスで認証不要の API を配置
+- CSRF middleware は GET をスキップするため、追加設定不要
+- `src/index.ts` で `.route("/api/public/example", publicExample)` として登録
+
+### 数値フォーマット
+
+`app/lib/format.ts` にドメイン固有のフォーマット関数を置く規約です。チャートの `valueFormatter` に渡して統一的な表示を実現します。
+
 ### Record Engine を使わない場合
 
 coreからRecord Engineへの直接importはゼロ。CLAUDE.md の「Record Engine を使わない場合」セクションに従ってファイルを削除すれば、coreは壊れない。
@@ -113,15 +160,19 @@ coreからRecord Engineへの直接importはゼロ。CLAUDE.md の「Record Engi
 
 `cf-starter` は feature-based structure を採用しています。
 
-- core routes: `src/routes/`
+- core routes: `src/routes/`（`health.ts`, `auth/`, `orgs.ts`, `public-example.ts`）
 - feature routes: `src/features/{key}/routes.ts`（Record Engine で生成）
 - core hooks: `app/hooks/`
 - feature hooks: `app/features/{key}/hooks/`（Record Engine で生成）
 - core schema: `shared/schemas/`
 - feature schema: `shared/features/{key}/schema.ts`（Record Engine で生成）
 - record definitions: `shared/records/{key}.ts`
+- chart components: `app/components/charts/`（Recharts ラッパー5種）
+- dashboard components: `app/components/`（KpiCard, Section, ChartTableToggle, DataTableSimple）
+- layout shells: `app/components/`（AppShell: 認証あり、PublicShell: 公開アプリ）
 
 新しい業務機能を追加する場合は、Record Engine でレコード定義を書いてコード生成するのが最速です。
+ダッシュボード系アプリの場合は、チャートキット + PublicShell + GET-only API で構築します。
 業務テーブルは `organization_id` を持たせて current organization で絞るのを基本にします（生成物に自動で含まれます）。
 
 ## 認証

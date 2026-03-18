@@ -8,11 +8,11 @@ export function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+        <h2 className="text-lg font-semibold text-heading">{title}</h2>
         {subtitle ? (
-          <p className="mt-1 text-sm text-gray-600">{subtitle}</p>
+          <p className="mt-1 text-sm text-muted">{subtitle}</p>
         ) : null}
       </div>
       {children}

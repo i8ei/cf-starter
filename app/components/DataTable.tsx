@@ -74,7 +74,7 @@ export function DataTable<T extends Record<string, unknown>>({
       <table className="w-full text-left text-sm">
         {caption && <caption className="sr-only">{caption}</caption>}
         <thead>
-          <tr className="border-b border-gray-200 text-sm uppercase tracking-[0.2em] text-gray-600">
+          <tr className="border-b border-border text-sm uppercase tracking-[0.2em] text-muted">
             {columns.map((col) => {
               const isActive = sort?.field === col.key;
               const ariaSortAttr = sortable
@@ -119,7 +119,7 @@ export function DataTable<T extends Record<string, unknown>>({
                 colSpan={columns.length}
                 className="px-4 py-12 text-center"
               >
-                <p className="text-gray-600">{emptyMessage}</p>
+                <p className="text-muted">{emptyMessage}</p>
                 {onEmptyAction && emptyActionLabel && (
                   <button
                     type="button"
@@ -136,9 +136,9 @@ export function DataTable<T extends Record<string, unknown>>({
               <tr
                 key={(row.id as number) ?? i}
                 onClick={() => onRowClick?.(row)}
-                className={`border-b border-gray-100 ${
+                className={`border-b border-border/50 ${
                   onRowClick
-                    ? "cursor-pointer hover:bg-white transition"
+                    ? "cursor-pointer hover:bg-surface transition"
                     : ""
                 }`}
                 {...(onRowClick
@@ -157,7 +157,7 @@ export function DataTable<T extends Record<string, unknown>>({
                   : {})}
               >
                 {columns.map((col) => (
-                  <td key={col.key} className="px-4 py-3 text-gray-700">
+                  <td key={col.key} className="px-4 py-3 text-body">
                     {status && col.key === status.field ? (
                       <StatusBadge
                         value={String(row[col.key] ?? "")}

@@ -9,7 +9,7 @@ CLI の運用設計は [CLI_DESIGN.md](./CLI_DESIGN.md) にまとめています
 
 ## 何が入っているか
 
-- React + TypeScript + Tailwind CSS v4
+- React + TypeScript + Tailwind CSS v4 + Recharts
 - Hono on Cloudflare Workers
 - D1 + Drizzle ORM
 - Zod による shared schema
@@ -28,6 +28,8 @@ CLI の運用設計は [CLI_DESIGN.md](./CLI_DESIGN.md) にまとめています
 - email verification request / confirm flow
 - Vitest ベースの自動テスト
 - Record Engine（レコード定義 → コード一発生成）
+- ダッシュボード UI キット（チャート5種 + KPIカード + グラフ/テーブル切替）
+- 2種のレイアウト（AppShell: 認証あり / PublicShell: 公開アプリ）
 - wouter による SPA ルーティング
 
 ## 向いている用途
@@ -35,13 +37,14 @@ CLI の運用設計は [CLI_DESIGN.md](./CLI_DESIGN.md) にまとめています
 - 地域向け業務ツール
 - 会員制サービス
 - 予約、台帳、在庫、配車、マッチング
+- ダッシュボード、データ可視化サイト
 - 1人から少人数で運用する Cloudflare ネイティブな Web アプリ
 
 ## スタック
 
 | レイヤー | 技術 |
 |---|---|
-| Frontend | React + TypeScript + Tailwind CSS + TanStack Query + wouter |
+| Frontend | React + TypeScript + Tailwind CSS + TanStack Query + Recharts + wouter |
 | Backend | Hono on Cloudflare Workers |
 | Database | D1 (SQLite) + Drizzle ORM |
 | Storage | R2 (optional) |
@@ -235,14 +238,23 @@ npm run db:migrate
 ```text
 cf-starter/
 ├── app/                    React UI
-│   ├── components/         共通 UI コンポーネント
-│   │   └── fields/         フォーム用フィールドコンポーネント
+│   ├── components/
+│   │   ├── charts/         Recharts ラッパー（5種）
+│   │   ├── fields/         フォーム用フィールドコンポーネント
+│   │   ├── AppShell.tsx    認証あり用レイアウト
+│   │   ├── PublicShell.tsx 公開アプリ用レイアウト（モバイルファースト）
+│   │   ├── KpiCard.tsx     数値カード
+│   │   ├── Section.tsx     セクション見出し
+│   │   ├── ChartTableToggle.tsx  グラフ/テーブル切替
+│   │   └── DataTableSimple.tsx   読み取り専用テーブル
 │   ├── features/           feature hooks（Record Engine 生成物）
 │   ├── hooks/              core hooks
-│   ├── lib/api.ts          型付き Hono RPC client
+│   ├── lib/
+│   │   ├── api.ts          型付き Hono RPC client
+│   │   └── format.ts       数値フォーマット置き場
 │   ├── pages/              ページコンポーネント
 │   │   └── records/        汎用レコード画面（List / Detail / Form）
-│   └── App.tsx             wouter ルーティング
+│   └── App.tsx             wouter ルーティング（AUTH_ENABLEDでレイアウト自動切替）
 ├── shared/                 フロント・バック共有契約
 │   ├── features/           feature schemas（Record Engine 生成物）
 │   ├── lib/record-def.ts   Record Engine 型定義
@@ -256,6 +268,7 @@ cf-starter/
 │   ├── middleware/          auth, csrf, role, request-id
 │   ├── queues/             queue producer / consumer
 │   ├── routes/             core API routes
+│   │   └── public-example.ts  GET-only 公開 API サンプル
 │   └── index.ts            Worker entrypoint
 ├── scripts/
 │   ├── init-copy.mjs       プロジェクト初期化（D1作成・URL設定・DB構築）
@@ -311,6 +324,52 @@ cf-starter/
 1. `src/db/schema.ts` にテーブル定義を追加
 2. `npm run db:generate`
 3. `npm run db:migrate`
+
+## ダッシュボード UI キット
+
+Recharts ベースのチャートと汎用 UI 部品が組み込み済み。認証不要の公開アプリ（ダッシュボード等）をすぐ作れます。
+
+### チャート（`app/components/charts/`）
+
+| コンポーネント | 用途 |
+|---|---|
+| `HorizontalBar` | 横棒ランキング |
+| `ChangeBar` | 増減棒（正＝緑、負＝赤） |
+| `TrendLine` | 折れ線（複数系列） |
+| `StackedBar` | 積み上げ棒（縦/横） |
+| `PieDonut` | 円/ドーナツ |
+
+### ダッシュボード部品
+
+| コンポーネント | 用途 |
+|---|---|
+| `KpiCard` | 数値カード（ラベル + 値 + サブテキスト） |
+| `Section` | セクション見出し |
+| `ChartTableToggle` | グラフ/テーブル切替タブ |
+| `DataTableSimple` | 読み取り専用テーブル |
+
+### PublicShell（公開アプリ用レイアウト）
+
+`AUTH_ENABLED=false` 時に自動選択される、モバイルファーストの1カラムレイアウト。
+
+```tsx
+// app/App.tsx で自動切替
+// AUTH_ENABLED=false → PublicShell
+// AUTH_ENABLED=true  → AppShell
+```
+
+カスタマイズ: `title`, `navItems`, `headerExtra`（年度セレクタ等）を props で渡す。
+
+### 公開 API パターン
+
+`src/routes/public-example.ts` に GET-only の公開 API サンプルがあります:
+
+```typescript
+// src/index.ts
+.route("/api/public/example", publicExample)
+```
+
+CSRF は GET をスキップするため、GET-only ルートは middleware 変更不要。
 
 ## アプリ固有シードデータ
 

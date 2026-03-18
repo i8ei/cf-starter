@@ -20,12 +20,12 @@ export function TextField({
   const id = fieldKey ? `field-${fieldKey}` : undefined;
   const errorId = fieldKey ? `field-${fieldKey}-error` : undefined;
   const base =
-    "w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 focus:border-amber-400";
+    "w-full rounded-lg border border-input-border bg-input-bg px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-amber-400";
 
   if (def.multiline) {
     return (
       <div>
-        <label className="mb-1.5 block text-sm text-gray-600" htmlFor={id}>
+        <label className="mb-1.5 block text-sm text-muted" htmlFor={id}>
           {def.label}
           {required && <span className="text-rose-400 ml-0.5">*</span>}
         </label>
@@ -51,7 +51,7 @@ export function TextField({
 
   return (
     <div>
-      <label className="mb-1.5 block text-sm text-gray-600" htmlFor={id}>
+      <label className="mb-1.5 block text-sm text-muted" htmlFor={id}>
         {def.label}
         {required && <span className="text-rose-400 ml-0.5">*</span>}
       </label>

@@ -29,7 +29,7 @@ export function RecordDetailPage<T extends Record<string, unknown>>({
     return (
       <div className="mx-auto max-w-3xl">
         <Panel title={def.label}>
-          <p className="text-sm text-gray-600">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         </Panel>
       </div>
     );
@@ -54,11 +54,11 @@ export function RecordDetailPage<T extends Record<string, unknown>>({
           <button
             type="button"
             onClick={() => navigate(`/${def.key}`)}
-            className="text-sm text-gray-600 hover:text-gray-900"
+            className="text-sm text-muted hover:text-heading"
           >
             &larr; Back
           </button>
-          <h1 className="text-2xl font-semibold text-gray-900">
+          <h1 className="text-2xl font-semibold text-heading">
             {def.label} #{id}
           </h1>
           {def.status ? (
@@ -112,10 +112,10 @@ export function RecordDetailPage<T extends Record<string, unknown>>({
             }
             return (
               <div key={key}>
-                <dt className="text-sm uppercase tracking-[0.2em] text-gray-600">
+                <dt className="text-sm uppercase tracking-[0.2em] text-muted">
                   {field.label}
                 </dt>
-                <dd className="mt-1 text-sm text-gray-700">
+                <dd className="mt-1 text-sm text-body">
                   {displayValue}
                 </dd>
               </div>
@@ -136,7 +136,7 @@ export function RecordDetailPage<T extends Record<string, unknown>>({
                 className={`rounded-full px-4 py-2 text-sm font-medium transition ${
                   data[def.status!.field] === opt
                     ? "bg-amber-400 text-slate-950"
-                    : "bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-30"
+                    : "bg-surface text-muted hover:bg-surface-hover disabled:opacity-30"
                 }`}
               >
                 {opt}
@@ -149,18 +149,18 @@ export function RecordDetailPage<T extends Record<string, unknown>>({
       <Panel title="Metadata">
         <dl className="grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="text-sm uppercase tracking-[0.2em] text-gray-600">
+            <dt className="text-sm uppercase tracking-[0.2em] text-muted">
               Created
             </dt>
-            <dd className="mt-1 text-sm text-gray-700">
+            <dd className="mt-1 text-sm text-body">
               {String(data.createdAt ?? "-")}
             </dd>
           </div>
           <div>
-            <dt className="text-sm uppercase tracking-[0.2em] text-gray-600">
+            <dt className="text-sm uppercase tracking-[0.2em] text-muted">
               Updated
             </dt>
-            <dd className="mt-1 text-sm text-gray-700">
+            <dd className="mt-1 text-sm text-body">
               {String(data.updatedAt ?? "-")}
             </dd>
           </div>

@@ -1,19 +1,75 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
+/* ── Semantic Design Tokens ──────────────────────────────────
+ *  melta UI inspired: override :root vars to theme the entire app.
+ *  Dark mode: add [data-theme="dark"] or @media (prefers-color-scheme: dark).
+ * ──────────────────────────────────────────────────────────── */
+
 :root {
-  --color-status-new: theme(colors.sky.600);
+  /* Surfaces */
+  --surface:       #ffffff;
+  --surface-alt:   #f9fafb;
+  --surface-hover: #f3f4f6;
+
+  /* Text */
+  --heading: #111827;
+  --body:    #374151;
+  --muted:   #6b7280;
+
+  /* Borders */
+  --border:        #e5e7eb;
+  --border-strong: #d1d5db;
+
+  /* Input */
+  --input-bg:     var(--surface);
+  --input-border: var(--border-strong);
+
+  /* Focus ring (accent) */
+  --ring: oklch(0.831 0.15 84.429 / 0.6);
+
+  /* Status (semantic) */
+  --color-status-new:    theme(colors.sky.600);
   --color-status-active: theme(colors.amber.600);
-  --color-status-done: theme(colors.emerald.600);
-  --color-status-error: theme(colors.rose.600);
-  --color-status-hold: theme(colors.gray.500);
+  --color-status-done:   theme(colors.emerald.600);
+  --color-status-error:  theme(colors.rose.600);
+  --color-status-hold:   theme(colors.gray.500);
+
+  /* Shadows */
+  --shadow-sm:      0 1px 2px rgb(0 0 0 / 0.05);
+  --shadow-md:      0 4px 6px rgb(0 0 0 / 0.07);
+  --shadow-overlay: 0 20px 25px rgb(0 0 0 / 0.1);
+}
+
+/* Register tokens so Tailwind generates bg-surface, text-heading, etc. */
+@theme {
+  --color-surface:       var(--surface);
+  --color-surface-alt:   var(--surface-alt);
+  --color-surface-hover: var(--surface-hover);
+  --color-heading:       var(--heading);
+  --color-body:          var(--body);
+  --color-muted:         var(--muted);
+  --color-border:        var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input-bg:      var(--input-bg);
+  --color-input-border:  var(--input-border);
+  --color-ring:          var(--ring);
 }
 
 body {
   font-family: 'Noto Sans JP', 'Inter', system-ui, sans-serif;
   font-size: 1.05rem;
   line-height: 1.6;
+  letter-spacing: 0.02em;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Typography rhythm */
+@layer base {
+  h1, h2, h3, h4 {
+    letter-spacing: 0.01em;
+    line-height: 1.4;
+  }
 }
 
 .tabular-nums {

@@ -4,7 +4,7 @@ Cloudflare フルスタック スターターテンプレート。`cp` して使
 
 ## スタック
 
-- **Frontend**: React + TypeScript + Tailwind CSS v4 + TanStack Query
+- **Frontend**: React + TypeScript + Tailwind CSS v4 + TanStack Query + Recharts
 - **Backend**: Hono on Cloudflare Workers
 - **DB**: D1 + Drizzle ORM（型安全、マイグレーション自動生成）
 - **Storage**: R2（オブジェクト）/ KV（キーバリュー、オプション）
@@ -17,16 +17,25 @@ Cloudflare フルスタック スターターテンプレート。`cp` して使
 cf-starter/
 ├── app/                    ← React フロントエンド
 │   ├── components/         ← 共通 UI コンポーネント
+│   │   ├── charts/         ← Recharts ラッパー（HorizontalBar, ChangeBar, TrendLine, StackedBar, PieDonut）
 │   │   ├── fields/         ← フォーム用フィールドコンポーネント
-│   │   ├── AppShell.tsx    ← ナビゲーション付きレイアウト
+│   │   ├── AppShell.tsx    ← ナビゲーション付きレイアウト（認証あり用）
+│   │   ├── PublicShell.tsx ← モバイルファースト1カラムレイアウト（公開アプリ用）
+│   │   ├── KpiCard.tsx     ← 数値カード（ダッシュボード用）
+│   │   ├── Section.tsx     ← セクション見出し
+│   │   ├── ChartTableToggle.tsx ← グラフ/テーブル切替
+│   │   ├── DataTableSimple.tsx ← 読み取り専用シンプルテーブル
 │   │   ├── Panel.tsx       ← カードUI
-│   │   ├── DataTable.tsx   ← テーブル表示
+│   │   ├── DataTable.tsx   ← ソート付きテーブル表示
 │   │   ├── StatusBadge.tsx ← ステータスバッジ
 │   │   ├── StatusFilterTabs.tsx ← ステータスフィルタータブ
 │   │   └── SummaryCards.tsx ← ステータス別件数カード（RecordListPage 上部）
 │   ├── features/           ← feature hooks（Record Engine 生成物）
 │   ├── hooks/              ← core hooks
-│   ├── lib/api.ts          ← Hono RPC クライアント（型付き）
+│   ├── lib/
+│   │   ├── api.ts          ← Hono RPC クライアント（型付き）
+│   │   ├── errors.ts       ← APIエラーパース
+│   │   └── format.ts       ← 数値フォーマットユーティリティ置き場
 │   ├── pages/              ← ページコンポーネント
 │   │   ├── records/        ← 汎用レコード画面（List/Detail/Form）
 │   │   ├── AuthPage.tsx
@@ -162,10 +171,18 @@ npm run deploy
 フィールドコンポーネント（`app/components/fields/`）: TextField, NumberField, DateField, SelectField, RelationField
 - 全フィールド: `label`/`input` の `htmlFor`/`id` 紐付け、`focus-visible` リング、`aria-required`、エラー `role="alert"`
 
-デザインシステム:
+デザインシステム（melta UI inspired セマンティックトークン）:
 - フォント: Inter + Noto Sans JP（`tabular-nums` 対応）
 - StatusBadge: セマンティックカラー（ステータスの意味に基づく色割り当て）
 - border-radius: input `rounded-lg`、button/panel `rounded-xl`
+- **セマンティックカラー**（`:root` CSS変数 → `@theme` で Tailwind 登録）:
+  - 背景: `bg-surface`（白）、`bg-surface-alt`（薄灰）、`bg-surface-hover`（ホバー）
+  - テキスト: `text-heading`（見出し）、`text-body`（本文）、`text-muted`（補助）
+  - ボーダー: `border-border`（標準）、`border-border-strong`（強調）
+  - 入力: `bg-input-bg`、`border-input-border`
+  - フォーカス: `ring-ring`（アクセント色のリング）
+- **色のカスタマイズ**: `index.css` の `:root` 変数を上書きするだけでテーマ変更可能
+- 生の Tailwind カラー（`text-gray-900` 等）ではなくセマンティックトークンを使うこと
 
 ### ルーティング
 
@@ -183,8 +200,52 @@ wouter による SPA ルーティング:
 `/p/*` プレフィックスで認証不要のページを配置できる。
 
 - **フロント**: `app/App.tsx` の `Switch` 先頭（AuthGuard の外）に `<Route path="/p/xxx">` を追加
-- **バック**: `src/index.ts` に `requireAuth` なしのルートを `.route("/api/public", publicRoutes)` で登録
+- **バック**: `src/index.ts` に `requireAuth` なしのルートを `.route("/api/public/xxx", publicRoutes)` で登録
 - CSRF は GET のみなので問題なし
+- サンプル: `src/routes/public-example.ts`（GET-only APIルートの雛形。不要なら削除）
+
+### 全ページ公開アプリ（AUTH_ENABLED=false）
+
+`AUTH_ENABLED=false` で起動すると、`App.tsx` の `AuthGuard` が自動的に `PublicShell`（モバイルファースト1カラムレイアウト）を使う。
+
+1. `wrangler.jsonc` で `"AUTH_ENABLED": "false"` を設定
+2. `app/App.tsx` の `publicNavItems` にナビを定義
+3. `PublicShell` の `title` / `headerExtra` をカスタマイズ（年度セレクタ等）
+4. APIは `/api/public/*` に GET-only ルートを追加
+
+## ダッシュボード UI キット（Recharts + 汎用コンポーネント）
+
+Recharts ベースのチャートラッパーとダッシュボード用UI部品が組み込み済み。
+
+### チャートコンポーネント（`app/components/charts/`）
+
+| コンポーネント | 用途 | 主なprops |
+|---|---|---|
+| `HorizontalBar` | 横棒ランキング | `data`, `colors`, `valueFormatter` |
+| `ChangeBar` | 増減棒（±色分け） | `data`, `positiveColor`, `negativeColor` |
+| `TrendLine` | 折れ線グラフ（複数系列） | `data`, `lines`, `xKey` |
+| `StackedBar` | 積み上げ棒（縦/横） | `data`, `bars`, `layout` |
+| `PieDonut` | 円/ドーナツグラフ | `data`, `innerRadius`（>0でドーナツ） |
+
+すべて `ResponsiveContainer` でラップ済み、モバイル対応。`valueFormatter` で数値表示をカスタマイズ可能。
+
+### ダッシュボード用コンポーネント
+
+| コンポーネント | 用途 |
+|---|---|
+| `KpiCard` | 数値カード（ラベル + 値 + サブテキスト） |
+| `Section` | セクション見出し（h2 + children） |
+| `ChartTableToggle` | グラフ/テーブル切替タブ |
+| `DataTableSimple` | 読み取り専用の軽量テーブル（DataTableのソート不要版） |
+
+### レイアウト選択
+
+| レイアウト | 用途 | 選択基準 |
+|---|---|---|
+| `AppShell` | 認証あり・デスクトップ中心 | Record Engine アプリ、管理画面 |
+| `PublicShell` | 認証なし・モバイルファースト | ダッシュボード、公開サイト |
+
+`AUTH_ENABLED=false` の場合、`AuthGuard` が自動で `PublicShell` を選択する。
 
 ## D1 パラメータ制限
 
@@ -231,13 +292,13 @@ coreからRecord Engineへの直接importはゼロ。以下を削除すればcor
 - `app/components/DataTable.tsx, SummaryCards.tsx, StatusFilterTabs.tsx, StatusBadge.tsx`
 - `shared/lib/record-def.ts, shared/records/`（task.ts含む）
 - `scripts/generate-record.mjs, scripts/lib/record-engine.mjs`
-- `scripts/seed-demo.mjs`
 - `test/record-engine.test.ts`
+- **注意**: `scripts/seed-demo.mjs` は Record Engine に依存していないので削除しない（org作成に必要）
 - `app/features/`, `src/features/`, `shared/features/`（生成済みコードがあれば）
 - `src/db/schema.ts` 内のscaffold markersとその間の生成コード（もしあれば）
 
 ### package.json
-- scripts: `record:generate`, `seed:demo` を削除
+- scripts: `record:generate` を削除（`seed:demo` は残す — core infrastructure）
 
 ### 検証
 npx tsc --noEmit && npm run build で壊れないことを確認
@@ -280,8 +341,44 @@ health チェック (`/api/health`) もバインディングの有無を動的�
 - [ ] この変更の影響を受ける他のファイルに波及漏れがないか（grep で確認）
 - [ ] 不要になった関数・export・import が残っていないか
 - [ ] CLAUDE.md / ARCHITECTURE.md / ROADMAP.md の記述と矛盾しないか（矛盾があればコードと一緒に直す）
-- [ ] デザインシステムのルール（input: `rounded-lg`、button/panel: `rounded-xl`、`focus-visible:ring-2`、`text-slate-300` 以上）に違反していないか
+- [ ] デザインシステムのルール（input: `rounded-lg`、button/panel: `rounded-xl`、`focus-visible:ring-2`、`text-slate-300` 以上、セマンティックトークン使用）に違反していないか
 - [ ] `npx tsc --noEmit` && `npm test` && `npm run build` が通るか
+
+## パターン集
+
+### 外部SQLiteからD1へのデータ移行
+
+既存のSQLite DBからD1にデータを投入するパターン:
+
+1. Pythonスクリプト（`scripts/export-xxx-sql.py`）で既存DBをSELECT → INSERT文を生成
+2. `seed-app.sql` に出力（先頭にDELETE文でべき等化）
+3. ローカル: `npx wrangler d1 execute <db-name> --local --file seed-app.sql`
+4. リモート: `npx wrangler d1 execute <db-name> --remote --file seed-app.sql`（または `npm run setup:remote`）
+
+注意点:
+- NULL値はNOT NULLカラムに入れない（`COALESCE` や Python側で0に変換）
+- テキストのシングルクォートはエスケープ（`''`）
+- D1の1文あたりパラメータ上限に注意（大量INSERTは文を分割）
+
+### アコーディオン式ドリルダウン（階層データ表示）
+
+款→項→目のような階層データを展開表示するパターン。テンプレには含めないが、実装時の参考:
+
+- フラットな配列をツリー構造に変換（Map + ネスト）
+- 各ノードを `useState(false)` で開閉
+- depth に応じてインデント（`ml-3 border-l`）
+- 実例: tara-yosan の `app/components/DrillDown.tsx`
+
+### 数値フォーマットユーティリティ
+
+`app/lib/format.ts` にドメイン固有のフォーマット関数を置く:
+
+- 通貨: `fmtCurrency(yen)` → `¥1,234`
+- 増減: `fmtDiff(val)` → `+1,234` / `-567`
+- パーセント: `fmtPercent(ratio)` → `12.3%`
+- 1人あたり: `perCapita(total, population)` → `123,456円`
+
+チャートの `valueFormatter` に渡すことで統一的な表示になる。
 
 ## 規約
 

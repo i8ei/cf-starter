@@ -49,7 +49,7 @@ export function RecordListPage<T extends Record<string, unknown>>({
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">{def.label}</h1>
+        <h1 className="text-2xl font-semibold text-heading">{def.label}</h1>
         <button
           type="button"
           onClick={() => navigate(`/${def.key}/new`)}
@@ -79,7 +79,7 @@ export function RecordListPage<T extends Record<string, unknown>>({
 
       <Panel title="">
         {isLoading ? (
-          <p className="text-sm text-gray-600">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         ) : (
           <DataTable
             columns={columns}
