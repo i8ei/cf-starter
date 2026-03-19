@@ -236,6 +236,7 @@ async function main() {
   const targets = [
     { file: "package.json", label: "package.json" },
     { file: "wrangler.jsonc", label: "wrangler.jsonc" },
+    { file: "index.html", label: "index.html" },
     { file: "app/components/AppShell.tsx", label: "AppShell.tsx" },
     { file: "app/components/PublicShell.tsx", label: "PublicShell.tsx" },
     { file: "app/pages/HomePage.tsx", label: "HomePage.tsx" },
@@ -251,6 +252,26 @@ async function main() {
     } else {
       console.log(`- Skipped ${t.label} (no changes needed)`);
     }
+  }
+
+  // Rename CLI entry script: scripts/cf-starter.mjs → scripts/{appName}.mjs
+  const oldScript = path.resolve(ROOT, "scripts", `${OLD}.mjs`);
+  const newScript = path.resolve(ROOT, "scripts", `${appName}.mjs`);
+  if (fs.existsSync(oldScript) && !fs.existsSync(newScript)) {
+    fs.renameSync(oldScript, newScript);
+    console.log(`✓ Renamed scripts/${OLD}.mjs → scripts/${appName}.mjs`);
+  } else if (fs.existsSync(newScript)) {
+    console.log(`- scripts/${appName}.mjs already exists`);
+  } else {
+    console.log(`⚠ scripts/${OLD}.mjs not found — skip rename`);
+  }
+
+  // ── Verify wrangler is working ──
+  const wranglerCheck = run("npx", ["wrangler", "--version"]);
+  if (wranglerCheck.status !== 0) {
+    console.log("⚠ wrangler not working, reinstalling node_modules...");
+    run("rm", ["-rf", "node_modules"], { stdio: "inherit" });
+    runOrDie("npm", ["install"], "npm install");
   }
 
   // ── Step 2: Create D1 database ──
