@@ -4,6 +4,13 @@ Cloudflare Workers 上で業務アプリを最短で立ち上げるための sta
 
 認証・セッション・権限・DB・監査ログ・テスト・CLI・コード生成を最初から備えており、`cp` してすぐ開発を始められます。維持コストはほぼゼロ。Cloudflare の無償枠だけで本番運用できます。
 
+## 前提条件
+
+- Node.js 20 以上
+- Wrangler（`npm install -g wrangler`）
+- Cloudflare アカウント（無料枠で可）
+- `wrangler login` でログイン済み
+
 ## クイックスタート
 
 ```bash
