@@ -1,66 +1,87 @@
 import { createMiddleware } from "hono/factory";
 import { drizzle } from "drizzle-orm/d1";
-import { eq } from "drizzle-orm";
-import { sessions } from "../db/schema";
+import { and, eq } from "drizzle-orm";
+import { member } from "../db/schema";
 import type { AppContextEnv } from "../types";
 import { getSessionCookie } from "../lib/session";
-import { hashOpaqueToken } from "../lib/crypto";
 import { jsonError } from "../lib/http";
-import { getUserRoleNames } from "../lib/rbac";
-import {
-  getMembershipSummaries,
-  pickActiveMembership,
-  setSessionOrganization,
-} from "../lib/organizations";
+import { resolveAuthMode } from "../lib/auth-mode";
+import { verifyAdminSessionToken } from "../lib/simple-admin-session";
+import { createAuth } from "../lib/better-auth";
 
 export const requireAuth = createMiddleware<AppContextEnv>(async (c, next) => {
-  if (c.env.AUTH_ENABLED === "false") {
-    c.set("userId", 1);
-    c.set("orgId", 1);
+  const mode = resolveAuthMode(c.env);
+
+  if (mode === "none") {
+    c.set("userId", "1");
+    c.set("orgId", "default-org");
     c.set("roles", []);
     c.set("orgRole", "owner");
-    c.set("memberships", []);
     await next();
     return;
   }
 
-  const rawSessionId = getSessionCookie(c);
-  if (!rawSessionId) {
+  if (mode === "simple-admin") {
+    const token = getSessionCookie(c);
+    if (!token || !c.env.ADMIN_PASSWORD) {
+      return jsonError(c, 401, "unauthorized", "Authentication required");
+    }
+    const valid = await verifyAdminSessionToken(token, c.env.ADMIN_PASSWORD);
+    if (!valid) {
+      return jsonError(c, 401, "unauthorized", "Authentication required");
+    }
+    c.set("userId", "1");
+    c.set("orgId", "default-org");
+    c.set("roles", ["admin"]);
+    c.set("orgRole", "admin");
+    await next();
+    return;
+  }
+
+  // better-auth mode: validate session via Better Auth
+  const auth = createAuth(c.env);
+  const result = await auth.api.getSession({
+    headers: c.req.raw.headers,
+  });
+
+  if (!result) {
     return jsonError(c, 401, "unauthorized", "Authentication required");
   }
 
-  const hashedSessionId = await hashOpaqueToken(rawSessionId);
-  const db = drizzle(c.env.DB);
-  const [session] = await db
-    .select()
-    .from(sessions)
-    .where(eq(sessions.id, hashedSessionId))
-    .limit(1);
+  const userId = result.user.id;
+  const userRecord = result.user as Record<string, unknown>;
+  const userRole = userRecord.role as string ?? "user";
+  const activeOrgId = (result.session as Record<string, unknown>).activeOrganizationId as string | null;
 
-  if (!session || session.expiresAt < new Date().toISOString()) {
-    return jsonError(c, 401, "unauthorized", "Authentication required");
+  // Check if user is banned (admin plugin)
+  if (userRecord.banned) {
+    return jsonError(c, 403, "banned", "Account is suspended");
   }
 
-  const roles = await getUserRoleNames(db, session.userId);
-  const memberships = await getMembershipSummaries(db, session.userId);
-  const activeMembership = pickActiveMembership(
-    memberships,
-    session.currentOrgId ?? undefined
-  );
+  c.set("sessionId", result.session.id);
+  c.set("userId", userId);
+  c.set("roles", [userRole]);
 
-  if (!activeMembership) {
-    return jsonError(c, 403, "organization_required", "Organization membership required");
+  if (activeOrgId) {
+    // Look up member role for active org
+    const db = drizzle(c.env.DB);
+    const [memberRow] = await db
+      .select({ role: member.role })
+      .from(member)
+      .where(and(
+        eq(member.organizationId, activeOrgId),
+        eq(member.userId, userId)
+      ))
+      .limit(1);
+
+    if (memberRow) {
+      c.set("orgId", activeOrgId);
+      c.set("orgRole", memberRow.role);
+    }
+    // else: activeOrgId is stale (user removed from org) — orgId stays undefined
   }
+  // orgId/orgRole may be undefined when no active org is set.
+  // Routes requiring org context use requireOrgRole() which checks for this.
 
-  if (session.currentOrgId !== activeMembership.organizationId) {
-    await setSessionOrganization(db, session.id, activeMembership.organizationId);
-  }
-
-  c.set("sessionId", session.id);
-  c.set("userId", session.userId);
-  c.set("roles", roles);
-  c.set("orgId", activeMembership.organizationId);
-  c.set("orgRole", activeMembership.membershipRole);
-  c.set("memberships", memberships);
   await next();
 });

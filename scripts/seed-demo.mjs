@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { pbkdf2Sync, randomBytes } from "node:crypto";
+import { scryptSync, randomBytes } from "node:crypto";
 import { parseArgs } from "node:util";
 import { printReport } from "./lib/cli-report.mjs";
 import { buildSeedDemoPlan } from "./lib/seed-demo.mjs";
@@ -25,15 +25,18 @@ const organizationName = `${name} Workspace`;
 const organizationSlug = `demo-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "workspace"}`;
 const mode = values.remote ? "--remote" : "--local";
 
-function bytesToHex(buffer) {
-  return Buffer.from(buffer).toString("hex");
-}
-
-function hashPassword(plainTextPassword) {
-  const iterations = 310000;
+/**
+ * Hash password using scrypt (compatible with Better Auth's default algorithm).
+ * Format: salt:N:r:p:derivedKey (all hex-encoded)
+ */
+function hashPasswordForBetterAuth(plainTextPassword) {
   const salt = randomBytes(16);
-  const hash = pbkdf2Sync(plainTextPassword, salt, iterations, 32, "sha256");
-  return `pbkdf2$${iterations}$${bytesToHex(salt)}$${bytesToHex(hash)}`;
+  const N = 16384;
+  const r = 8;
+  const p = 1;
+  const keyLen = 64;
+  const derived = scryptSync(plainTextPassword, salt, keyLen, { N, r, p });
+  return `${salt.toString("hex")}:${N}:${r}:${p}:${derived.toString("hex")}`;
 }
 
 function escapeSql(value) {
@@ -63,23 +66,41 @@ if (values.plan) {
   process.exit(0);
 }
 
-const passwordHash = hashPassword(password);
+const userId = crypto.randomUUID();
+const accountId = crypto.randomUUID();
+const orgId = "default-org";
+const memberId = crypto.randomUUID();
+const passwordHash = hashPasswordForBetterAuth(password);
+const nowUnix = Math.floor(Date.now() / 1000);
+
 const sql = [
   "BEGIN TRANSACTION;",
-  `INSERT INTO users (email, password_hash, name, email_verified_at)
-   VALUES ('${escapeSql(email)}', '${passwordHash}', '${escapeSql(name)}', datetime('now'))
+  // Upsert user (Better Auth user table)
+  `INSERT INTO user (id, name, email, email_verified, created_at, updated_at, role)
+   VALUES ('${userId}', '${escapeSql(name)}', '${escapeSql(email)}', 1, ${nowUnix}, ${nowUnix}, 'admin')
    ON CONFLICT(email) DO UPDATE SET
-     password_hash = excluded.password_hash,
      name = excluded.name,
-     email_verified_at = excluded.email_verified_at;`,
-  `INSERT INTO organizations (name, slug)
-   VALUES ('${escapeSql(organizationName)}', '${escapeSql(organizationSlug)}')
+     email_verified = excluded.email_verified,
+     role = excluded.role,
+     updated_at = excluded.updated_at;`,
+  // Delete existing credential account for this user, then insert fresh.
+  // This ensures idempotency since account has no unique on (provider_id, user_id).
+  `DELETE FROM account
+   WHERE provider_id = 'credential'
+     AND user_id = (SELECT id FROM user WHERE email = '${escapeSql(email)}');`,
+  `INSERT INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at)
+   SELECT '${accountId}', u.id, 'credential', u.id, '${passwordHash}', ${nowUnix}, ${nowUnix}
+   FROM user u WHERE u.email = '${escapeSql(email)}';`,
+  // Upsert organization (Better Auth organization table)
+  `INSERT INTO organization (id, name, slug, created_at)
+   VALUES ('${orgId}', '${escapeSql(organizationName)}', '${escapeSql(organizationSlug)}', ${nowUnix})
    ON CONFLICT(slug) DO UPDATE SET name = excluded.name;`,
-  `INSERT OR IGNORE INTO memberships (organization_id, user_id, role)
-   SELECT organizations.id, users.id, 'owner'
-   FROM organizations, users
-   WHERE organizations.slug = '${escapeSql(organizationSlug)}'
-     AND users.email = '${escapeSql(email)}';`,
+  // Ensure membership (Better Auth member table)
+  `INSERT OR IGNORE INTO member (id, organization_id, user_id, role, created_at)
+   SELECT '${memberId}', organization.id, user.id, 'owner', ${nowUnix}
+   FROM organization, user
+   WHERE organization.slug = '${escapeSql(organizationSlug)}'
+     AND user.email = '${escapeSql(email)}';`,
   "COMMIT;",
 ].join("\n");
 

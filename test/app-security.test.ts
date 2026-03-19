@@ -6,7 +6,7 @@ import { createTestEnv } from "./helpers";
 describe("app security", () => {
   it("allows configured CORS origin on preflight", async () => {
     const res = await app.fetch(
-      new Request("http://local.test/api/auth/login", {
+      new Request("http://local.test/api/auth/logout", {
         method: "OPTIONS",
         headers: {
           origin: "http://localhost:5173",
@@ -46,25 +46,25 @@ describe("app security", () => {
     });
   });
 
-  it("blocks requests after the auth login rate limit is exhausted", async () => {
-    const env = createTestEnv();
+  it("blocks requests after the admin-login rate limit is exhausted", async () => {
+    const env = createTestEnv({ AUTH_MODE: "simple-admin", ADMIN_PASSWORD: "test" });
     const request = () =>
       app.fetch(
-        new Request("http://local.test/api/auth/login", {
+        new Request("http://local.test/api/auth/admin-login", {
           method: "POST",
           headers: {
             "content-type": "application/json",
             "cf-connecting-ip": "203.0.113.10",
             origin: "http://localhost:5173",
           },
-          body: JSON.stringify({}),
+          body: JSON.stringify({ password: "wrong" }),
         }),
         env
       );
 
     for (let i = 0; i < 10; i++) {
       const res = await request();
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(401);
     }
 
     const blocked = await request();
@@ -82,7 +82,7 @@ describe("app security", () => {
 
   it("returns a unified validation error shape", async () => {
     const res = await app.fetch(
-      new Request("http://local.test/api/auth/login", {
+      new Request("http://local.test/api/auth/admin-login", {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -90,7 +90,7 @@ describe("app security", () => {
         },
         body: JSON.stringify({}),
       }),
-      createTestEnv()
+      createTestEnv({ AUTH_MODE: "simple-admin", ADMIN_PASSWORD: "test" })
     );
 
     expect(res.status).toBe(400);

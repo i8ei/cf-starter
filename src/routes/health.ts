@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { ZodError } from "zod";
 import type { AppContextEnv } from "../types";
 import { getAppConfig } from "../lib/config";
+import { resolveAuthMode } from "../lib/auth-mode";
 
 const app = new Hono<AppContextEnv>().get("/", async (c) => {
   const checks: Record<string, string> = {};
@@ -52,9 +53,19 @@ const app = new Hono<AppContextEnv>().get("/", async (c) => {
     checks.config = error instanceof ZodError ? "invalid" : "error";
   }
 
+  const authMode = resolveAuthMode(c.env);
+
+  // Mode-specific config checks
+  if (authMode === "simple-admin" && !c.env.ADMIN_PASSWORD) {
+    checks.adminPassword = "missing";
+  }
+  if (authMode === "better-auth" && !c.env.BETTER_AUTH_SECRET) {
+    checks.betterAuthSecret = "missing";
+  }
+
   const status = Object.values(checks).every((v) => v === "ok") ? "ok" : "degraded";
-  const authEnabled = c.env.AUTH_ENABLED !== "false";
-  return c.json({ status, checks, authEnabled });
+  const authEnabled = authMode !== "none";
+  return c.json({ status, checks, authEnabled, authMode });
 });
 
 export default app;

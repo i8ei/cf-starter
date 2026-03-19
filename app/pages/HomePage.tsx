@@ -3,7 +3,6 @@ import { Panel } from "../components/Panel";
 
 export function HomePage() {
   const { data: session } = useSession();
-  const primaryOrg = session?.organizations?.[0];
 
   const nextSteps = [
     "Add your first domain route under src/routes/.",
@@ -22,7 +21,7 @@ export function HomePage() {
           </p>
           <div className="rounded-lg border border-border bg-surface px-4 py-3 text-sm text-muted">
             <p>Current user: {session?.email ?? "not signed in"}</p>
-            <p>Current organization: {primaryOrg?.organizationName ?? "none"}</p>
+            <p>Current organization: {session?.currentOrganizationId ?? "none"}</p>
           </div>
           <ul className="space-y-2 text-sm text-muted">
             {nextSteps.map((step) => (

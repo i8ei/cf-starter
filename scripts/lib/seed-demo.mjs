@@ -27,19 +27,19 @@ export function buildSeedDemoPlan({
     changes: [
       {
         kind: "row",
-        table: "users",
+        table: "user",
         action: "upsert",
         identity: email,
       },
       {
         kind: "row",
-        table: "organizations",
+        table: "organization",
         action: "upsert",
         identity: organizationSlug,
       },
       {
         kind: "row",
-        table: "memberships",
+        table: "member",
         action: "ensure",
         identity: `${email}:${organizationSlug}:owner`,
       },

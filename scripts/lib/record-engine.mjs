@@ -173,7 +173,7 @@ export function generateDrizzleTableBlock(def) {
 
   cols.push(`  id: integer("id").primaryKey({ autoIncrement: true })`);
   cols.push(
-    `  organizationId: integer("organization_id")\n    .notNull()\n    .references(() => organizations.id, {\n      onDelete: "cascade",\n    })`
+    `  organizationId: text("organization_id")\n    .notNull()\n    .references(() => organization.id, {\n      onDelete: "cascade",\n    })`
   );
 
   for (const [name, field] of fieldEntries) {

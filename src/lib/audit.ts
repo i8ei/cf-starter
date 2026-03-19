@@ -7,8 +7,8 @@ type AuditLogInput = {
   action: string;
   resourceType: string;
   status: number;
-  actorUserId?: number | null;
-  organizationId?: number | null;
+  actorUserId?: string | null;
+  organizationId?: string | null;
   resourceId?: string | null;
   metadata?: Record<string, unknown> | null;
 };
@@ -21,7 +21,7 @@ export function buildAuditLogEntry(c: Context, input: AuditLogInput) {
   const organizationId =
     input.organizationId ??
     ("get" in c && typeof c.get === "function"
-      ? (c.get("orgId") as number | undefined)
+      ? (c.get("orgId") as string | undefined)
       : undefined);
 
   return {

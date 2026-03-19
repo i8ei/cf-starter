@@ -5,12 +5,9 @@ import { secureHeaders } from "hono/secure-headers";
 import type { AppContextEnv, Env } from "./types";
 import health from "./routes/health";
 import auth from "./routes/auth";
-import orgs from "./routes/orgs";
+
 import publicExample from "./routes/public-example";
-import {
-  purgeExpiredSessions,
-  purgeStaleAuthTokens,
-} from "./db/session-maintenance";
+import { purgeExpiredSessions } from "./db/session-maintenance";
 import { csrfProtection } from "./middleware/csrf";
 import { resolveCorsOrigins } from "./lib/cors";
 import { logEvent } from "./lib/logging";
@@ -64,7 +61,6 @@ export const app = new Hono<AppContextEnv>()
     return jsonError(c, 500, "internal_error", "Internal Server Error");
   })
   .route("/api/health", health)
-  .route("/api/orgs", orgs)
   .route("/api/auth", auth)
   .route("/api/public/example", publicExample);
 
@@ -76,11 +72,6 @@ export default {
     const deletedSessions = await purgeExpiredSessions(env.DB);
     if (deletedSessions > 0) {
       logEvent("info", "sessions.purged", { deleted: deletedSessions });
-    }
-
-    const deletedAuthTokens = await purgeStaleAuthTokens(env.DB);
-    if (deletedAuthTokens > 0) {
-      logEvent("info", "auth_tokens.purged", { deleted: deletedAuthTokens });
     }
   },
   queue: async (batch: MessageBatch<JobMessage>, env: Env) => {

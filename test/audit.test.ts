@@ -18,7 +18,7 @@ describe("audit", () => {
         get: (key: string) => (key === "requestId" ? "req_test_123" : undefined),
       } as never,
       {
-        actorUserId: 7,
+        actorUserId: "7",
         action: "item.create",
         resourceType: "item",
         resourceId: "42",
@@ -28,7 +28,7 @@ describe("audit", () => {
     );
 
     expect(entry).toMatchObject({
-      actorUserId: 7,
+      actorUserId: "7",
       action: "item.create",
       resourceType: "item",
       resourceId: "42",

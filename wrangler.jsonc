@@ -66,6 +66,12 @@
     "APP_BASE_URL": "http://localhost:5173",
     "EMAIL_PROVIDER": "log",
     "EMAIL_FROM": "cf-starter <noreply@example.com>",
+    // Auth mode: "none" (public, no auth), "simple-admin" (ADMIN_PASSWORD only),
+    // "better-auth" (full user management). Defaults to "better-auth".
+    // Backward compat: AUTH_ENABLED=false is equivalent to AUTH_MODE=none.
+    // "AUTH_MODE": "none",
+    // "ADMIN_PASSWORD": "changeme",  // required when AUTH_MODE=simple-admin (use wrangler secret for prod)
+    // "BETTER_AUTH_SECRET": "change-me-to-a-random-string",  // required for better-auth mode (use wrangler secret for prod)
     // Set to "false" to disable authentication for local development.
     // "AUTH_ENABLED": "false"
   },

@@ -16,34 +16,18 @@ export interface Env {
   EMAIL_REPLY_TO?: string;
   RESEND_API_KEY?: string;
   AUTH_ENABLED?: string;
-}
-
-export interface OrganizationMembershipSummary {
-  organizationId: number;
-  organizationName: string;
-  organizationSlug: string;
-  membershipRole: string;
-}
-
-export interface OrganizationInviteSummary {
-  id: number;
-  organizationId: number;
-  email: string;
-  role: string;
-  status: "pending" | "accepted" | "expired";
-  expiresAt: string;
-  acceptedAt: string | null;
-  createdAt: string;
+  AUTH_MODE?: string;
+  ADMIN_PASSWORD?: string;
+  BETTER_AUTH_SECRET?: string;
 }
 
 export interface AppVariables {
   requestId: string;
   sessionId?: string;
-  userId?: number;
+  userId?: string;
   roles?: string[];
-  orgId?: number;
+  orgId?: string;
   orgRole?: string;
-  memberships?: OrganizationMembershipSummary[];
 }
 
 export type AppContextEnv = {

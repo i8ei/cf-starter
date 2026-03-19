@@ -2,34 +2,70 @@ import { useState } from "react";
 import { Panel } from "~/components/Panel";
 import {
   useLogin,
+  useAdminLogin,
   useSignup,
-  useRequestPasswordReset,
-  useConfirmPasswordReset,
-  useConfirmEmailVerification,
 } from "~/hooks/useSession";
 
-export function AuthPage() {
+type AuthMode = "simple-admin" | "better-auth";
+
+export function AuthPage({ authMode }: { authMode: AuthMode }) {
+  if (authMode === "simple-admin") {
+    return <SimpleAdminAuth />;
+  }
+  return <FullAuth />;
+}
+
+function SimpleAdminAuth() {
+  const [password, setPassword] = useState("");
+  const adminLogin = useAdminLogin();
+
+  const handleSubmit = () => {
+    if (!password.trim()) return;
+    adminLogin.mutate(password);
+  };
+
+  const inputClass =
+    "w-full rounded-lg border border-input-border bg-input-bg px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+  return (
+    <div className="mx-auto max-w-sm">
+      <Panel title="Admin Login" subtitle="Enter the admin password to continue.">
+        <div className="space-y-3">
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            placeholder="Password"
+            className={inputClass}
+            autoFocus
+          />
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={adminLogin.isPending}
+            className="w-full rounded-xl bg-amber-400 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
+          >
+            Log In
+          </button>
+          {adminLogin.error ? (
+            <p className="text-sm text-error-text">
+              {adminLogin.error.message}
+            </p>
+          ) : null}
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+function FullAuth() {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [resetEmail, setResetEmail] = useState("");
-  const [resetToken, setResetToken] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return new URLSearchParams(window.location.search).get("resetToken") ?? "";
-  });
-  const [verifyToken, setVerifyToken] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return (
-      new URLSearchParams(window.location.search).get("verifyToken") ?? ""
-    );
-  });
-  const [nextPassword, setNextPassword] = useState("");
   const login = useLogin();
   const signup = useSignup();
-  const requestPasswordReset = useRequestPasswordReset();
-  const confirmPasswordReset = useConfirmPasswordReset();
-  const confirmEmailVerification = useConfirmEmailVerification();
 
   const currentMutation = mode === "login" ? login : signup;
 
@@ -41,38 +77,11 @@ export function AuthPage() {
     signup.mutate({ email, password, name });
   };
 
-  const handleRequestReset = () => {
-    if (!resetEmail.trim()) return;
-    requestPasswordReset.mutate(resetEmail.trim());
-  };
-
-  const handleConfirmReset = () => {
-    if (!resetToken.trim() || !nextPassword.trim()) return;
-    confirmPasswordReset.mutate(
-      { token: resetToken.trim(), password: nextPassword },
-      {
-        onSuccess: () => {
-          setResetToken("");
-          setNextPassword("");
-        },
-      }
-    );
-  };
-
-  const handleConfirmEmailVerification = () => {
-    if (!verifyToken.trim()) return;
-    confirmEmailVerification.mutate(verifyToken.trim(), {
-      onSuccess: () => {
-        setVerifyToken("");
-      },
-    });
-  };
-
   const inputClass =
     "w-full rounded-lg border border-input-border bg-input-bg px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
-    <div className="mx-auto max-w-xl">
+    <div className="mx-auto max-w-sm">
       <Panel
         title="Authentication"
         subtitle="Login or create an account to get started."
@@ -112,6 +121,7 @@ export function AuthPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             placeholder="Password"
             className={inputClass}
           />
@@ -128,97 +138,6 @@ export function AuthPage() {
               {currentMutation.error.message}
             </p>
           ) : null}
-        </div>
-        <div className="mt-6 grid gap-4 border-t border-border pt-5 lg:grid-cols-3">
-          <div className="space-y-3">
-            <div className="text-sm font-medium text-heading">
-              Request Password Reset
-            </div>
-            <input
-              value={resetEmail}
-              onChange={(e) => setResetEmail(e.target.value)}
-              placeholder="Email"
-              className={inputClass}
-            />
-            <button
-              type="button"
-              onClick={handleRequestReset}
-              disabled={requestPasswordReset.isPending}
-              className="w-full rounded-xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
-            >
-              Send Reset Link
-            </button>
-            {requestPasswordReset.error ? (
-              <p className="text-sm text-error-text">
-                {requestPasswordReset.error.message}
-              </p>
-            ) : requestPasswordReset.isSuccess ? (
-              <p className="text-sm text-emerald-600">
-                If the account exists, a reset email job was queued.
-              </p>
-            ) : null}
-          </div>
-          <div className="space-y-3">
-            <div className="text-sm font-medium text-heading">
-              Confirm Password Reset
-            </div>
-            <input
-              value={resetToken}
-              onChange={(e) => setResetToken(e.target.value)}
-              placeholder="Reset token"
-              className={inputClass}
-            />
-            <input
-              type="password"
-              value={nextPassword}
-              onChange={(e) => setNextPassword(e.target.value)}
-              placeholder="New password"
-              className={inputClass}
-            />
-            <button
-              type="button"
-              onClick={handleConfirmReset}
-              disabled={confirmPasswordReset.isPending}
-              className="w-full rounded-xl bg-fuchsia-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
-            >
-              Reset Password
-            </button>
-            {confirmPasswordReset.error ? (
-              <p className="text-sm text-error-text">
-                {confirmPasswordReset.error.message}
-              </p>
-            ) : confirmPasswordReset.isSuccess ? (
-              <p className="text-sm text-emerald-600">
-                Password updated. Log in with the new password.
-              </p>
-            ) : null}
-          </div>
-          <div className="space-y-3">
-            <div className="text-sm font-medium text-heading">Confirm Email</div>
-            <input
-              value={verifyToken}
-              onChange={(e) => setVerifyToken(e.target.value)}
-              placeholder="Verification token"
-              className={inputClass}
-            />
-            <button
-              type="button"
-              onClick={handleConfirmEmailVerification}
-              disabled={confirmEmailVerification.isPending}
-              className="w-full rounded-xl bg-emerald-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
-            >
-              Verify Email
-            </button>
-            {confirmEmailVerification.error ? (
-              <p className="text-sm text-error-text">
-                {confirmEmailVerification.error.message}
-              </p>
-            ) : confirmEmailVerification.isSuccess ? (
-              <p className="text-sm text-emerald-600">
-                Email verified. You can continue with the current session.
-              </p>
-            ) : null}
-          </div>
         </div>
       </Panel>
     </div>

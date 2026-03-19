@@ -9,7 +9,7 @@ describe("jobs", () => {
     await enqueueJob(jobs.queue, {
       type: "user.welcome",
       payload: {
-        userId: 1,
+        userId: "1",
         email: "hello@example.com",
         name: "Hello",
         requestId: "req_123",
@@ -33,7 +33,7 @@ describe("jobs", () => {
               type: "upload.process",
               payload: {
                 key: "uploads/test.txt",
-                organizationId: 4,
+                organizationId: "4",
                 size: 12,
                 contentType: "text/plain",
                 requestId: "req_456",
@@ -63,73 +63,13 @@ describe("jobs", () => {
             body: {
               type: "organization.invite_email",
               payload: {
-                organizationId: 7,
+                organizationId: "7",
                 organizationName: "Taracho Ops",
-                inviteId: 11,
+                inviteId: "11",
                 email: "member@example.com",
                 role: "member",
                 inviteUrl: "https://starter.example.com/?inviteToken=abc",
                 requestId: "req_789",
-              },
-            },
-            ack,
-            retry,
-          },
-        ],
-      } as never,
-      createTestEnv()
-    );
-
-    expect(ack).toHaveBeenCalledTimes(1);
-    expect(retry).not.toHaveBeenCalled();
-  });
-
-  it("acks password reset email jobs", async () => {
-    const ack = vi.fn();
-    const retry = vi.fn();
-
-    await handleJobBatch(
-      {
-        messages: [
-          {
-            id: "msg_3",
-            body: {
-              type: "auth.password_reset_email",
-              payload: {
-                userId: 3,
-                email: "reset@example.com",
-                resetUrl: "https://starter.example.com/?resetToken=abc",
-                requestId: "req_reset",
-              },
-            },
-            ack,
-            retry,
-          },
-        ],
-      } as never,
-      createTestEnv()
-    );
-
-    expect(ack).toHaveBeenCalledTimes(1);
-    expect(retry).not.toHaveBeenCalled();
-  });
-
-  it("acks email verification email jobs", async () => {
-    const ack = vi.fn();
-    const retry = vi.fn();
-
-    await handleJobBatch(
-      {
-        messages: [
-          {
-            id: "msg_4",
-            body: {
-              type: "auth.email_verification_email",
-              payload: {
-                userId: 5,
-                email: "verify@example.com",
-                verifyUrl: "https://starter.example.com/?verifyToken=abc",
-                requestId: "req_verify",
               },
             },
             ack,
@@ -162,9 +102,9 @@ describe("jobs", () => {
             body: {
               type: "organization.invite_email",
               payload: {
-                organizationId: 9,
+                organizationId: "9",
                 organizationName: "Starter Org",
-                inviteId: 12,
+                inviteId: "12",
                 email: "member@example.com",
                 role: "member",
                 inviteUrl: "https://starter.example.com/?inviteToken=abc",

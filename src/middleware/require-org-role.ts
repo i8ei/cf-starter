@@ -1,12 +1,17 @@
 import { createMiddleware } from "hono/factory";
 import type { AppContextEnv } from "../types";
-import {
-  hasRequiredOrganizationRole,
-  ORGANIZATION_ADMIN_ROLES,
-} from "../lib/organizations";
 import { writeAuditLog } from "../lib/audit";
 import { jsonError } from "../lib/http";
 import { logRequestEvent } from "../lib/logging";
+
+const ORGANIZATION_ADMIN_ROLES = ["owner", "admin"] as const;
+
+function hasRequiredOrganizationRole(
+  assignedRole: string | null | undefined,
+  requiredRoles: readonly string[]
+): boolean {
+  return !!assignedRole && requiredRoles.includes(assignedRole);
+}
 
 export function requireOrgRole(
   requiredRoles: readonly string[] = ORGANIZATION_ADMIN_ROLES

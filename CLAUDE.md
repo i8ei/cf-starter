@@ -204,14 +204,53 @@ wouter による SPA ルーティング:
 - CSRF は GET のみなので問題なし
 - サンプル: `src/routes/public-example.ts`（GET-only APIルートの雛形。不要なら削除）
 
-### 全ページ公開アプリ（AUTH_ENABLED=false）
+### AUTH_MODE（認証モード）
 
-`AUTH_ENABLED=false` で起動すると、`App.tsx` の `AuthGuard` が自動的に `PublicShell`（モバイルファースト1カラムレイアウト）を使う。
+`AUTH_MODE` 環境変数で認証方式を切り替える。
 
-1. `wrangler.jsonc` で `"AUTH_ENABLED": "false"` を設定
-2. `app/App.tsx` の `publicNavItems` にナビを定義
-3. `PublicShell` の `title` / `headerExtra` をカスタマイズ（年度セレクタ等）
-4. APIは `/api/public/*` に GET-only ルートを追加
+| モード | 用途 | 認証方式 | DB認証テーブル |
+|--------|------|----------|---------------|
+| `none` | 公開アプリ | なし（mockユーザー） | 不要（存在はする） |
+| `simple-admin` | 管理画面 | ADMIN_PASSWORD | 不要（存在はする） |
+| `better-auth` | フルユーザー管理 | DB session | 必要 |
+
+- **後方互換**: `AUTH_ENABLED=false` は `AUTH_MODE=none` と同等
+- `AUTH_MODE` 未設定時のデフォルトは `better-auth`
+
+#### none モード
+```jsonc
+// wrangler.jsonc
+"AUTH_MODE": "none"
+```
+- `PublicShell`（モバイルファースト1カラム）を自動選択
+- `app/App.tsx` の `publicNavItems` にナビを定義
+- APIは `/api/public/*` に GET-only ルートを追加
+
+#### simple-admin モード
+```jsonc
+// wrangler.jsonc
+"AUTH_MODE": "simple-admin"
+// .dev.vars（ローカル） or wrangler secret（本番）
+ADMIN_PASSWORD=changeme
+```
+- パスワード1つで管理画面にログイン（ユーザー登録なし）
+- HMAC署名Cookie（DBセッション不要）
+- `/api/auth/admin-login` でログイン、`/api/auth/me` `/api/auth/logout` は共通
+- signup / password-reset / email-verification は 404
+- userId=1, orgId=1 固定（`seed:demo` が必要）
+
+#### better-auth モード（デフォルト）
+```jsonc
+// .dev.vars（ローカル） or wrangler secret（本番）
+BETTER_AUTH_SECRET=change-me-to-a-random-string
+```
+- [Better Auth](https://better-auth.com/) によるフルユーザー認証
+- エンドポイント: `/api/auth/sign-up/email`, `/api/auth/sign-in/email`, `/api/auth/sign-out` 等（Better Auth 内蔵）
+- カスタムエンドポイント: `/api/auth/me`（ユーザー+組織情報）, `/api/auth/logout`, `/api/auth/switch-org`
+- DBセッション + Cookie（`ba.session_token`）
+- admin() プラグインで `user.role` カラムによるロール管理
+- パスワードリセット・メール検証は Better Auth が内蔵処理
+- **重要**: per-request auth instance（`createAuth(env)`）。シングルトン厳禁（D1 stale reference で30秒+ハング）
 
 ## ダッシュボード UI キット（Recharts + 汎用コンポーネント）
 
@@ -245,7 +284,24 @@ Recharts ベースのチャートラッパーとダッシュボード用UI部品
 | `AppShell` | 認証あり・デスクトップ中心 | Record Engine アプリ、管理画面 |
 | `PublicShell` | 認証なし・モバイルファースト | ダッシュボード、公開サイト |
 
-`AUTH_ENABLED=false` の場合、`AuthGuard` が自動で `PublicShell` を選択する。
+`AUTH_MODE=none` の場合、`AuthGuard` が自動で `PublicShell` を選択する。
+
+## DB スキーマ
+
+Better Auth テーブル（単数形、text ID）:
+- `user` — ユーザー（id, email, name, role, emailVerified, ...）
+- `session` — セッション（token, expiresAt, userId, activeOrganizationId, ...）
+- `account` — 認証アカウント（providerId, password, ...）
+- `verification` — 検証トークン
+- `organization` — 組織（org プラグイン）
+- `member` — 組織メンバーシップ（org プラグイン）
+- `invitation` — 組織招待（org プラグイン）
+
+アプリテーブル:
+- `audit_logs` — 監査ログ（integer PK、actorUserId/organizationId は text FK）
+
+**ID 型**: userId, orgId は全て `string`（text）。
+**org 操作**: Better Auth の `/api/auth/organization/*` エンドポイントが全ハンドル。自作の org ルートは不要。
 
 ## D1 パラメータ制限
 
@@ -305,13 +361,12 @@ npx tsc --noEmit && npm run build で壊れないことを確認
 
 ## 認証を使わない場合
 
-AUTH_ENABLED=false（.dev.varsまたはwrangler.jsonc）で実行時無効化できる。
+`AUTH_MODE=none`（または `AUTH_ENABLED=false`）で実行時無効化できる。
 物理削除は不要 — コードは残るが実行されない。ビルドサイズへの影響も無視できる。
 
-AUTH_ENABLED=false の場合、セッション検証がスキップされ orgId が自動的に 1 にセットされる。
-ローカル開発や認証不要の公開アプリに使う。
+`AUTH_MODE=none` / `simple-admin` の場合、userId=1, orgId=1 が固定でセットされる。
 
-**重要**: AUTH_ENABLED=false では orgId=1 がハードコードされるが、organizations テーブルに id=1 の行が存在しないと外部キー制約でエラーになる。
+**重要**: organizations テーブルに id=1 の行が存在しないと外部キー制約でエラーになる。
 テンプレをコピーした後、必ず `npm run seed:demo` を実行してデモ組織（id=1）を作成すること。
 seed:demo はべき等（何度実行しても安全）なので、すでに実行済みでも問題ない。
 
@@ -396,7 +451,8 @@ health チェック (`/api/health`) もバインディングの有無を動的�
 
 ### 慎重に編集すべき領域
 - `src/middleware/` — セキュリティミドルウェア（CSRF, auth, rate-limit）
-- `src/lib/auth.ts`, `src/lib/session.ts` — 認証コア
+- `src/lib/better-auth.ts` — Better Auth factory（per-request 必須）
+- `src/lib/session.ts` — Cookie ヘルパー（simple-admin 用）
 - `src/lib/crypto.ts` — 暗号処理
 - `src/index.ts` — ルート登録順序に注意（middleware適用順に影響）
 - `app/index.css` の `:root` — トークン追加は可、既存トークン削除は不可

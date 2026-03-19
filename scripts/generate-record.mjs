@@ -476,7 +476,7 @@ function generateHooks() {
   // Build the record type from fields
   const typeFields = [];
   typeFields.push("  id: number;");
-  typeFields.push("  organizationId: number;");
+  typeFields.push("  organizationId: string;");
   for (const [name, field] of fieldEntries) {
     const tsType = fieldToTsType(field);
     const optional = field.required ? "" : " | null";

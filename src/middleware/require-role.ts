@@ -3,7 +3,14 @@ import type { AppContextEnv } from "../types";
 import { writeAuditLog } from "../lib/audit";
 import { jsonError } from "../lib/http";
 import { logRequestEvent } from "../lib/logging";
-import { hasRequiredRole } from "../lib/rbac";
+
+export function hasRequiredRole(
+  assignedRoles: string[],
+  requiredRoles: string | string[]
+): boolean {
+  const expected = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
+  return expected.some((role) => assignedRoles.includes(role));
+}
 
 export function requireRole(requiredRoles: string | string[]) {
   const expected = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];

@@ -7,8 +7,8 @@ import { createTestEnv } from "./helpers";
 function createApp(orgRole?: string) {
   return new Hono<AppContextEnv>()
     .use("*", async (c, next) => {
-      c.set("userId", 1);
-      c.set("orgId", 7);
+      c.set("userId", "1");
+      c.set("orgId", "7");
       if (orgRole) c.set("orgRole", orgRole);
       await next();
     })

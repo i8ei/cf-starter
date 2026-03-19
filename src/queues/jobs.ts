@@ -1,8 +1,6 @@
 import type { Env } from "../types";
 import {
-  buildEmailVerificationEmail,
   buildInviteEmail,
-  buildPasswordResetEmail,
   buildWelcomeEmail,
   sendEmail,
 } from "../lib/email";
@@ -94,52 +92,6 @@ export async function handleJobBatch(
               email: message.body.payload.email,
               role: message.body.payload.role,
               inviteUrl: redactUrlToken(message.body.payload.inviteUrl),
-              delivery: delivery.delivery,
-              providerMessageId: delivery.id ?? null,
-              requestId: message.body.payload.requestId,
-            });
-          }
-          break;
-        case "auth.password_reset_email":
-          {
-            const content = buildPasswordResetEmail({
-              resetUrl: message.body.payload.resetUrl,
-            });
-            const delivery = await sendEmail(env, {
-              to: message.body.payload.email,
-              subject: content.subject,
-              html: content.html,
-              text: content.text,
-              requestId: message.body.payload.requestId,
-              idempotencyKey: `password-reset:${message.body.payload.userId}:${message.body.payload.requestId}`,
-            });
-            logEvent("info", "queue.auth_password_reset_email", {
-              userId: message.body.payload.userId,
-              email: message.body.payload.email,
-              resetUrl: redactUrlToken(message.body.payload.resetUrl),
-              delivery: delivery.delivery,
-              providerMessageId: delivery.id ?? null,
-              requestId: message.body.payload.requestId,
-            });
-          }
-          break;
-        case "auth.email_verification_email":
-          {
-            const content = buildEmailVerificationEmail({
-              verifyUrl: message.body.payload.verifyUrl,
-            });
-            const delivery = await sendEmail(env, {
-              to: message.body.payload.email,
-              subject: content.subject,
-              html: content.html,
-              text: content.text,
-              requestId: message.body.payload.requestId,
-              idempotencyKey: `email-verification:${message.body.payload.userId}:${message.body.payload.requestId}`,
-            });
-            logEvent("info", "queue.auth_email_verification_email", {
-              userId: message.body.payload.userId,
-              email: message.body.payload.email,
-              verifyUrl: redactUrlToken(message.body.payload.verifyUrl),
               delivery: delivery.delivery,
               providerMessageId: delivery.id ?? null,
               requestId: message.body.payload.requestId,

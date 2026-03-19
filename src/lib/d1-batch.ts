@@ -7,9 +7,9 @@
  *   db.select().from(items).where(inArray(items.id, batch))
  * );
  */
-export async function batchInArray<T>(
-  ids: number[],
-  fn: (batch: number[]) => Promise<T[]>,
+export async function batchInArray<T, ID extends string | number = string>(
+  ids: ID[],
+  fn: (batch: ID[]) => Promise<T[]>,
   batchSize = 50,
 ): Promise<T[]> {
   if (ids.length === 0) return [];

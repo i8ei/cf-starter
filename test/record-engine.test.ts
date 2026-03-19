@@ -223,7 +223,7 @@ describe("generateDrizzleTableBlock", () => {
     expect(result.ok).toBe(true);
     expect(result.content).toContain('export const tasks = sqliteTable("tasks"');
     expect(result.content).toContain("id: integer");
-    expect(result.content).toContain("organizationId: integer");
+    expect(result.content).toContain("organizationId: text");
     expect(result.content).toContain("title: text");
     expect(result.content).toContain("createdAt: text");
     expect(result.content).toContain("updatedAt: text");

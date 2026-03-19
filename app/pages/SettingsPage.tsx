@@ -2,37 +2,33 @@ import { useState } from "react";
 import { Panel } from "~/components/Panel";
 import {
   useSession,
-  useOrganizations,
-  useOrganizationInvites,
-  useCreateOrganization,
-  useCreateOrganizationInvite,
-  useAcceptOrganizationInvite,
-  useSwitchOrganization,
-  useRequestEmailVerification,
   useLogout,
+  useListOrganizations,
+  useCreateOrganization,
+  useSetActiveOrganization,
+  useInviteMember,
+  useAcceptInvitation,
 } from "~/hooks/useSession";
+import { useHealth } from "~/hooks/useHealth";
 
 export function SettingsPage() {
   const [orgName, setOrgName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
-  const [inviteToken, setInviteToken] = useState("");
-  const [latestToken, setLatestToken] = useState<string | null>(null);
+  const [inviteRole, setInviteRole] = useState<string>("member");
+  const [invitationId, setInvitationId] = useState("");
   const { data: session } = useSession();
-  const { data: organizations } = useOrganizations(!!session);
-  const { data: invites } = useOrganizationInvites(!!session);
+  const { data: health } = useHealth();
+  const isBetterAuth = (health?.authMode as string) === "better-auth";
+  const { data: orgsData } = useListOrganizations();
   const createOrganization = useCreateOrganization();
-  const switchOrganization = useSwitchOrganization();
-  const createInvite = useCreateOrganizationInvite();
-  const acceptInvite = useAcceptOrganizationInvite();
-  const requestEmailVerification = useRequestEmailVerification();
+  const setActiveOrg = useSetActiveOrganization();
+  const inviteMember = useInviteMember();
+  const acceptInvitation = useAcceptInvitation();
   const logout = useLogout();
 
   if (!session) return null;
 
-  const canManageInvites =
-    session.organizationRole === "owner" ||
-    session.organizationRole === "admin";
+  const organizations = orgsData ?? [];
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -42,22 +38,12 @@ export function SettingsPage() {
             {session.name} &middot; {session.email}
           </div>
           <div>roles: {session.roles.join(", ")}</div>
-          <div>organizationRole: {session.organizationRole}</div>
+          <div>organizationRole: {session.organizationRole ?? "none"}</div>
           <div>
             emailVerified:{" "}
-            {session.emailVerifiedAt ? session.emailVerifiedAt : "pending"}
+            {session.emailVerified ? "yes" : "pending"}
           </div>
         </div>
-        {!session.emailVerifiedAt ? (
-          <button
-            type="button"
-            onClick={() => requestEmailVerification.mutate()}
-            disabled={requestEmailVerification.isPending}
-            className="mt-4 mr-3 rounded-xl bg-emerald-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
-          >
-            Resend Verification
-          </button>
-        ) : null}
         <button
           type="button"
           onClick={() => logout.mutate()}
@@ -68,40 +54,38 @@ export function SettingsPage() {
         </button>
       </Panel>
 
-      <Panel
-        title="Organization Workspace"
-        subtitle="Switch organizations, create new ones, or manage invites."
+      {isBetterAuth ? <Panel
+        title="Organizations"
+        subtitle="Switch, create, or manage organizations."
       >
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="space-y-3">
-            <div className="text-sm text-muted">Organizations</div>
+            <div className="text-sm text-muted">Your Organizations</div>
             <div className="space-y-2">
-              {organizations?.organizations?.map((org) => (
+              {organizations.map((org) => (
                 <button
-                  key={org.organizationId}
+                  key={org.id}
                   type="button"
-                  onClick={() =>
-                    switchOrganization.mutate(org.organizationId)
-                  }
+                  onClick={() => setActiveOrg.mutate(org.id)}
                   className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left ${
-                    session.currentOrganizationId === org.organizationId
+                    session.currentOrganizationId === org.id
                       ? "border-amber-300 bg-amber-50"
                       : "border-border bg-surface-alt"
                   }`}
                 >
                   <span>
                     <span className="block font-medium text-heading">
-                      {org.organizationName}
+                      {org.name}
                     </span>
                     <span className="block text-sm text-muted">
-                      {org.organizationSlug}
+                      {org.slug}
                     </span>
-                  </span>
-                  <span className="rounded-full bg-surface px-3 py-1 text-sm uppercase tracking-[0.2em] text-muted">
-                    {org.membershipRole}
                   </span>
                 </button>
               ))}
+              {organizations.length === 0 ? (
+                <p className="text-sm text-muted">No organizations yet.</p>
+              ) : null}
             </div>
           </div>
           <div className="space-y-4">
@@ -113,16 +97,17 @@ export function SettingsPage() {
                 <input
                   value={orgName}
                   onChange={(e) => setOrgName(e.target.value)}
-                  placeholder="Regional Ops"
+                  placeholder="Organization name"
                   className="flex-1 rounded-lg border border-input-border bg-input-bg px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 <button
                   type="button"
                   onClick={() => {
                     if (!orgName.trim()) return;
-                    createOrganization.mutate(orgName.trim(), {
-                      onSuccess: () => setOrgName(""),
-                    });
+                    createOrganization.mutate(
+                      { name: orgName.trim() },
+                      { onSuccess: () => setOrgName("") }
+                    );
                   }}
                   disabled={createOrganization.isPending}
                   className="rounded-xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
@@ -136,124 +121,87 @@ export function SettingsPage() {
                 </p>
               ) : null}
             </div>
-            <div className="rounded-xl border border-border bg-surface-alt p-4">
-              <div className="mb-3 text-sm text-muted">Accept Invite</div>
-              <div className="flex gap-2">
-                <input
-                  value={inviteToken}
-                  onChange={(e) => setInviteToken(e.target.value)}
-                  placeholder="Invite token"
-                  className="flex-1 rounded-lg border border-input-border bg-input-bg px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!inviteToken.trim()) return;
-                    acceptInvite.mutate(inviteToken.trim(), {
-                      onSuccess: () => setInviteToken(""),
-                    });
-                  }}
-                  disabled={acceptInvite.isPending}
-                  className="rounded-xl bg-fuchsia-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
-                >
-                  Accept
-                </button>
-              </div>
-              {acceptInvite.error ? (
+          </div>
+        </div>
+      </Panel> : null}
+
+      {isBetterAuth ? <Panel title="Invitations" subtitle="Invite members or accept invitations.">
+        <div className="grid gap-6 lg:grid-cols-2">
+          {session.currentOrganizationId ? (
+            <div className="space-y-3">
+              <div className="text-sm text-muted">Invite Member</div>
+              <input
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="user@example.com"
+                className="w-full rounded-lg border border-input-border bg-input-bg px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <select
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value)}
+                className="w-full rounded-lg border border-input-border bg-input-bg px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="member">member</option>
+                <option value="admin">admin</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!inviteEmail.trim() || !session.currentOrganizationId) return;
+                  inviteMember.mutate(
+                    {
+                      email: inviteEmail.trim(),
+                      role: inviteRole,
+                      organizationId: session.currentOrganizationId,
+                    },
+                    { onSuccess: () => setInviteEmail("") }
+                  );
+                }}
+                disabled={inviteMember.isPending}
+                className="w-full rounded-xl bg-amber-400 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
+              >
+                Invite
+              </button>
+              {inviteMember.error ? (
                 <p className="mt-2 text-sm text-error-text">
-                  {acceptInvite.error.message}
+                  {inviteMember.error.message}
                 </p>
               ) : null}
             </div>
-          </div>
-        </div>
-      </Panel>
-
-      <Panel
-        title="Invites"
-        subtitle="Manage organization invites."
-      >
-        {canManageInvites ? (
-          <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_auto_auto]">
+          ) : (
+            <p className="text-sm text-muted">
+              Select an organization to invite members.
+            </p>
+          )}
+          <div className="space-y-3">
+            <div className="text-sm text-muted">Accept Invitation</div>
             <input
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="user@example.com"
-              className="rounded-lg border border-input-border bg-input-bg px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              value={invitationId}
+              onChange={(e) => setInvitationId(e.target.value)}
+              placeholder="Invitation ID"
+              className="w-full rounded-lg border border-input-border bg-input-bg px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-            <select
-              value={inviteRole}
-              onChange={(e) =>
-                setInviteRole(e.target.value as "admin" | "member")
-              }
-              className="rounded-lg border border-input-border bg-input-bg px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="member">member</option>
-              <option value="admin">admin</option>
-            </select>
             <button
               type="button"
               onClick={() => {
-                if (!inviteEmail.trim()) return;
-                createInvite.mutate(
-                  { email: inviteEmail.trim(), role: inviteRole },
-                  {
-                    onSuccess: (data) => {
-                      setInviteEmail("");
-                      setLatestToken(data.invite.token);
-                    },
-                  }
-                );
+                if (!invitationId.trim()) return;
+                acceptInvitation.mutate(invitationId.trim(), {
+                  onSuccess: () => setInvitationId(""),
+                });
               }}
-              disabled={createInvite.isPending}
-              className="rounded-xl bg-amber-400 px-5 py-3 font-semibold text-slate-950 disabled:opacity-50"
+              disabled={acceptInvitation.isPending}
+              className="w-full rounded-xl bg-fuchsia-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
             >
-              Invite
+              Accept
             </button>
+            {acceptInvitation.error ? (
+              <p className="mt-2 text-sm text-error-text">
+                {acceptInvitation.error.message}
+              </p>
+            ) : null}
           </div>
-        ) : (
-          <p className="mb-4 text-sm text-muted">
-            Only owners and admins can create invites.
-          </p>
-        )}
-        {latestToken ? (
-          <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
-            <div className="text-sm uppercase tracking-[0.24em] text-amber-800/80">
-              latest invite token
-            </div>
-            <div className="mt-2 break-all font-mono text-sm text-amber-900">
-              {latestToken}
-            </div>
-          </div>
-        ) : null}
-        {createInvite.error ? (
-          <p className="mb-4 text-sm text-error-text">
-            {createInvite.error.message}
-          </p>
-        ) : null}
-        <div className="space-y-2">
-          {invites?.invites?.length ? (
-            invites.invites.map((invite) => (
-              <div
-                key={invite.id}
-                className="flex flex-col gap-2 rounded-xl border border-border bg-surface-alt px-4 py-3 lg:flex-row lg:items-center lg:justify-between"
-              >
-                <div>
-                  <div className="font-medium text-heading">{invite.email}</div>
-                  <div className="text-sm text-muted">
-                    role {invite.role} &middot; expires {invite.expiresAt}
-                  </div>
-                </div>
-                <span className="rounded-full bg-surface px-3 py-1 text-sm uppercase tracking-[0.2em] text-muted">
-                  {invite.status}
-                </span>
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-muted">No invites yet.</p>
-          )}
         </div>
-      </Panel>
+      </Panel> : null}
     </div>
   );
 }

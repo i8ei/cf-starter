@@ -23,7 +23,7 @@ const recordNavItems: { label: string; href: string }[] = [
 ];
 
 /**
- * Public app nav items — used when AUTH_ENABLED=false with PublicShell.
+ * Public app nav items — used when AUTH_MODE=none with PublicShell.
  * Customise these for your public-facing app.
  */
 const publicNavItems: { label: string; href: string }[] = [
@@ -34,7 +34,7 @@ const publicNavItems: { label: string; href: string }[] = [
  * Authenticated shell — only runs useSession when auth is enabled.
  * Prevents unnecessary /api/auth/me calls for public apps.
  */
-function AuthShell({ children }: { children: React.ReactNode }) {
+function AuthShell({ authMode, children }: { authMode: "simple-admin" | "better-auth"; children: React.ReactNode }) {
   const { data: session, isLoading } = useSession();
 
   if (isLoading) {
@@ -49,7 +49,7 @@ function AuthShell({ children }: { children: React.ReactNode }) {
   if (!session) {
     return (
       <AppShell>
-        <AuthPage />
+        <AuthPage authMode={authMode} />
       </AppShell>
     );
   }
@@ -76,8 +76,10 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // AUTH_ENABLED=false → PublicShell (no session query)
-  if (health?.authEnabled === false) {
+  const authMode = (health?.authMode as string) ?? "better-auth";
+
+  // AUTH_MODE=none → PublicShell (no session query)
+  if (authMode === "none") {
     return (
       <PublicShell navItems={publicNavItems}>
         {children}
@@ -85,8 +87,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Auth enabled → AuthShell (runs useSession)
-  return <AuthShell>{children}</AuthShell>;
+  // simple-admin or better-auth → AuthShell (runs useSession)
+  const shellMode = authMode === "simple-admin" ? "simple-admin" as const : "better-auth" as const;
+  return <AuthShell authMode={shellMode}>{children}</AuthShell>;
 }
 
 function AppRoutes() {

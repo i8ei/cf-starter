@@ -2,7 +2,7 @@ export type JobMessage =
   | {
       type: "user.welcome";
       payload: {
-        userId: number;
+        userId: string;
         email: string;
         name: string;
         requestId: string;
@@ -12,7 +12,7 @@ export type JobMessage =
       type: "upload.process";
       payload: {
         key: string;
-        organizationId: number;
+        organizationId: string;
         size: number;
         contentType: string | null;
         requestId: string;
@@ -21,30 +21,12 @@ export type JobMessage =
   | {
       type: "organization.invite_email";
       payload: {
-        organizationId: number;
+        organizationId: string;
         organizationName: string;
-        inviteId: number;
+        inviteId: string;
         email: string;
         role: string;
         inviteUrl: string;
-        requestId: string;
-      };
-    }
-  | {
-      type: "auth.password_reset_email";
-      payload: {
-        userId: number;
-        email: string;
-        resetUrl: string;
-        requestId: string;
-      };
-    }
-  | {
-      type: "auth.email_verification_email";
-      payload: {
-        userId: number;
-        email: string;
-        verifyUrl: string;
         requestId: string;
       };
     };
