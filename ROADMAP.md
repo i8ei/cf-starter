@@ -108,3 +108,35 @@ tara-yosan（太良町予算ダッシュボード）の開発で得た知見を�
 - CLAUDE.md の seed-demo.mjs 削除リスト修正（Record Engine 非依存のため残す）
 - パターン集ドキュメント（外部DB→D1移行、ドリルダウン、フォーマット関数）
 - ARCHITECTURE.md / README.md 更新
+
+## Phase 9: Better Auth 移行 — 完了
+
+self-written auth（~2,800 LOC）を Better Auth に全面移行。3段階で実施。
+
+**Phase 9a: AUTH_MODE 導入**
+- `AUTH_MODE` 環境変数（`none` / `simple-admin` / `better-auth`）
+- `AUTH_ENABLED` との後方互換
+- `simple-admin`: HMAC署名Cookie + 定数時間パスワード比較
+- Health endpoint に authMode 返却 + secret 未設定警告
+
+**Phase 9b: Better Auth 統合**
+- better-auth パッケージ導入、per-request auth factory（`createAuth`）
+- 自作 auth テーブル（users/sessions/passwordResetTokens/emailVerificationTokens/roles/userRoles）→ Better Auth テーブル（user/session/account/verification）に置換
+- userId: number → string 全体移行
+- 自作 auth ルート（login/signup/password-reset/email-verification）削除 → Better Auth handler catch-all
+- フロントエンド: Better Auth React client（signIn/signUp/signOut）
+- 削除: password.ts, rbac.ts, email-verification.ts, password-reset.ts（計 ~1,800 LOC）
+
+**Phase 9c: Organization プラグイン**
+- 自作 org テーブル（organizations/memberships/organizationInvites）→ Better Auth org テーブル（organization/member/invitation）
+- orgId: number → string
+- `/api/orgs` 自作ルート削除 → Better Auth `/api/auth/organization/*` に代替
+- フロントエンド: `organizationClient()` で org CRUD、招待、メンバー管理
+- SettingsPage: org UI を `isBetterAuth` でゲート（simple-admin 非表示）
+- session に `activeOrganizationId` 追加
+- member テーブルに (org_id, user_id) ユニーク制約
+
+**3者レビュー（14件修正）**
+- /me の none モード対応、seed-demo べき等性、タイミング攻撃対策、banned チェック、型不整合修正、trustedOrigins 補完、Record Engine org FK 更新
+
+結果: 71ファイル変更、+2,360 / -2,833 行。テスト 108 全パス

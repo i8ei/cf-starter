@@ -53,7 +53,7 @@ cf-starter/
 │   ├── db/schema.ts        ← Drizzle スキーマ
 │   ├── durable-objects/    ← rate limiter
 │   ├── features/           ← feature routes（Record Engine 生成物）
-│   ├── lib/                ← auth, session, audit, orgs, crypto 等
+│   ├── lib/                ← better-auth, session, audit, crypto 等
 │   ├── middleware/          ← auth, csrf, rate-limit, request-id, role
 │   ├── queues/             ← queue producer / consumer
 │   ├── routes/             ← core API ルート
@@ -237,7 +237,7 @@ ADMIN_PASSWORD=changeme
 - HMAC署名Cookie（DBセッション不要）
 - `/api/auth/admin-login` でログイン、`/api/auth/me` `/api/auth/logout` は共通
 - signup / password-reset / email-verification は 404
-- userId=1, orgId=1 固定（`seed:demo` が必要）
+- userId="1", orgId="default-org" 固定（`seed:demo` が必要）
 
 #### better-auth モード（デフォルト）
 ```jsonc
@@ -246,7 +246,8 @@ BETTER_AUTH_SECRET=change-me-to-a-random-string
 ```
 - [Better Auth](https://better-auth.com/) によるフルユーザー認証
 - エンドポイント: `/api/auth/sign-up/email`, `/api/auth/sign-in/email`, `/api/auth/sign-out` 等（Better Auth 内蔵）
-- カスタムエンドポイント: `/api/auth/me`（ユーザー+組織情報）, `/api/auth/logout`, `/api/auth/switch-org`
+- カスタムエンドポイント: `/api/auth/me`（ユーザー+組織情報）, `/api/auth/logout`
+- 組織操作: `/api/auth/organization/*`（Better Auth org プラグインが全ハンドル）
 - DBセッション + Cookie（`ba.session_token`）
 - admin() プラグインで `user.role` カラムによるロール管理
 - パスワードリセット・メール検証は Better Auth が内蔵処理
@@ -364,10 +365,9 @@ npx tsc --noEmit && npm run build で壊れないことを確認
 `AUTH_MODE=none`（または `AUTH_ENABLED=false`）で実行時無効化できる。
 物理削除は不要 — コードは残るが実行されない。ビルドサイズへの影響も無視できる。
 
-`AUTH_MODE=none` / `simple-admin` の場合、userId=1, orgId=1 が固定でセットされる。
+`AUTH_MODE=none` / `simple-admin` の場合、userId="1", orgId="default-org" が固定でセットされる。
 
-**重要**: organizations テーブルに id=1 の行が存在しないと外部キー制約でエラーになる。
-テンプレをコピーした後、必ず `npm run seed:demo` を実行してデモ組織（id=1）を作成すること。
+**重要**: `seed:demo` を実行してデモ組織（id="default-org"）を作成すること。
 seed:demo はべき等（何度実行しても安全）なので、すでに実行済みでも問題ない。
 
 ## Record Engine — 注意事項

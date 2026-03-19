@@ -34,10 +34,10 @@
 
 ## Starter Core
 
-- auth
-- sessions
-- organization context
-- RBAC
+- Better Auth（認証・セッション・パスワードリセット・メール検証）
+- Better Auth organization プラグイン（組織・メンバー・招待）
+- Better Auth admin プラグイン（ロール管理・BAN）
+- AUTH_MODE 3モード制（none / simple-admin / better-auth）
 - CSRF
 - request id
 - structured logging
@@ -114,10 +114,10 @@ UI/UX 品質:
 
 ### レイアウト切替
 
-`App.tsx` の `AuthGuard` が `AUTH_ENABLED` 環境変数に基づいてレイアウトを自動選択します。
+`App.tsx` の `AuthGuard` が `AUTH_MODE` 環境変数に基づいてレイアウトを自動選択します。
 
-- `AUTH_ENABLED=true`（デフォルト）→ `AppShell`（デスクトップ向け、サイドバーナビ）
-- `AUTH_ENABLED=false` → `PublicShell`（モバイルファースト、1カラム、ヘッダーナビ）
+- `AUTH_MODE=better-auth` / `simple-admin` → `AppShell`（デスクトップ向け、サイドバーナビ）
+- `AUTH_MODE=none` → `PublicShell`（モバイルファースト、1カラム、ヘッダーナビ）
 
 切替は runtime で行われ、ビルド設定の変更は不要です。
 
@@ -160,7 +160,7 @@ coreからRecord Engineへの直接importはゼロ。CLAUDE.md の「Record Engi
 
 `cf-starter` は feature-based structure を採用しています。
 
-- core routes: `src/routes/`（`health.ts`, `auth/`, `orgs.ts`, `public-example.ts`）
+- core routes: `src/routes/`（`health.ts`, `auth/`, `public-example.ts`）
 - feature routes: `src/features/{key}/routes.ts`（Record Engine で生成）
 - core hooks: `app/hooks/`
 - feature hooks: `app/features/{key}/hooks/`（Record Engine で生成）
@@ -175,65 +175,52 @@ coreからRecord Engineへの直接importはゼロ。CLAUDE.md の「Record Engi
 ダッシュボード系アプリの場合は、チャートキット + PublicShell + GET-only API で構築します。
 業務テーブルは `organization_id` を持たせて current organization で絞るのを基本にします（生成物に自動で含まれます）。
 
-## 認証
+## 認証（Better Auth）
 
-現在の認証方式:
+[Better Auth](https://better-auth.com/) による認証基盤。AUTH_MODE で3モード切替。
 
-- D1 table: `sessions`
-- D1 table: `password_reset_tokens`
-- D1 table: `email_verification_tokens`
-- Cookie: HttpOnly
-- Password hash: `PBKDF2-SHA256`
+### AUTH_MODE
 
-セッション方針:
+| モード | 認証方式 | DB テーブル | 用途 |
+|--------|----------|-------------|------|
+| `none` | なし（mock） | 不要 | 公開アプリ |
+| `simple-admin` | ADMIN_PASSWORD + HMAC Cookie | 不要 | 管理画面 |
+| `better-auth` | Better Auth DB session | 必要 | フルユーザー管理 |
 
-- login ごとに再発行
-- user あたり 1 セッションに寄せる
-- logout で削除
-- Cron で期限切れを削除
-- password reset / email verification token も Cron で清掃する
+### DB テーブル（Better Auth 管理）
 
-### 認証を使わない場合
+- `user` — ユーザー（text ID, role, emailVerified, banned）
+- `session` — セッション（token, activeOrganizationId）
+- `account` — 認証アカウント（credential provider, password hash）
+- `verification` — 検証トークン（パスワードリセット・メール検証）
+- `organization` — 組織（org プラグイン）
+- `member` — 組織メンバーシップ（org プラグイン、unique on org+user）
+- `invitation` — 組織招待（org プラグイン）
 
-AUTH_ENABLED=false（.dev.varsまたはwrangler.jsonc）で実行時無効化できる。物理削除は不要。
+### API エンドポイント
 
-## Organization Context
+Better Auth 内蔵: `/api/auth/sign-up/email`, `/api/auth/sign-in/email`, `/api/auth/sign-out`, `/api/auth/organization/*` 等
+カスタム: `/api/auth/me`（ユーザー+組織情報）, `/api/auth/logout`, `/api/auth/admin-login`（simple-admin 用）
 
-organization-aware なアプリを前提に、core で次を持ちます。
+### 重要な制約
 
-- `organizations`
-- `memberships`
-- `sessions.current_org_id`
-- `organization_invites`
+- **per-request instance 必須**: `createAuth(env)` をリクエストごとに呼ぶ。シングルトン厳禁（D1 stale reference で30秒+ハング）
+- **BETTER_AUTH_SECRET**: better-auth モードで必須。未設定だと health チェックで警告
+- **banned ユーザー**: middleware で `user.banned` をチェックし 403 を返す
 
-middleware 後の route では次を参照できます。
+### 認可
 
-- `c.get("userId")`
-- `c.get("roles")`
-- `c.get("orgId")`
-- `c.get("orgRole")`
-- `c.get("memberships")`
+2層の認可:
 
-`requireAuth` は session の `current_org_id` を membership と照合し、必要なら session を補正します。
+- platform-level: `user.role`（Better Auth admin プラグイン）→ `requireRole()` middleware
+- tenant-level: `member.role`（org プラグイン）→ `requireOrgRole()` middleware
 
-organization 招待は次の前提で扱います。
+middleware 後の route で参照可能な context:
 
-- current organization に対して owner / admin が招待を作成する
-- 招待 token は DB には hash で保持する
-- 承諾は login 済みユーザーのみ
-- 招待 email と login 中の user email が一致しない場合は拒否する
-
-## 認可
-
-現在の認可は 2 層です。
-
-- global role: `user_roles`
-- organization membership role: `memberships.role`
-
-使い分け:
-
-- platform-level の判定: `requireRole()`
-- tenant-level の絞り込み: `orgId` と `orgRole`
+- `c.get("userId")` — string
+- `c.get("roles")` — string[]
+- `c.get("orgId")` — string | undefined
+- `c.get("orgRole")` — string | undefined
 
 ## API 契約
 
@@ -284,11 +271,11 @@ validation error も同じ envelope に入れます。
 
 `JOBS` Queue binding を持ち、job を処理します。
 
-- `user.welcome`
-- `organization.invite_email`
-- `auth.password_reset_email`
-- `auth.email_verification_email`
+- `user.welcome` — ウェルカムメール
+- `upload.process` — ファイルアップロード処理
+- `organization.invite_email` — 組織招待メール
 
+パスワードリセット・メール検証は Better Auth が内蔵処理するため、Queue 不要。
 consumer は `src/queues/jobs.ts` と Worker module の `queue()` handler に集約します。
 
 ## D1 の既知制約
@@ -331,9 +318,10 @@ Drizzle のマイグレーションでテーブルを再作成する際、`PRAGM
 
 AI や開発者は、次を壊さないでください。
 
-- password hash を平文や弱いハッシュへ戻さない
+- Better Auth の per-request instance パターンを崩さない（シングルトン厳禁）
 - CSRF 保護を削らない
 - request id を外さない
 - error contract を route ごとにバラバラにしない
 - organization context を無視して multi-tenant data を読む route を増やさない
 - 監査対象の操作から audit log を外さない
+- banned ユーザーチェックを外さない

@@ -37,6 +37,7 @@ npm run deploy
 
 | レイヤー | 技術 |
 |----------|------|
+| Auth | Better Auth (admin + organization plugins) |
 | Frontend | React + TypeScript + Tailwind CSS v4 + TanStack Query + Recharts + wouter |
 | Backend | Hono on Cloudflare Workers |
 | Database | D1 (SQLite) + Drizzle ORM |
@@ -59,21 +60,21 @@ Zod スキーマ → @hono/zod-validator → Drizzle ORM → AppType → hc<AppT
 
 ## 特徴
 
-### セキュリティ基盤
+### 認証（Better Auth）
 
-- D1 session + HttpOnly Cookie 認証
-- PBKDF2-SHA256 パスワードハッシュ
-- CSRF 保護
-- Durable Object ベースのレート制限
-- request id + 構造化 JSON ログ
-- 監査ログ
-- 統一 API エラー形式
+3つのモードを `AUTH_MODE` 環境変数で切替：
 
-### 組織管理
+| モード | 用途 |
+|--------|------|
+| `none` | 認証なしの公開アプリ |
+| `simple-admin` | パスワード1つで管理画面にログイン |
+| `better-auth` | フルユーザー管理（signup/signin/roles/org） |
 
-- organization / membership / current organization context
-- 招待・承諾フロー
-- パスワードリセット / メール認証
+- [Better Auth](https://better-auth.com/) — DB session + HttpOnly Cookie
+- admin プラグイン（ロール管理・BAN）
+- organization プラグイン（組織・メンバー・招待）
+- CSRF 保護 / Durable Object レート制限 / 監査ログ
+- request id + 構造化 JSON ログ / 統一 API エラー形式
 
 ### Record Engine（コード生成）
 
@@ -143,7 +144,7 @@ Record Engine は不要なら削除できます。core への依存はゼロで�
 - Recharts ラッパー 5 種（横棒・増減棒・折れ線・積み上げ棒・円/ドーナツ）
 - KPI カード・セクション見出し・グラフ/テーブル切替
 - PublicShell（モバイルファースト 1 カラムレイアウト）
-- `AUTH_ENABLED=false` で認証を無効化、PublicShell に自動切替
+- `AUTH_MODE=none` で認証を無効化、PublicShell に自動切替
 
 ### 2 つのレイアウト
 
@@ -152,7 +153,7 @@ Record Engine は不要なら削除できます。core への依存はゼロで�
 | AppShell | 認証ありの業務アプリ |
 | PublicShell | 認証なしの公開アプリ・ダッシュボード |
 
-`AUTH_ENABLED` の値で自動切替されます。
+`AUTH_MODE` の値で自動切替されます。
 
 ---
 
@@ -202,7 +203,7 @@ cf-starter/
 ├── src/                    Hono バックエンド (Worker)
 │   ├── db/                 Drizzle スキーマ
 │   ├── features/           feature routes（生成物）
-│   ├── lib/                auth, session, audit, orgs
+│   ├── lib/                better-auth, session, audit, crypto
 │   ├── middleware/          auth, csrf, rate-limit, request-id
 │   ├── queues/             Queue consumer
 │   ├── routes/             core API ルート
