@@ -53,7 +53,8 @@ npm run deploy
 | Async jobs | Cloudflare Queues |
 | Validation | Zod（フロント・バック共有） |
 | Build | Vite + @cloudflare/vite-plugin |
-| Testing | Vitest |
+| Testing | Vitest + Playwright (E2E) |
+| Lint | OxLint + knip (unused code) |
 
 型安全チェーン：
 
@@ -176,7 +177,11 @@ Record Engine は不要なら削除できます。core への依存はゼロで�
 | `npm run setup:remote` | リモート DB 準備 |
 | `npm run doctor` | 設定診断 |
 | `npm run doctor -- --remote` | デプロイ前診断 |
-| `npm test` | テスト実行 |
+| `npm run lint` | OxLint（React + TypeScript ルール） |
+| `npm run unused` | knip（未使用コード・依存検出） |
+| `npm test` | Vitest ユニットテスト |
+| `npm run test:e2e` | Playwright E2E（要: `npx playwright install chromium`） |
+| `npm run ci:local` | 品質チェック一括（lint → typecheck → test → unused → build） |
 | `npm run db:generate` | マイグレーション生成 |
 | `npm run db:migrate` | ローカル DB にマイグレーション適用 |
 | `npm run db:migrate:remote` | リモート DB にマイグレーション適用 |
@@ -217,7 +222,9 @@ cf-starter/
 │   └── index.ts            Worker エントリーポイント
 ├── scripts/                CLI・初期化・コード生成
 ├── migrations/             D1 マイグレーション
-├── test/                   Vitest テスト
+├── test/                   Vitest ユニットテスト
+├── e2e/                    Playwright E2E テスト
+├── CONSTITUTION.md         設計判断の基準（憲法）
 ├── ARCHITECTURE.md         設計の詳細
 └── ROADMAP.md              開発履歴と今後
 ```
@@ -247,6 +254,7 @@ cf-starter/
 
 `npm run init` + `npm run setup:remote` で大部分は自動化されます。残りの確認事項：
 
+- [ ] `npm run ci:local` が通ることを確認
 - [ ] KV / R2 / Queue が必要なら作成し `wrangler.jsonc` に設定
 - [ ] `COOKIE_SAME_SITE` / `COOKIE_SECURE` を運用に合わせる
 - [ ] `npm run doctor -- --remote` でデプロイ前チェック
@@ -257,6 +265,7 @@ cf-starter/
 
 | ファイル | 内容 |
 |----------|------|
+| [CONSTITUTION.md](./CONSTITUTION.md) | 設計判断の基準（何を入れ、何を入れないか） |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 設計の詳細（認証・組織・Record Engine・セキュリティ不変条件） |
 | [ROADMAP.md](./ROADMAP.md) | 開発履歴と今後の計画 |
 | [CLI_DESIGN.md](./CLI_DESIGN.md) | CLI の設計と運用 |
