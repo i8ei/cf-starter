@@ -147,7 +147,7 @@ npm run cli -- <...>     # unified CLI の生入口
 npm run doctor           # ローカル CLI / Wrangler 設定の診断
 npm run env:plan         # wrangler.jsonc から Cloudflare 資源計画を出す
 npm run lint             # OxLint（React + TypeScript ルール）
-npm run unused           # knip（未使用コード・依存検出）
+npm run unused           # knip（未使用コード・依存検出、テンプレAPI警告は warn のみ）
 npm test                 # Vitest テスト
 npm run test:e2e         # Playwright E2E（要: npx playwright install chromium）
 npm run db:generate      # Drizzle スキーマからマイグレーション生成

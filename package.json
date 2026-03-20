@@ -16,7 +16,7 @@
     "url": "https://github.com/i8ei/cf-starter/issues"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19.0"
   },
   "scripts": {
     "cli": "node scripts/cf-starter.mjs",

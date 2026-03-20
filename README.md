@@ -6,7 +6,7 @@ Cloudflare Workers 上で業務アプリを最短で立ち上げるための sta
 
 ## 前提条件
 
-- Node.js 20 以上
+- Node.js 20.19 以上
 - Wrangler（`npm install -g wrangler`）
 - Cloudflare アカウント（無料枠で可）
 - `wrangler login` でログイン済み
