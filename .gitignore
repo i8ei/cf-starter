@@ -3,4 +3,6 @@ dist/
 .wrangler/
 .dev.vars
 .mf/
-.wrangler/
+.claude/
+test-results/
+playwright-report/

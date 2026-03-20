@@ -36,7 +36,11 @@
     "seed:demo": "node scripts/cf-starter.mjs db seed-demo",
     "record:generate": "node scripts/cf-starter.mjs record generate",
     "setup:remote": "node scripts/cf-starter.mjs setup remote",
-    "init": "node scripts/init-copy.mjs"
+    "init": "node scripts/init-copy.mjs",
+    "lint": "oxlint -c oxlintrc.json app/ src/ shared/ test/",
+    "unused": "knip",
+    "test:e2e": "playwright test",
+    "ci:local": "npm run lint && npm run typecheck && npm test && npm run unused && npm run build"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.5",
@@ -54,12 +58,15 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1",
     "@cloudflare/workers-types": "^4",
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "^4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.7.0",
     "drizzle-kit": "^0.31",
     "esbuild": "^0.25",
+    "knip": "^5.88.1",
+    "oxlint": "^1.56.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite": "^6",

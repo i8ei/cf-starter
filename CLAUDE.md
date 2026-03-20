@@ -2,6 +2,8 @@
 
 Cloudflare フルスタック スターターテンプレート。`cp` して使うことを前提に設計。
 
+設計判断の基準は [CONSTITUTION.md](./CONSTITUTION.md) を参照。
+
 ## スタック
 
 - **Frontend**: React + TypeScript + Tailwind CSS v4 + TanStack Query + Recharts
@@ -69,6 +71,70 @@ cf-starter/
 └── ...
 ```
 
+## フロントエンド アーキテクチャ
+
+### 起動フロー
+
+```
+QueryClientProvider
+  └─ ErrorBoundary
+       └─ AppRoutes (wouter Switch)
+            ├─ /p/* ── 認証不要ページ（AuthGuard の外）
+            └─ /* ── AuthGuard
+                      ├─ useHealth() で authMode 取得
+                      ├─ authMode=none     → PublicShell（useSession 呼ばない）
+                      └─ authMode=other    → AuthShell
+                                              ├─ useSession() でログイン確認
+                                              ├─ 未ログイン → AuthPage
+                                              └─ ログイン済 → AppShell + children
+```
+
+### Shell 選択
+
+| authMode | Shell | ナビ定義 |
+|----------|-------|---------|
+| `none` | `PublicShell` | `publicNavItems` |
+| `simple-admin` | `AppShell` | `recordNavItems` |
+| `better-auth` | `AppShell` | `recordNavItems` |
+
+### Hook 依存ツリー
+
+```
+useHealth()         ← /api/health（authMode 判定、常に呼ばれる）
+useSession()        ← /api/auth/me（authMode≠none のときだけ）
+  useSignup()       ← Better Auth sign-up
+  useLogin()        ← Better Auth sign-in
+  useAdminLogin()   ← simple-admin パスワード認証
+  useLogout()       ← セッション破棄
+```
+
+### API クライアント契約
+
+```ts
+// app/lib/api.ts
+import { hc } from "hono/client";
+import type { AppType } from "@server/index";
+
+export const client = hc<AppType>("/", {
+  fetch: (input, init) => fetch(input, { ...init, credentials: "include" }),
+});
+```
+
+- `hc<AppType>` で型安全 RPC。バックエンドのルート定義が変われば型エラーで検知
+- `credentials: "include"` で Cookie を自動送信（認証に必要）
+- TanStack Query の `queryFn` 内で `client.api.xxx.$get()` / `$post()` を呼ぶ
+
+### ルート規約
+
+| パス | 用途 | AuthGuard |
+|------|------|-----------|
+| `/p/*` | 公開ページ（認証不要） | 外 |
+| `/:record` | Record Engine 一覧 | 内 |
+| `/:record/new` | Record Engine 新規作成 | 内 |
+| `/:record/:id` | Record Engine 詳細 | 内 |
+| `/settings` | 組織設定 | 内 |
+| `/` | ホーム | 内 |
+
 ## コマンド
 
 ```bash
@@ -80,13 +146,17 @@ npm run deploy           # Cloudflare にデプロイ
 npm run cli -- <...>     # unified CLI の生入口
 npm run doctor           # ローカル CLI / Wrangler 設定の診断
 npm run env:plan         # wrangler.jsonc から Cloudflare 資源計画を出す
+npm run lint             # OxLint（React + TypeScript ルール）
+npm run unused           # knip（未使用コード・依存検出）
 npm test                 # Vitest テスト
+npm run test:e2e         # Playwright E2E（要: npx playwright install chromium）
 npm run db:generate      # Drizzle スキーマからマイグレーション生成
 npm run db:migrate       # D1 ローカルマイグレーション
 npm run db:migrate:remote  # D1 リモートマイグレーション
 npm run seed:demo        # デモユーザー・組織を投入
 npm run record:generate -- --record shared/records/xxx.ts  # Record Engine でコード生成
 npm run setup:remote     # リモートDB準備（migrate + seed + secrets確認）
+npm run ci:local          # ローカル品質チェック（lint + typecheck + test + unused + build を一括実行）
 
 # Plan / JSON examples
 cf-starter doctor --json
@@ -111,6 +181,79 @@ npm run seed:demo -- --plan --json
 npm run record:generate -- --record shared/records/xxx.ts --plan --json
 npm run deploy -- --plan --json
 ```
+
+## 運用ランブック
+
+### request-id 伝搬
+
+```
+クライアント → X-Request-Id ヘッダー（任意）
+  → requestId middleware（なければ crypto.randomUUID() 生成）
+    → c.set("requestId", id)  ← Hono Context に保存
+    → レスポンスヘッダー X-Request-Id に付与
+    → logRequestEvent() が自動で requestId を含める
+```
+
+- `src/middleware/request-id.ts` が全リクエストに適用
+- フォーマット: `^[A-Za-z0-9._-]{8,128}$`（外部からの ID も受け入れ可能）
+
+### /api/health レスポンス契約
+
+```json
+{
+  "status": "ok" | "degraded",
+  "checks": {
+    "env": "ok" | "missing",
+    "d1": "ok" | "error",
+    "kv": "ok" | "error",        // KV バインディングがある場合のみ
+    "r2": "ok" | "error",        // R2 バインディングがある場合のみ
+    "rateLimiter": "ok" | "error", // DO バインディングがある場合のみ
+    "config": "ok" | "invalid" | "error",
+    "adminPassword": "missing",  // simple-admin で ADMIN_PASSWORD 未設定時のみ
+    "betterAuthSecret": "missing" // better-auth で SECRET 未設定時のみ
+  },
+  "authEnabled": true | false,
+  "authMode": "none" | "simple-admin" | "better-auth"
+}
+```
+
+- `status: "ok"` = 全 checks が "ok"
+- フロントは `authMode` を見て Shell を選択（AuthGuard）
+
+### 構造化ログ
+
+```ts
+// 汎用（リクエスト外でも使える）
+logEvent("info", "cron.started", { jobName: "cleanup" });
+
+// リクエストコンテキスト付き（method, path, ip, requestId を自動付与）
+logRequestEvent("error", "auth.failed", c, { reason: "invalid_password" });
+```
+
+- `src/lib/logging.ts` に定義
+- 出力: JSON 1行（Cloudflare Dashboard Logs でパース可能）
+- フィールド: `ts`, `level`, `event`, + カスタムフィールド
+
+### doctor の使い方
+
+```bash
+npm run doctor                    # ローカル環境チェック
+npm run doctor -- --remote        # リモートデプロイ前チェック
+npm run doctor -- --json          # JSON 出力（CI / スクリプト向け）
+npm run doctor -- --remote --json # リモート + JSON
+```
+
+- checks: Node.js バージョン、npm scripts、必須ファイル、Wrangler 設定、D1 設定
+- `--remote`: APP_BASE_URL HTTPS チェック、CORS_ORIGIN チェック、Wrangler 認証確認
+
+### 本番で最低限見るもの
+
+| 何を | どこで |
+|------|--------|
+| ヘルスチェック | `curl https://<app>.workers.dev/api/health` |
+| リアルタイムログ | Cloudflare Dashboard → Workers → Logs → Begin log stream |
+| D1 データ確認 | Cloudflare Dashboard → D1 → Console |
+| エラー調査 | ログの `requestId` でフィルタ |
 
 ## 開発の流れ
 
@@ -397,7 +540,7 @@ health チェック (`/api/health`) もバインディングの有無を動的�
 - [ ] 不要になった関数・export・import が残っていないか
 - [ ] CLAUDE.md / ARCHITECTURE.md / ROADMAP.md の記述と矛盾しないか（矛盾があればコードと一緒に直す）
 - [ ] デザインシステムのルール（input: `rounded-lg`、button/panel: `rounded-xl`、`focus-visible:ring-2`、`text-slate-300` 以上、セマンティックトークン使用）に違反していないか
-- [ ] `npx tsc --noEmit` && `npm test` && `npm run build` が通るか
+- [ ] `npm run ci:local` が通るか（lint + typecheck + test + unused + build 一括）
 
 ## パターン集
 
