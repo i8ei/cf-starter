@@ -37,7 +37,7 @@
     "record:generate": "node scripts/cf-starter.mjs record generate",
     "setup:remote": "node scripts/cf-starter.mjs setup remote",
     "init": "node scripts/init-copy.mjs",
-    "lint": "oxlint -c oxlintrc.json app/ src/ shared/ test/",
+    "lint": "oxlint -c oxlintrc.json app/ src/ shared/ test/ e2e/",
     "unused": "knip",
     "test:e2e": "playwright test",
     "ci:local": "npm run lint && npm run typecheck && npm test && npm run unused && npm run build"

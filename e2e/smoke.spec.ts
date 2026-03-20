@@ -1,9 +1,9 @@
 import { test, expect } from "@playwright/test";
 
-test("top page loads and renders React app", async ({ page }) => {
-  await page.goto("/");
-  // Wait for React to mount inside #root (not just the empty shell)
-  const root = page.locator("#root");
-  await expect(root).toBeVisible();
-  await expect(root.locator(":first-child")).toBeAttached({ timeout: 10_000 });
+test("demo page loads and renders content", async ({ page }) => {
+  // /p/demo is outside AuthGuard — works without DB setup
+  await page.goto("/p/demo");
+  await expect(page.locator("h1")).toHaveText("Dashboard Kit Demo", {
+    timeout: 15_000,
+  });
 });

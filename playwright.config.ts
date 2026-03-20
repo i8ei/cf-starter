@@ -10,7 +10,7 @@ export default defineConfig({
     { name: "chromium", use: { browserName: "chromium" } },
   ],
   webServer: {
-    command: "npm run dev",
+    command: "vite dev --config vite.config.e2e.ts",
     url: "http://localhost:5173",
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
