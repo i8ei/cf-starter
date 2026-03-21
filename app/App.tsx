@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Route, Switch } from "wouter";
-import { useSession } from "./hooks/useSession";
+import { useSession, useSetActiveOrganization } from "./hooks/useSession";
 import { useHealth } from "./hooks/useHealth";
 import { AppShell } from "./components/AppShell";
 import { PublicShell } from "./components/PublicShell";
@@ -37,8 +37,15 @@ const publicNavItems: { label: string; href: string }[] = [
  */
 function AuthShell({ authMode, children }: { authMode: "simple-admin" | "better-auth"; children: React.ReactNode }) {
   const { data: session, isLoading } = useSession();
+  const setActiveOrg = useSetActiveOrganization();
 
-  if (isLoading) {
+  // Auto-set active organization for single-org apps (seed-demo creates "default-org")
+  const needsOrgSet = session && !session.currentOrganizationId && !setActiveOrg.isPending;
+  if (needsOrgSet) {
+    setActiveOrg.mutate("default-org");
+  }
+
+  if (isLoading || (session && !session.currentOrganizationId)) {
     return (
       <AppShell>
         <div className="flex justify-center py-20">
