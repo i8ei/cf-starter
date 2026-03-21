@@ -133,10 +133,13 @@ self-written auth（~2,800 LOC）を Better Auth に全面移行。3段階で実
 - `/api/orgs` 自作ルート削除 → Better Auth `/api/auth/organization/*` に代替
 - フロントエンド: `organizationClient()` で org CRUD、招待、メンバー管理
 - SettingsPage: org UI を `isBetterAuth` でゲート（simple-admin 非表示）
+- 招待承認ページ `/invite?id=<invitationId>` を追加し、メールリンクから直接 accept 可能にした
+- 招待メール送信は Better Auth hook → Queue/direct send に統合
 - session に `activeOrganizationId` 追加
 - member テーブルに (org_id, user_id) ユニーク制約
 
 **3者レビュー（14件修正）**
 - /me の none モード対応、seed-demo べき等性、タイミング攻撃対策、banned チェック、型不整合修正、trustedOrigins 補完、Record Engine org FK 更新
+- remote workflow で `APP_BASE_URL` / `CORS_ORIGIN` が localhost のままなら `doctor --remote` / `setup:remote` / `deploy` を fail に変更
 
 結果: 71ファイル変更、+2,360 / -2,833 行。テスト 108 全パス

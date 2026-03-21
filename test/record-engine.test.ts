@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { runInNewContext } from "node:vm";
 import {
   pascalCase,
   camelCase,
@@ -400,36 +401,37 @@ describe("generated Zod schemas validate correctly", () => {
   // using the actual zod library, to prove the output is valid.
   it("generated field expressions are valid zod calls", async () => {
     const { z } = await import("zod");
+    const loadSchema = (expr: string) => runInNewContext(expr, { z });
 
     // text required
     const titleExpr = generateZodField("title", { type: "text", label: "T", required: true, maxLength: 200 }, false);
-    const titleSchema = eval(`(function(z){ return ${titleExpr}; })`)(z);
+    const titleSchema = loadSchema(titleExpr);
     expect(titleSchema.parse("hello")).toBe("hello");
     expect(() => titleSchema.parse("")).toThrow(); // min(1)
     expect(() => titleSchema.parse("x".repeat(201))).toThrow(); // max(200)
 
     // number with range
     const numExpr = generateZodField("h", { type: "number", label: "H", min: 0, max: 100 }, false);
-    const numSchema = eval(`(function(z){ return ${numExpr}; })`)(z);
+    const numSchema = loadSchema(numExpr);
     expect(numSchema.parse(50)).toBe(50);
     expect(() => numSchema.parse(-1)).toThrow();
     expect(() => numSchema.parse(101)).toThrow();
 
     // date
     const dateExpr = generateZodField("d", { type: "date", label: "D" }, false);
-    const dateSchema = eval(`(function(z){ return ${dateExpr}; })`)(z);
+    const dateSchema = loadSchema(dateExpr);
     expect(dateSchema.parse("2025-01-15")).toBe("2025-01-15");
     expect(() => dateSchema.parse("not-a-date")).toThrow();
 
     // select enum
     const selExpr = generateZodField("p", { type: "select", label: "P", options: ["a", "b"] }, false);
-    const selSchema = eval(`(function(z){ return ${selExpr}; })`)(z);
+    const selSchema = loadSchema(selExpr);
     expect(selSchema.parse("a")).toBe("a");
     expect(() => selSchema.parse("c")).toThrow();
 
     // optional in update mode
     const optExpr = generateZodField("title", { type: "text", label: "T", required: true }, true);
-    const optSchema = eval(`(function(z){ return ${optExpr}; })`)(z);
+    const optSchema = loadSchema(optExpr);
     expect(optSchema.parse(undefined)).toBeUndefined();
     expect(optSchema.parse("hello")).toBe("hello");
   });

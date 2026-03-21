@@ -6,6 +6,7 @@ import { AppShell } from "./components/AppShell";
 import { PublicShell } from "./components/PublicShell";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AuthPage } from "./pages/AuthPage";
+import { InvitePage } from "./pages/InvitePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { HomePage } from "./pages/HomePage";
 import { lazy, Suspense } from "react";
@@ -107,6 +108,7 @@ function AppRoutes() {
         {() => (
           <AuthGuard>
             <Switch>
+              <Route path="/invite" component={InvitePage} />
               <Route path="/settings" component={SettingsPage} />
               <Route path="/" component={HomePage} />
               {/* record-engine:routes */}

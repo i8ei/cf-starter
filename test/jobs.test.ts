@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { enqueueJob, handleJobBatch } from "../src/queues/jobs";
+import {
+  enqueueJob,
+  handleJobBatch,
+  sendOrganizationInvite,
+} from "../src/queues/jobs";
 import { createJobQueue, createTestEnv } from "./helpers";
 
 describe("jobs", () => {
@@ -126,5 +130,34 @@ describe("jobs", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(ack).toHaveBeenCalledTimes(1);
     expect(retry).not.toHaveBeenCalled();
+  });
+
+  it("sends invite emails immediately when no queue binding is configured", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ id: "re_direct" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    );
+
+    await sendOrganizationInvite(
+      createTestEnv({
+        JOBS: undefined,
+        EMAIL_PROVIDER: "resend",
+        EMAIL_FROM: "Starter <noreply@example.com>",
+        RESEND_API_KEY: "re_test",
+      }),
+      {
+        organizationId: "9",
+        organizationName: "Starter Org",
+        inviteId: "12",
+        email: "member@example.com",
+        role: "member",
+        inviteUrl: "https://starter.example.com/invite?id=12",
+        requestId: "req_direct",
+      }
+    );
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });

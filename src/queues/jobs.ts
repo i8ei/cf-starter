@@ -8,6 +8,11 @@ import { resolveAppBaseUrl } from "../lib/config";
 import { logEvent } from "../lib/logging";
 import type { JobMessage } from "./types";
 
+type OrganizationInviteEmailPayload = Extract<
+  JobMessage,
+  { type: "organization.invite_email" }
+>["payload"];
+
 /** Replace token values in URLs with [REDACTED] to prevent secret leakage in logs. */
 function redactUrlToken(url: string): string {
   try {
@@ -30,6 +35,51 @@ export async function enqueueJob(
 ) {
   if (!queue) return;
   await queue.send(message);
+}
+
+async function deliverOrganizationInviteEmail(
+  env: Env,
+  payload: OrganizationInviteEmailPayload
+) {
+  const content = buildInviteEmail({
+    organizationName: payload.organizationName,
+    role: payload.role,
+    inviteUrl: payload.inviteUrl,
+  });
+  const delivery = await sendEmail(env, {
+    to: payload.email,
+    subject: content.subject,
+    html: content.html,
+    text: content.text,
+    requestId: payload.requestId,
+    idempotencyKey: `organization-invite:${payload.inviteId}`,
+  });
+  logEvent("info", "queue.organization_invite_email", {
+    organizationId: payload.organizationId,
+    organizationName: payload.organizationName,
+    inviteId: payload.inviteId,
+    email: payload.email,
+    role: payload.role,
+    inviteUrl: redactUrlToken(payload.inviteUrl),
+    delivery: delivery.delivery,
+    providerMessageId: delivery.id ?? null,
+    requestId: payload.requestId,
+  });
+}
+
+export async function sendOrganizationInvite(
+  env: Env,
+  payload: OrganizationInviteEmailPayload
+) {
+  if (env.JOBS) {
+    await enqueueJob(env.JOBS, {
+      type: "organization.invite_email",
+      payload,
+    });
+    return;
+  }
+
+  await deliverOrganizationInviteEmail(env, payload);
 }
 
 export async function handleJobBatch(
@@ -72,30 +122,7 @@ export async function handleJobBatch(
           break;
         case "organization.invite_email":
           {
-            const content = buildInviteEmail({
-              organizationName: message.body.payload.organizationName,
-              role: message.body.payload.role,
-              inviteUrl: message.body.payload.inviteUrl,
-            });
-            const delivery = await sendEmail(env, {
-              to: message.body.payload.email,
-              subject: content.subject,
-              html: content.html,
-              text: content.text,
-              requestId: message.body.payload.requestId,
-              idempotencyKey: `organization-invite:${message.body.payload.inviteId}`,
-            });
-            logEvent("info", "queue.organization_invite_email", {
-              organizationId: message.body.payload.organizationId,
-              organizationName: message.body.payload.organizationName,
-              inviteId: message.body.payload.inviteId,
-              email: message.body.payload.email,
-              role: message.body.payload.role,
-              inviteUrl: redactUrlToken(message.body.payload.inviteUrl),
-              delivery: delivery.delivery,
-              providerMessageId: delivery.id ?? null,
-              requestId: message.body.payload.requestId,
-            });
+            await deliverOrganizationInviteEmail(env, message.body.payload);
           }
           break;
         default:

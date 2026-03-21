@@ -30,18 +30,19 @@
 
 - `scripts/cf-starter.mjs` に unified CLI 入口がある
 - `bin/cf-starter` から同じ CLI を叩ける
-- `doctor` / `doctor --remote`（CORS_ORIGIN localhost警告、secrets確認ヒント含む）
+- `doctor` / `doctor --remote`（remote は `APP_BASE_URL` / `CORS_ORIGIN` が localhost のままだと fail）
 - `env plan`
 - `db migrate --plan --json`
 - `db seed-demo --plan --json`
-- `setup remote`（リモートDB一括準備）
+- `setup remote`（リモートDB一括準備。production origin 未設定なら開始前に停止）
 - `record generate --plan --json`
-- `deploy --plan --json`
+- `deploy --plan --json`（production origin 未設定なら fail）
 
 補足:
 
 - テンプレ repo 本体の `wrangler.jsonc` は意図的に `database_id: "TODO"` と localhost の `APP_BASE_URL` を持つ
 - これらは `npm run init` がコピー先で自動的に実値を埋める（D1作成 + URL設定）
+- 生成後アプリでは remote workflow 前に `APP_BASE_URL=<production https origin>` と `CORS_ORIGIN` への同 origin 追加が必須
 
 ## Design Principles
 
@@ -218,6 +219,8 @@ cf-starter deploy
 - `npm` availability
 - `node_modules` presence
 - `wrangler` availability
+- remote の場合: `APP_BASE_URL` が production HTTPS origin か
+- remote の場合: `CORS_ORIGIN` に `APP_BASE_URL` と同じ production origin が含まれるか
 - `wrangler.jsonc` exists and parses
 - `d1_databases[0]` exists
 - `database_id` が `TODO` でない
@@ -380,6 +383,12 @@ Record Engine は `cf-starter` 独自価値なので、最も agent-ready にす
 2. build
 3. remote preflight
 4. deploy
+
+remote preflight では最低限次を満たす必要がある。
+
+- `APP_BASE_URL` が localhost ではない production HTTPS origin
+- `CORS_ORIGIN` に同じ production origin を含む
+- D1 database_id が設定済み
 
 #### `--plan`
 

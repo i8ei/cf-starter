@@ -38,6 +38,9 @@ npm run deploy
 
 `npm run setup:remote` はリモート D1 へのマイグレーション適用、デモデータ投入、シークレット確認を一括で行います。
 
+注意:
+生成後アプリを remote に出す前に、そのアプリ固有の `APP_BASE_URL` と `CORS_ORIGIN` を本番 URL に設定してください。`localhost` のままでは `npm run doctor -- --remote` / `npm run setup:remote` / `npm run deploy` が失敗します。
+
 ---
 
 ## 技術スタック
@@ -81,6 +84,7 @@ Zod スキーマ → @hono/zod-validator → Drizzle ORM → AppType → hc<AppT
 - [Better Auth](https://better-auth.com/) — DB session + HttpOnly Cookie
 - admin プラグイン（ロール管理・BAN）
 - organization プラグイン（組織・メンバー・招待）
+- 招待メールは `/invite?id=...` のリンクを生成し、受信者がそのまま承認可能
 - CSRF 保護 / Durable Object レート制限 / 監査ログ
 - request id + 構造化 JSON ログ / 統一 API エラー形式
 
@@ -177,7 +181,7 @@ Record Engine は不要なら削除できます。core への依存はゼロで�
 | `npm run init` | 新プロジェクト初期化 |
 | `npm run setup:remote` | リモート DB 準備 |
 | `npm run doctor` | 設定診断 |
-| `npm run doctor -- --remote` | デプロイ前診断 |
+| `npm run doctor -- --remote` | デプロイ前診断（`APP_BASE_URL` / `CORS_ORIGIN` の本番設定も検証） |
 | `npm run lint` | OxLint（React + TypeScript ルール） |
 | `npm run unused` | knip（未使用コード・依存検出） |
 | `npm test` | Vitest ユニットテスト |
@@ -256,9 +260,22 @@ cf-starter/
 `npm run init` + `npm run setup:remote` で大部分は自動化されます。残りの確認事項：
 
 - [ ] `npm run ci:local` が通ることを確認
+- [ ] `vars.APP_BASE_URL` をそのアプリの本番 HTTPS URL にする
+- [ ] `vars.CORS_ORIGIN` に上記本番 URL を含める
 - [ ] KV / R2 / Queue が必要なら作成し `wrangler.jsonc` に設定
 - [ ] `COOKIE_SAME_SITE` / `COOKIE_SECURE` を運用に合わせる
 - [ ] `npm run doctor -- --remote` でデプロイ前チェック
+
+例:
+
+```jsonc
+{
+  "vars": {
+    "CORS_ORIGIN": "http://localhost:5173, https://my-app.ichevi.workers.dev",
+    "APP_BASE_URL": "https://my-app.ichevi.workers.dev"
+  }
+}
+```
 
 ---
 

@@ -50,7 +50,7 @@ describe("analyzeDoctorContext", () => {
     expect(report.warnings).toContain("d1_databases[0].database_id is still TODO.");
   });
 
-  it("adds remote-specific checks and whoami probe results", () => {
+  it("fails remote doctor when production web origins are still local-only", () => {
     const report = analyzeDoctorContext({
       nodeVersion: "20.11.1",
       target: "remote",
@@ -98,10 +98,10 @@ describe("analyzeDoctorContext", () => {
       },
     });
 
-    expect(report.ok).toBe(true);
+    expect(report.ok).toBe(false);
     expect(report.summary[0]).toContain("Remote deploy prerequisites");
-    expect(report.checks.find((check) => check.id === "remote-app-base-url")?.level).toBe("warn");
-    expect(report.checks.find((check) => check.id === "remote-cors-origin")?.level).toBe("warn");
+    expect(report.checks.find((check) => check.id === "remote-app-base-url")?.level).toBe("fail");
+    expect(report.checks.find((check) => check.id === "remote-cors-origin")?.level).toBe("fail");
     expect(report.checks.find((check) => check.id === "remote-secrets-hint")?.level).toBe("info");
     expect(report.checks.find((check) => check.id === "wrangler-auth")?.level).toBe("warn");
   });

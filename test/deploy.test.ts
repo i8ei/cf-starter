@@ -15,6 +15,8 @@ describe("buildDeployPlan", () => {
         main: "./src/index.ts",
         d1_databases: [{ database_id: "TODO" }],
         vars: {
+          APP_BASE_URL: "https://starter.example.com",
+          CORS_ORIGIN: "http://localhost:5173, https://starter.example.com",
           EMAIL_FROM: "cf-starter <noreply@example.com>",
         },
       },
@@ -35,6 +37,30 @@ describe("buildDeployPlan", () => {
     expect(report.warnings).toContain(
       "Deploy may fail or be incomplete because d1_databases[0].database_id is not set."
     );
+  });
+
+  it("fails when APP_BASE_URL and CORS_ORIGIN are not production-ready", () => {
+    const report = buildDeployPlan({
+      packageJson: {
+        scripts: {
+          build: "vite build",
+        },
+      },
+      config: {
+        vars: {
+          APP_BASE_URL: "http://localhost:5173",
+          CORS_ORIGIN: "http://localhost:5173",
+        },
+      },
+      pathStatuses: {
+        "node_modules": true,
+        "node_modules/.bin/wrangler": true,
+      },
+    });
+
+    expect(report.ok).toBe(false);
+    expect(report.checks.find((check) => check.id === "app-base-url")?.level).toBe("fail");
+    expect(report.checks.find((check) => check.id === "cors-origin")?.level).toBe("fail");
   });
 
   it("fails when the build script is missing", () => {

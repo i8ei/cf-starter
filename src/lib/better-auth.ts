@@ -6,6 +6,7 @@ import * as schema from "../db/schema";
 import type { Env } from "../types";
 import { resolveAppBaseUrl } from "./config";
 import { resolveCorsOrigins } from "./cors";
+import { sendOrganizationInvite } from "../queues/jobs";
 
 /**
  * Per-request auth instance factory.
@@ -25,6 +26,20 @@ export function createAuth(env: Env) {
       organization({
         creatorRole: "owner",
         membershipLimit: 100,
+        sendInvitationEmail: async (data, request) => {
+          const inviteUrl = new URL("/invite", resolveAppBaseUrl(env));
+          inviteUrl.searchParams.set("id", data.id);
+
+          await sendOrganizationInvite(env, {
+            organizationId: data.organization.id,
+            organizationName: data.organization.name,
+            inviteId: data.id,
+            email: data.email,
+            role: data.role,
+            inviteUrl: inviteUrl.toString(),
+            requestId: request?.headers.get("x-request-id") ?? crypto.randomUUID(),
+          });
+        },
       }),
     ],
     session: {

@@ -40,13 +40,30 @@ const planReport = buildDeployPlan({
   config,
   pathStatuses,
 });
+const wantsJson = values.json;
 
 if (values.plan) {
   printReport(planReport, { json: values.json });
   process.exit(planReport.ok ? 0 : 1);
 }
 
-const wantsJson = values.json;
+if (!planReport.ok) {
+  const report = {
+    ...planReport,
+    mode: "apply",
+    summary: ["Deploy blocked because remote configuration is incomplete."],
+    nextSteps: planReport.nextSteps?.length
+      ? planReport.nextSteps
+      : ["Run `npm run doctor -- --remote` and fix the failing checks."],
+  };
+
+  if (wantsJson) {
+    printReport(report, { json: true });
+  } else {
+    printReport(report, { json: false });
+  }
+  process.exit(1);
+}
 const buildResult = spawnSync("npm", ["run", "build"], {
   cwd,
   stdio: wantsJson ? "pipe" : "inherit",

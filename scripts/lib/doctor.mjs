@@ -1,3 +1,5 @@
+import { inspectRemoteWebConfig } from "./remote-config.mjs";
+
 function hasScript(scripts, name) {
   return typeof scripts?.[name] === "string" && scripts[name].length > 0;
 }
@@ -191,39 +193,43 @@ export function analyzeDoctorContext({
   }
 
   if (target === "remote") {
-    if (typeof vars.APP_BASE_URL === "string" && /^https:\/\//.test(vars.APP_BASE_URL)) {
+    const remoteWebConfig = inspectRemoteWebConfig(vars);
+
+    if (
+      remoteWebConfig.appBaseUrlIsConfigured &&
+      remoteWebConfig.appBaseUrlUsesHttps &&
+      !remoteWebConfig.appBaseUrlIsLocal
+    ) {
       checks.push({
         id: "remote-app-base-url",
         level: "pass",
-        message: `APP_BASE_URL uses HTTPS for remote deploys (${vars.APP_BASE_URL}).`,
+        message: `APP_BASE_URL uses HTTPS for remote deploys (${remoteWebConfig.appBaseUrl}).`,
       });
     } else {
       checks.push({
         id: "remote-app-base-url",
-        level: "warn",
-        message: "APP_BASE_URL is not using HTTPS for remote deploys.",
-        fix: "Set APP_BASE_URL to the deployed HTTPS origin before production use.",
+        level: "fail",
+        message: "APP_BASE_URL must be set to the deployed HTTPS origin for remote workflows.",
+        fix: "Set APP_BASE_URL in wrangler.jsonc to the app's production HTTPS origin (not localhost).",
       });
     }
 
-    // CORS_ORIGIN check: warn if it only contains localhost
-    if (typeof vars.CORS_ORIGIN === "string") {
-      const origins = vars.CORS_ORIGIN.split(",").map((o) => o.trim());
-      const hasNonLocal = origins.some((o) => !o.includes("localhost") && !o.includes("127.0.0.1"));
-      if (hasNonLocal) {
-        checks.push({
-          id: "remote-cors-origin",
-          level: "pass",
-          message: "CORS_ORIGIN includes a non-localhost origin for production.",
-        });
-      } else {
-        checks.push({
-          id: "remote-cors-origin",
-          level: "warn",
-          message: "CORS_ORIGIN only contains localhost origins. Remote API calls will be blocked by CORS.",
-          fix: "Add the production URL to CORS_ORIGIN in wrangler.jsonc (e.g. 'http://localhost:5173, https://my-app.ichevi.workers.dev').",
-        });
-      }
+    if (
+      remoteWebConfig.hasRemoteCorsOrigin &&
+      remoteWebConfig.appBaseUrlIncludedInCors
+    ) {
+      checks.push({
+        id: "remote-cors-origin",
+        level: "pass",
+        message: "CORS_ORIGIN includes the production origin for remote use.",
+      });
+    } else {
+      checks.push({
+        id: "remote-cors-origin",
+        level: "fail",
+        message: "CORS_ORIGIN must include the production origin before remote workflows.",
+        fix: "Add the production URL to CORS_ORIGIN in wrangler.jsonc (for example 'http://localhost:5173, https://my-app.ichevi.workers.dev').",
+      });
     }
 
     // Required secrets check

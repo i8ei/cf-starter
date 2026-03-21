@@ -55,7 +55,7 @@
 
 - `init` — プロジェクト初期化（名前置換 + D1作成 + URL設定 + DB構築）
 - `doctor` — ローカル前提の診断
-- `doctor --remote` — remote deploy 前提の追加診断（CORS_ORIGIN localhost警告、secrets確認ヒント含む）
+- `doctor --remote` — remote deploy 前提の追加診断（本番 `APP_BASE_URL` / `CORS_ORIGIN` 未設定なら fail）
 - `env plan` — `wrangler.jsonc` から Cloudflare 資源と binding の不足を整理
 - `db migrate --plan` — D1 migration の apply 前確認
 - `db seed-demo --plan` — demo user / org 投入前の確認
@@ -65,7 +65,7 @@
 
 この CLI は JSON envelope を返すので、AI / CI から機械可読に扱えます。
 
-テンプレ方針として、repo 本体の `wrangler.jsonc` には `database_id` や本番 `APP_BASE_URL` を固定しません。`npm run init` がコピー先で自動的に実値を埋めます。
+テンプレ方針として、repo 本体の `wrangler.jsonc` には `database_id` や本番 `APP_BASE_URL` を固定しません。`npm run init` がコピー先で自動的に実値を埋めます。生成後アプリでは `APP_BASE_URL` をそのアプリの本番 HTTPS origin に、`CORS_ORIGIN` に同じ origin を含める必要があります。未設定のまま `doctor --remote` / `setup:remote` / `deploy` を通すことはできません。
 
 ## Record Engine
 
@@ -100,6 +100,7 @@ UI/UX 品質:
 
 - 未ログイン時 → AuthPage をインライン表示（専用 `/login` ルートはない）
 - `/` → HomePage（スターター案内 + 現在のユーザー/組織表示）
+- `/invite?id=<invitationId>` → 招待受諾ページ（better-auth の organization invite 用）
 - `/:record` → 一覧（Record Engine で生成・配線後に有効）
 - `/:record/new` → 新規作成（同上）
 - `/:record/:id` → 詳細（status 変更ボタン付き、同上）
@@ -202,6 +203,14 @@ coreからRecord Engineへの直接importはゼロ。CLAUDE.md の「Record Engi
 Better Auth 内蔵: `/api/auth/sign-up/email`, `/api/auth/sign-in/email`, `/api/auth/sign-out`, `/api/auth/organization/*` 等
 カスタム: `/api/auth/me`（ユーザー+組織情報）, `/api/auth/logout`, `/api/auth/admin-login`（simple-admin 用）
 
+### 招待フロー
+
+- 組織招待は Better Auth organization plugin の `sendInvitationEmail` hook を使う
+- 送信リンクは `APP_BASE_URL + /invite?id=<invitationId>` で生成する
+- `APP_BASE_URL` は generated app ごとの本番 URL を使う。テンプレ repo 本体の localhost 値はそのまま deploy しない
+- `JOBS` Queue binding がある場合は queue 経由で送信し、ない場合はその場で直接送信する
+- フロントエンドは `/invite` ページから `acceptInvitation` を呼ぶ
+
 ### 重要な制約
 
 - **per-request instance 必須**: `createAuth(env)` をリクエストごとに呼ぶ。シングルトン厳禁（D1 stale reference で30秒+ハング）
@@ -276,7 +285,7 @@ validation error も同じ envelope に入れます。
 - `organization.invite_email` — 組織招待メール
 
 パスワードリセット・メール検証は Better Auth が内蔵処理するため、Queue 不要。
-consumer は `src/queues/jobs.ts` と Worker module の `queue()` handler に集約します。
+consumer は `src/queues/jobs.ts` と Worker module の `queue()` handler に集約します。`organization.invite_email` は Queue が未設定でも direct send にフォールバックします。
 
 ## D1 の既知制約
 

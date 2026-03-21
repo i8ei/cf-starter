@@ -9,26 +9,15 @@ import {
   useInviteMember,
   useAcceptInvitation,
 } from "~/hooks/useSession";
+import type { SessionData } from "~/hooks/useSession";
 import { useHealth } from "~/hooks/useHealth";
 
 export function SettingsPage() {
-  const [orgName, setOrgName] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<string>("member");
-  const [invitationId, setInvitationId] = useState("");
   const { data: session } = useSession();
   const { data: health } = useHealth();
-  const isBetterAuth = (health?.authMode as string) === "better-auth";
-  const { data: orgsData } = useListOrganizations();
-  const createOrganization = useCreateOrganization();
-  const setActiveOrg = useSetActiveOrganization();
-  const inviteMember = useInviteMember();
-  const acceptInvitation = useAcceptInvitation();
   const logout = useLogout();
 
   if (!session) return null;
-
-  const organizations = orgsData ?? [];
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -54,7 +43,29 @@ export function SettingsPage() {
         </button>
       </Panel>
 
-      {isBetterAuth ? <Panel
+      {(health?.authMode as string) === "better-auth" ? (
+        <BetterAuthSettings session={session} />
+      ) : null}
+    </div>
+  );
+}
+
+function BetterAuthSettings({ session }: { session: SessionData }) {
+  const [orgName, setOrgName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<string>("member");
+  const [invitationId, setInvitationId] = useState("");
+  const { data: orgsData } = useListOrganizations();
+  const createOrganization = useCreateOrganization();
+  const setActiveOrg = useSetActiveOrganization();
+  const inviteMember = useInviteMember();
+  const acceptInvitation = useAcceptInvitation();
+
+  const organizations = orgsData ?? [];
+
+  return (
+    <>
+      <Panel
         title="Organizations"
         subtitle="Switch, create, or manage organizations."
       >
@@ -123,9 +134,9 @@ export function SettingsPage() {
             </div>
           </div>
         </div>
-      </Panel> : null}
+      </Panel>
 
-      {isBetterAuth ? <Panel title="Invitations" subtitle="Invite members or accept invitations.">
+      <Panel title="Invitations" subtitle="Invite members or accept invitations.">
         <div className="grid gap-6 lg:grid-cols-2">
           {session.currentOrganizationId ? (
             <div className="space-y-3">
@@ -201,7 +212,7 @@ export function SettingsPage() {
             ) : null}
           </div>
         </div>
-      </Panel> : null}
-    </div>
+      </Panel>
+    </>
   );
 }

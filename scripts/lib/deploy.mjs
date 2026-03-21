@@ -1,3 +1,5 @@
+import { inspectRemoteWebConfig } from "./remote-config.mjs";
+
 function hasScript(scripts, name) {
   return typeof scripts?.[name] === "string" && scripts[name].length > 0;
 }
@@ -10,6 +12,7 @@ export function buildDeployPlan({
   const scripts = packageJson.scripts ?? {};
   const warnings = [];
   const checks = [];
+  const vars = config?.vars ?? {};
 
   if (hasScript(scripts, "build")) {
     checks.push({
@@ -51,6 +54,46 @@ export function buildDeployPlan({
       level: "warn",
       message: "EMAIL_FROM still contains the default cf-starter value.",
       fix: "Replace EMAIL_FROM with a real sender before production use.",
+    });
+  }
+
+  const remoteWebConfig = inspectRemoteWebConfig(vars);
+  if (
+    remoteWebConfig.appBaseUrlIsConfigured &&
+    remoteWebConfig.appBaseUrlUsesHttps &&
+    !remoteWebConfig.appBaseUrlIsLocal
+  ) {
+    checks.push({
+      id: "app-base-url",
+      level: "pass",
+      message: `APP_BASE_URL is ready for remote deploys (${remoteWebConfig.appBaseUrl}).`,
+    });
+  } else {
+    warnings.push("Deploy is blocked because APP_BASE_URL is not set to a production HTTPS origin.");
+    checks.push({
+      id: "app-base-url",
+      level: "fail",
+      message: "APP_BASE_URL must be set to the app's production HTTPS origin before deploy.",
+      fix: "Set vars.APP_BASE_URL in wrangler.jsonc to the deployed HTTPS URL for this generated app.",
+    });
+  }
+
+  if (
+    remoteWebConfig.hasRemoteCorsOrigin &&
+    remoteWebConfig.appBaseUrlIncludedInCors
+  ) {
+    checks.push({
+      id: "cors-origin",
+      level: "pass",
+      message: "CORS_ORIGIN includes the production app origin.",
+    });
+  } else {
+    warnings.push("Deploy is blocked because CORS_ORIGIN does not include the production origin.");
+    checks.push({
+      id: "cors-origin",
+      level: "fail",
+      message: "CORS_ORIGIN must include the same production origin used by APP_BASE_URL.",
+      fix: "Add the deployed HTTPS app origin to vars.CORS_ORIGIN in wrangler.jsonc.",
     });
   }
 

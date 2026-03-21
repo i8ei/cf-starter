@@ -16,6 +16,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { readWranglerConfig, getPrimaryD1DatabaseName, resolveWranglerBinary } from "./lib/wrangler-config.mjs";
+import { inspectRemoteWebConfig } from "./lib/remote-config.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -36,6 +37,23 @@ async function main() {
   const dbName = getPrimaryD1DatabaseName(config);
   if (!dbName) {
     console.error("d1_databases[0].database_name not found in wrangler.jsonc");
+    process.exit(1);
+  }
+
+  const remoteWebConfig = inspectRemoteWebConfig(config.vars ?? {});
+  if (
+    !remoteWebConfig.appBaseUrlIsConfigured ||
+    !remoteWebConfig.appBaseUrlUsesHttps ||
+    remoteWebConfig.appBaseUrlIsLocal
+  ) {
+    console.error("APP_BASE_URL must be set to this app's production HTTPS origin before setup:remote.");
+    process.exit(1);
+  }
+  if (
+    !remoteWebConfig.hasRemoteCorsOrigin ||
+    !remoteWebConfig.appBaseUrlIncludedInCors
+  ) {
+    console.error("CORS_ORIGIN must include the same production origin as APP_BASE_URL before setup:remote.");
     process.exit(1);
   }
 
