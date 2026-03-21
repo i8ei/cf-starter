@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Route, Switch } from "wouter";
-import { useSession, useSetActiveOrganization, useListOrganizations } from "./hooks/useSession";
+import { useSession, useSetActiveOrganization, useListOrganizations, type SessionData } from "./hooks/useSession";
 import { useHealth } from "./hooks/useHealth";
 import { AppShell } from "./components/AppShell";
 import { PublicShell } from "./components/PublicShell";
@@ -35,25 +35,37 @@ const publicNavItems: { label: string; href: string }[] = [
  * Authenticated shell — only runs useSession when auth is enabled.
  * Prevents unnecessary /api/auth/me calls for public apps.
  */
-function AuthShell({ authMode, children }: { authMode: "simple-admin" | "better-auth"; children: React.ReactNode }) {
-  const { data: session, isLoading } = useSession();
+/**
+ * Auto-activates the first organization after login in better-auth mode.
+ * Separated into its own component so org-related hooks are only called
+ * when Better Auth endpoints are available (avoids 404 in simple-admin mode).
+ */
+function OrgAutoActivator({ session }: { session: SessionData }) {
   const orgs = useListOrganizations();
   const setActiveOrg = useSetActiveOrganization();
-  const autoSetAttempted = useRef(false);
+  const attempted = useRef(false);
 
-  // Auto-set active organization when logged in but no org is active.
-  // Uses the first org the user belongs to (seed-demo creates "default-org").
   useEffect(() => {
-    if (!session || session.currentOrganizationId || autoSetAttempted.current) return;
+    if (session.currentOrganizationId || attempted.current) return;
     const orgList = orgs.data;
     if (!orgList || orgList.length === 0) return;
-    autoSetAttempted.current = true;
+    attempted.current = true;
     setActiveOrg.mutate(orgList[0].id);
-  }, [session, orgs.data, setActiveOrg]);
+  }, [session.currentOrganizationId, orgs.data, setActiveOrg]);
 
-  if (isLoading || (session && !session.currentOrganizationId)) {
+  return null;
+}
+
+function AuthShell({ authMode, children }: { authMode: "simple-admin" | "better-auth"; children: React.ReactNode }) {
+  const { data: session, isLoading } = useSession();
+
+  const waitingForOrg = authMode === "better-auth" && session && !session.currentOrganizationId;
+
+  if (isLoading || waitingForOrg) {
     return (
       <AppShell>
+        {/* Render OrgAutoActivator only in better-auth mode while waiting for org */}
+        {waitingForOrg && <OrgAutoActivator session={session} />}
         <div className="flex justify-center py-20">
           <p className="text-sm text-muted">Loading...</p>
         </div>

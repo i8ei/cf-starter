@@ -70,8 +70,12 @@
     // "better-auth" (full user management). Defaults to "better-auth".
     // Backward compat: AUTH_ENABLED=false is equivalent to AUTH_MODE=none.
     // "AUTH_MODE": "none",
-    // "ADMIN_PASSWORD": "changeme",  // required when AUTH_MODE=simple-admin (use wrangler secret for prod)
-    // "BETTER_AUTH_SECRET": "change-me-to-a-random-string",  // required for better-auth mode (use wrangler secret for prod)
+    // ADMIN_PASSWORD: required when AUTH_MODE=simple-admin.
+    //   Set via: npx wrangler secret put ADMIN_PASSWORD
+    //   For local dev, add to .dev.vars: ADMIN_PASSWORD=your-password-here
+    // BETTER_AUTH_SECRET: required for better-auth mode (random 32+ chars).
+    //   Set via: npx wrangler secret put BETTER_AUTH_SECRET
+    //   For local dev, add to .dev.vars: BETTER_AUTH_SECRET=your-secret-here
     // Set to "false" to disable authentication for local development.
     // "AUTH_ENABLED": "false"
   },
