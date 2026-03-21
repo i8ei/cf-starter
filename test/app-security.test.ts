@@ -57,7 +57,7 @@ describe("app security", () => {
             "cf-connecting-ip": "203.0.113.10",
             origin: "http://localhost:5173",
           },
-          body: JSON.stringify({ password: "wrong" }),
+          body: JSON.stringify({ password: "wrong-password" }),
         }),
         env
       );

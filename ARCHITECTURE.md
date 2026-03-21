@@ -335,3 +335,8 @@ AI や開発者は、次を壊さないでください。
 - organization context を無視して multi-tenant data を読む route を増やさない
 - 監査対象の操作から audit log を外さない
 - banned ユーザーチェックを外さない
+- 認可判定をフロントだけで行わない（サーバーの `requireAuth` / `requireRole` / `requireOrgRole` で強制する）
+- `UserRole` / `OrgRole` 型を使う（`string` で直接指定しない。タイポ防止）
+- 認証エンドポイントの rate limit を外さない
+- `onError` で詳細エラーをクライアントに返さない（`"Internal Server Error"` のみ）
+- デプロイ前に `security-check` を通す（`npm run deploy` で自動実行）

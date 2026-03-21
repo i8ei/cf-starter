@@ -2,7 +2,7 @@ import { createMiddleware } from "hono/factory";
 import { drizzle } from "drizzle-orm/d1";
 import { and, eq } from "drizzle-orm";
 import { member } from "../db/schema";
-import type { AppContextEnv } from "../types";
+import type { AppContextEnv, UserRole, OrgRole } from "../types";
 import { getSessionCookie } from "../lib/session";
 import { jsonError } from "../lib/http";
 import { resolveAuthMode } from "../lib/auth-mode";
@@ -50,7 +50,7 @@ export const requireAuth = createMiddleware<AppContextEnv>(async (c, next) => {
 
   const userId = result.user.id;
   const userRecord = result.user as Record<string, unknown>;
-  const userRole = userRecord.role as string ?? "user";
+  const userRole = (userRecord.role as UserRole) ?? "user";
   const activeOrgId = (result.session as Record<string, unknown>).activeOrganizationId as string | null;
 
   // Check if user is banned (admin plugin)
@@ -76,7 +76,7 @@ export const requireAuth = createMiddleware<AppContextEnv>(async (c, next) => {
 
     if (memberRow) {
       c.set("orgId", activeOrgId);
-      c.set("orgRole", memberRow.role);
+      c.set("orgRole", memberRow.role as OrgRole);
     }
     // else: activeOrgId is stale (user removed from org) — orgId stays undefined
   }

@@ -1,5 +1,11 @@
 import type { JobMessage } from "./queues/types";
 
+/** User-level roles (stored in user.role column) */
+export type UserRole = "user" | "admin";
+
+/** Organization-level membership roles (stored in member.role column) */
+export type OrgRole = "owner" | "admin" | "member";
+
 export interface Env {
   DB: D1Database;
   KV?: KVNamespace;
@@ -25,9 +31,9 @@ export interface AppVariables {
   requestId: string;
   sessionId?: string;
   userId?: string;
-  roles?: string[];
+  roles?: UserRole[];
   orgId?: string;
-  orgRole?: string;
+  orgRole?: OrgRole;
 }
 
 export type AppContextEnv = {

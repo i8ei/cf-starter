@@ -142,7 +142,8 @@ npm run dev              # ローカル開発（統合モード: Vite + workerd�
 npm run dev:split        # ローカル開発（分離モード: Vite + wrangler 別起動）
 npm run build            # ビルド
 npm run preview          # ビルド後プレビュー
-npm run deploy           # Cloudflare にデプロイ
+npm run security-check   # デプロイ前セキュリティ監査（deploy 時に自動実行）
+npm run deploy           # セキュリティチェック → ビルド → Cloudflare にデプロイ
 npm run cli -- <...>     # unified CLI の生入口
 npm run doctor           # ローカル CLI / Wrangler 設定の診断
 npm run env:plan         # wrangler.jsonc から Cloudflare 資源計画を出す
@@ -166,6 +167,7 @@ cf-starter db migrate --plan --json
 cf-starter db seed-demo --plan --json
 cf-starter record generate --record shared/records/xxx.ts --plan --json
 cf-starter deploy --plan --json
+cf-starter security-check --json
 npm run cli -- doctor --json
 npm run cli -- doctor --remote --json
 npm run cli -- env plan --json
@@ -645,3 +647,56 @@ health チェック (`/api/health`) もバインディングの有無を動的�
 - フロントの API 呼び出しは `hc<AppType>` + TanStack Query
 - バリデーションは Zod で定義し `shared/schemas/` に置く（フロント・バック共有）
 - パスエイリアス: `~/` → app, `@server/` → src, `@shared/` → shared
+
+## セキュリティガイド（AI向け）
+
+このテンプレートから派生したアプリを開発する際、以下のルールを守ること。
+
+### 必須: サーバー側で認可を強制する
+
+- **権限判定をフロントだけで行わない**。UIでボタンを隠しても、APIを直叩きされたら終わり
+- すべての保護APIに `requireAuth` ミドルウェアを適用する
+- 管理者APIには `requireRole("admin")` を追加する
+- 組織内の操作には `requireOrgRole()` を追加する
+- データの取得・更新・削除で `organizationId` スコープを必ず入れる（Record Engine生成ルートは自動適用済み）
+
+### 必須: 課金・プラン判定はサーバー側で行う
+
+- `plan === "pro"` のような判定をフロントだけで行わない
+- 有料機能のAPI実行条件はサーバー側（DB/Webhook反映）で検証する
+- localStorage や state だけで有料機能を解放しない
+
+### 必須: 入力は信用しない
+
+- すべてのAPIエンドポイントで Zod バリデーションを適用する（`validator("json", schema)`）
+- リクエスト本文の `userId`, `role`, `plan` を信用しない。これらはサーバーのセッション/ミドルウェアから取得する
+- クエリパラメータ `?admin=true` 等で権限が変わる設計にしない
+
+### 必須: 秘密情報を漏らさない
+
+- APIレスポンスにパスワードハッシュ、トークン、内部ID、billing metadata を含めない
+- 本番で stack trace, SQL文, 環境変数を返さない（`onError` は `"Internal Server Error"` のみ返す）
+- `select *` を避け、必要なカラムだけ返す
+- エクスポート機能は権限チェック付きで実装する
+
+### 推奨: デプロイ前チェック
+
+- `npm run security-check` がデプロイ前に自動実行される
+- ブロック（✗）が出たらデプロイは止まる。修正してから再実行
+- 警告（⚠）は確認の上で判断する
+
+### 型安全な権限チェック
+
+```ts
+// UserRole = "user" | "admin"（src/types.ts で定義）
+// OrgRole  = "owner" | "admin" | "member"
+
+// 使用例:
+import { requireRole } from "../middleware/require-role";
+import { requireOrgRole } from "../middleware/require-org-role";
+
+app.delete("/admin/users/:id", requireRole("admin"), async (c) => { ... });
+app.post("/projects", requireOrgRole(["owner", "admin"]), async (c) => { ... });
+```
+
+タイポ（例: `requireRole("admi")`）はコンパイルエラーになる。

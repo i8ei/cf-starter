@@ -8,6 +8,7 @@ export function formatCliUsage() {
     "  node scripts/cf-starter.mjs setup remote",
     "  node scripts/cf-starter.mjs record generate --record <path> [--plan] [--json]",
     "  node scripts/cf-starter.mjs deploy [--plan] [--json]",
+    "  node scripts/cf-starter.mjs security-check [--json]",
   ].join("\n");
 }
 
@@ -72,6 +73,15 @@ export function resolveCliCommand(argv) {
       command: "setup remote",
       script: "setup-remote.mjs",
       args: argv.slice(2),
+    };
+  }
+
+  if (argv[0] === "security-check") {
+    return {
+      ok: true,
+      command: "security-check",
+      script: "security-check.mjs",
+      args: argv.slice(1),
     };
   }
 

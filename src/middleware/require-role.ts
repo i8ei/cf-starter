@@ -1,18 +1,18 @@
 import { createMiddleware } from "hono/factory";
-import type { AppContextEnv } from "../types";
+import type { AppContextEnv, UserRole } from "../types";
 import { writeAuditLog } from "../lib/audit";
 import { jsonError } from "../lib/http";
 import { logRequestEvent } from "../lib/logging";
 
 export function hasRequiredRole(
-  assignedRoles: string[],
-  requiredRoles: string | string[]
+  assignedRoles: UserRole[],
+  requiredRoles: UserRole | UserRole[]
 ): boolean {
   const expected = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
   return expected.some((role) => assignedRoles.includes(role));
 }
 
-export function requireRole(requiredRoles: string | string[]) {
+export function requireRole(requiredRoles: UserRole | UserRole[]) {
   const expected = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
 
   return createMiddleware<AppContextEnv>(async (c, next) => {

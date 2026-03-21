@@ -7,6 +7,8 @@ type RateLimitOptions = {
   namespace: string;
   maxRequests: number;
   windowSeconds: number;
+  /** If true, block requests when RATE_LIMITER binding is missing (default: false) */
+  strict?: boolean;
 };
 
 export function rateLimit(options: RateLimitOptions) {
@@ -18,6 +20,15 @@ export function rateLimit(options: RateLimitOptions) {
     const key = `rl:${options.namespace}:${ip}:${bucket}`;
 
     if (!c.env.RATE_LIMITER) {
+      if (options.strict) {
+        logRequestEvent("error", "rate_limit.no_binding", c, {
+          namespace: options.namespace,
+        });
+        return jsonError(c, 503, "service_unavailable", "Rate limiter unavailable");
+      }
+      logRequestEvent("warn", "rate_limit.no_binding", c, {
+        namespace: options.namespace,
+      });
       await next();
       return;
     }

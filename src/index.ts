@@ -52,10 +52,12 @@ export const app = new Hono<AppContextEnv>()
   )
   .use("/api/*", csrfProtection)
   .onError((err, c) => {
+    // Truncate error message to prevent leaking sensitive details in logs
+    const safeMessage = err.message ? err.message.slice(0, 200) : "Unknown error";
     logEvent("error", "request.error", {
       method: c.req.method,
       path: c.req.path,
-      message: err.message,
+      message: safeMessage,
       requestId: c.get("requestId"),
     });
     return jsonError(c, 500, "internal_error", "Internal Server Error");

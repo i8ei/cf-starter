@@ -211,6 +211,59 @@ function cleanMigrations() {
 }
 
 // ────────────────────────────────────────────
+// Demo / example cleanup
+// ────────────────────────────────────────────
+
+function removeDemo() {
+  // Delete demo files
+  const demoFiles = [
+    "src/routes/public-example.ts",
+    "app/pages/DemoPage.tsx",
+  ];
+  for (const rel of demoFiles) {
+    const abs = path.resolve(ROOT, rel);
+    if (fs.existsSync(abs)) {
+      fs.unlinkSync(abs);
+      console.log(`✓ Deleted ${rel}`);
+    }
+  }
+
+  // Remove public-example import and route from src/index.ts
+  const indexPath = path.resolve(ROOT, "src/index.ts");
+  if (fs.existsSync(indexPath)) {
+    let content = fs.readFileSync(indexPath, "utf-8");
+    // Remove import line
+    content = content.replace(/^import publicExample.*\n/m, "");
+    // Remove .route("/api/public/example", publicExample) — with or without trailing semicolon
+    content = content.replace(/\s*\.route\("\/api\/public\/example",\s*publicExample\)[;]?/g, "");
+    fs.writeFileSync(indexPath, content, "utf-8");
+    console.log("✓ Removed public-example route from src/index.ts");
+  }
+
+  // Remove DemoPage import and /p/demo route from app/App.tsx
+  const appPath = path.resolve(ROOT, "app/App.tsx");
+  if (fs.existsSync(appPath)) {
+    let content = fs.readFileSync(appPath, "utf-8");
+    // Remove lazy import line
+    content = content.replace(/^const DemoPage = lazy\(.*\n/m, "");
+    // Remove the /p/demo Route block (multiline)
+    content = content.replace(
+      /\s*<Route path="\/p\/demo">[\s\S]*?<\/Route>\n?/,
+      "\n"
+    );
+    // Remove lazy/Suspense imports if no longer used
+    if (!content.includes("lazy(") && !content.includes("Suspense")) {
+      content = content.replace(
+        /import \{ lazy, Suspense \} from "react";\n/,
+        ""
+      );
+    }
+    fs.writeFileSync(appPath, content, "utf-8");
+    console.log("✓ Removed DemoPage route from app/App.tsx");
+  }
+}
+
+// ────────────────────────────────────────────
 // Main
 // ────────────────────────────────────────────
 
@@ -287,7 +340,11 @@ async function main() {
   console.log("\n── Production URLs ──");
   setProdUrls(appName);
 
-  // ── Step 4: Clean migrations → generate → migrate → seed ──
+  // ── Step 4: Remove demo/example files ──
+  console.log("\n── Removing demo files ──");
+  removeDemo();
+
+  // ── Step 5: Clean migrations → generate → migrate → seed ──
   console.log("\n── Database setup ──");
   cleanMigrations();
 
@@ -309,6 +366,17 @@ async function main() {
 
   npm run dev        Start development
   npm run deploy     Deploy to Cloudflare
+
+──────────────────────────────────────────────
+🔒 Security checklist (before going public)
+──────────────────────────────────────────────
+  [ ] Set ADMIN_PASSWORD to a strong value (8+ chars) in .dev.vars & wrangler.jsonc
+  [ ] Set BETTER_AUTH_SECRET to a random 32+ char string
+  [ ] Verify CORS_ORIGIN only lists your domains (no wildcards)
+  [ ] Confirm AUTH_MODE is not "none" if handling private data
+  [ ] Run "npm run security-check" before first deploy
+  [ ] Review API routes: ensure all mutations check ownership/role
+──────────────────────────────────────────────
 `);
 }
 

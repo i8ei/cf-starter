@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const adminLoginSchema = z.object({
-  password: z.string().min(1),
+  password: z.string().min(8),
 });
 
 export type AdminLoginInput = z.infer<typeof adminLoginSchema>;

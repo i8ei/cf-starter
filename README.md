@@ -85,8 +85,11 @@ Zod スキーマ → @hono/zod-validator → Drizzle ORM → AppType → hc<AppT
 - admin プラグイン（ロール管理・BAN）
 - organization プラグイン（組織・メンバー・招待）
 - 招待メールは `/invite?id=...` のリンクを生成し、受信者がそのまま承認可能
-- CSRF 保護 / Durable Object レート制限 / 監査ログ
+- CSRF 保護（Origin/Referer 検証、全 POST/PUT/PATCH/DELETE に自動適用）
+- Durable Object レート制限（認証エンドポイントに適用済み）
+- 監査ログ（認可失敗・重要操作を D1 に記録）
 - request id + 構造化 JSON ログ / 統一 API エラー形式
+- デプロイ前セキュリティチェック（`npm run security-check` / `npm run deploy` で自動実行）
 
 ### Record Engine（コード生成）
 
@@ -177,7 +180,8 @@ Record Engine は不要なら削除できます。core への依存はゼロで�
 | `npm run dev` | 統合開発モード |
 | `npm run dev:split` | Vite + Wrangler 分離起動（認証フリッカー回避） |
 | `npm run build` | ビルド |
-| `npm run deploy` | Cloudflare にデプロイ |
+| `npm run deploy` | セキュリティチェック → ビルド → Cloudflare にデプロイ |
+| `npm run security-check` | デプロイ前セキュリティ監査（deploy 時に自動実行） |
 | `npm run init` | 新プロジェクト初期化 |
 | `npm run setup:remote` | リモート DB 準備 |
 | `npm run doctor` | 設定診断 |
@@ -255,10 +259,58 @@ cf-starter/
 
 ---
 
+## セキュリティ
+
+cf-starter はテンプレートの時点でセキュリティの基盤を組み込んでいます。コピーして作ったアプリは、初期状態から以下の防御が有効です。
+
+### 組み込み済みの防御
+
+| 層 | 仕組み |
+|----|--------|
+| 認証 | Better Auth / HMAC セッション。HttpOnly + Secure + SameSite Cookie。`__Host-` プレフィックス |
+| 認可 | `requireAuth` → `requireRole` → `requireOrgRole` のミドルウェアチェーン。型安全（タイポはコンパイルエラー） |
+| CSRF | Origin/Referer 検証。POST/PUT/PATCH/DELETE に自動適用。認証ミドルウェアより前に実行 |
+| CORS | 許可リストベース（ワイルドカード不可）。Zod でオリジン形式を検証 |
+| レート制限 | Durable Object による IP ベース制限。認証エンドポイントに適用済み |
+| 入力検証 | Zod + @hono/zod-validator。フロント・バック共有スキーマ |
+| エラー制御 | 本番では `"Internal Server Error"` のみ返却。詳細はサーバーログに記録 |
+| 監査 | 認可失敗・重要操作を D1 に記録。request id で追跡可能 |
+| データ分離 | Record Engine 生成ルートは全クエリが `organizationId` スコープ |
+
+### デプロイ前チェック
+
+`npm run deploy` 実行時にセキュリティチェックが自動で走ります。ブロック項目があるとデプロイは中止されます。
+
+```bash
+# 手動で実行する場合
+npm run security-check
+```
+
+チェック項目:
+
+- シークレット（`ADMIN_PASSWORD`, `BETTER_AUTH_SECRET`）が設定済みか
+- `CORS_ORIGIN` がワイルドカードでないか
+- `AUTH_MODE` が意図した値か
+- デモ/サンプルファイルが残っていないか
+- D1 データベースが設定済みか
+- レート制限用 Durable Object が設定されているか
+
+### 派生アプリで守るべきこと
+
+テンプレートが提供する基盤の上で、アプリ固有のセキュリティは開発者が担保します。
+
+- **権限判定をフロントだけで行わない** — UI でボタンを隠してもAPIを直叩きされたら意味がない
+- **課金・プラン判定はサーバー側で行う** — localStorage や state だけで有料機能を解放しない
+- **APIレスポンスに不要な情報を含めない** — `select *` を避け、必要なカラムだけ返す
+- **エクスポート機能には権限チェックをつける** — 全件ダウンロードは管理者のみに制限
+
+---
+
 ## 本番チェックリスト
 
 `npm run init` + `npm run setup:remote` で大部分は自動化されます。残りの確認事項：
 
+- [ ] `npm run security-check` が通ることを確認
 - [ ] `npm run ci:local` が通ることを確認
 - [ ] `vars.APP_BASE_URL` をそのアプリの本番 HTTPS URL にする
 - [ ] `vars.CORS_ORIGIN` に上記本番 URL を含める
@@ -287,6 +339,7 @@ cf-starter/
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 設計の詳細（認証・組織・Record Engine・セキュリティ不変条件） |
 | [ROADMAP.md](./ROADMAP.md) | 開発履歴と今後の計画 |
 | [CLI_DESIGN.md](./CLI_DESIGN.md) | CLI の設計と運用 |
+| CLAUDE.md | AI 向けガイド（セキュリティルール含む） |
 
 ---
 
