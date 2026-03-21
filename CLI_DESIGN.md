@@ -346,7 +346,7 @@ Cloudflare 側リソース作成を自動で実行する前に、必要資源と
 1. `db:migrate:remote` — リモートD1にマイグレーション適用
 2. `seed:demo --remote` — デモ組織（org id=1）をリモートに作成
 3. `seed-app.sql` — プロジェクトルートにあれば、アプリ固有シードをリモートD1に適用
-4. secrets check — AUTH_ENABLED設定に応じて必須シークレット（SESSION_SECRET等）の存在確認
+4. secrets check — AUTH_MODE に応じて必須シークレット（better-auth: `BETTER_AUTH_SECRET`、simple-admin: `ADMIN_PASSWORD`）の存在確認
 
 #### Design note
 
