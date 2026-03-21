@@ -26,8 +26,9 @@ const organizationSlug = `demo-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").
 const mode = values.remote ? "--remote" : "--local";
 
 /**
- * Hash password using scrypt (compatible with Better Auth's default algorithm).
- * Format: salt:N:r:p:derivedKey (all hex-encoded)
+ * Hash password using scrypt (compatible with Better Auth's current format).
+ * Format: salt:derivedKey (both hex-encoded)
+ * Better Auth uses scrypt with N=16384, r=8, p=1, keyLen=64.
  */
 function hashPasswordForBetterAuth(plainTextPassword) {
   const salt = randomBytes(16);
@@ -36,7 +37,7 @@ function hashPasswordForBetterAuth(plainTextPassword) {
   const p = 1;
   const keyLen = 64;
   const derived = scryptSync(plainTextPassword, salt, keyLen, { N, r, p });
-  return `${salt.toString("hex")}:${N}:${r}:${p}:${derived.toString("hex")}`;
+  return `${salt.toString("hex")}:${derived.toString("hex")}`;
 }
 
 function escapeSql(value) {
