@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Route, Switch } from "wouter";
-import { useSession, useSetActiveOrganization } from "./hooks/useSession";
+import { useSession, useSetActiveOrganization, useListOrganizations } from "./hooks/useSession";
 import { useHealth } from "./hooks/useHealth";
 import { AppShell } from "./components/AppShell";
 import { PublicShell } from "./components/PublicShell";
@@ -9,7 +9,7 @@ import { AuthPage } from "./pages/AuthPage";
 import { InvitePage } from "./pages/InvitePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { HomePage } from "./pages/HomePage";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 
 const DemoPage = lazy(() => import("./pages/DemoPage").then((m) => ({ default: m.DemoPage })));
 
@@ -37,13 +37,19 @@ const publicNavItems: { label: string; href: string }[] = [
  */
 function AuthShell({ authMode, children }: { authMode: "simple-admin" | "better-auth"; children: React.ReactNode }) {
   const { data: session, isLoading } = useSession();
+  const orgs = useListOrganizations();
   const setActiveOrg = useSetActiveOrganization();
+  const autoSetAttempted = useRef(false);
 
-  // Auto-set active organization for single-org apps (seed-demo creates "default-org")
-  const needsOrgSet = session && !session.currentOrganizationId && !setActiveOrg.isPending;
-  if (needsOrgSet) {
-    setActiveOrg.mutate("default-org");
-  }
+  // Auto-set active organization when logged in but no org is active.
+  // Uses the first org the user belongs to (seed-demo creates "default-org").
+  useEffect(() => {
+    if (!session || session.currentOrganizationId || autoSetAttempted.current) return;
+    const orgList = orgs.data;
+    if (!orgList || orgList.length === 0) return;
+    autoSetAttempted.current = true;
+    setActiveOrg.mutate(orgList[0].id);
+  }, [session, orgs.data, setActiveOrg]);
 
   if (isLoading || (session && !session.currentOrganizationId)) {
     return (
