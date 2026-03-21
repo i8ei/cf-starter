@@ -303,7 +303,7 @@ npm run deploy
 | `src/db/schema.ts` に追記 | Drizzle テーブル定義 |
 | `shared/features/{key}/schema.ts` | Zod create/update スキーマ |
 | `src/features/{key}/routes.ts` | CRUD + PATCH status ルート |
-| `app/features/{key}/hooks/use{Key}.ts` | TanStack Query hooks |
+| `app/features/{key}/hooks/use{Key}.ts` | TanStack Query hooks（リスト: `use{Key}List`、単体: `use{Key}`） |
 | `src/index.ts` に追記 | ルート登録 |
 
 ### UI コンポーネント
@@ -325,6 +325,7 @@ npm run deploy
   - テキスト: `text-heading`（見出し）、`text-body`（本文）、`text-muted`（補助）
   - ボーダー: `border-border`（標準）、`border-border-strong`（強調）
   - 入力: `bg-input-bg`、`border-input-border`
+  - アクセント: `bg-accent`（プライマリアクション色 #2563eb）
   - フォーカス: `ring-ring`（アクセント色のリング）
 - **色のカスタマイズ**: `index.css` の `:root` 変数を上書きするだけでテーマ変更可能
 - 生の Tailwind カラー（`text-gray-900` 等）ではなくセマンティックトークンを使うこと
@@ -455,7 +456,7 @@ Recharts ベースのチャートラッパーとダッシュボード用UI部品
 
 | レイアウト | 用途 | 選択基準 |
 |---|---|---|
-| `AppShell` | 認証あり・デスクトップ中心 | Record Engine アプリ、管理画面 |
+| `AppShell` | 認証あり・モバイル対応（2段ヘッダー） | Record Engine アプリ、管理画面 |
 | `PublicShell` | 認証なし・モバイルファースト | ダッシュボード、公開サイト |
 
 `AUTH_MODE=none` の場合、`AuthGuard` が自動で `PublicShell` を選択する。
@@ -647,6 +648,17 @@ health チェック (`/api/health`) もバインディングの有無を動的�
 - フロントの API 呼び出しは `hc<AppType>` + TanStack Query
 - バリデーションは Zod で定義し `shared/schemas/` に置く（フロント・バック共有）
 - パスエイリアス: `~/` → app, `@server/` → src, `@shared/` → shared
+
+## 実戦で判明した注意点
+
+以下は5本の派生アプリ（tara-grant-scout, volunteer-taxi, tara-shisetsu, tara-ocean, taradake-ai）で判明し、テンプレートに反映済みの知見。
+
+- **seed-demo.mjs**: `better-auth/crypto` の `hashPassword()` を直接使用。カスタムscryptは廃止（形式不一致バグの根本原因だった）
+- **AuthShell org自動セット**: ログイン後に `activeOrganizationId` が未設定の場合、`useEffect` で `default-org` を自動セット。レンダリング中の直接 `mutate` は無限ループの原因になるため禁止
+- **Record Engine hook命名**: リストフックは `use{Key}List`（旧: `use{Key}s` はs終わりのキーで二重sになるバグがあった）
+- **CSSトークン**: `bg-accent` を使う場合は `--accent` が `:root` と `@theme` の両方に登録されていることを確認
+- **モバイル対応**: input要素は `text-base`（16px）以上にすること。`text-sm`（14px）だとiOSが自動ズームする
+- **UIテキスト**: `index.html` が `lang="ja"` なのでUI文字列は日本語で統一
 
 ## セキュリティガイド（AI向け）
 
