@@ -17,6 +17,7 @@ import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { readWranglerConfig, getPrimaryD1DatabaseName, resolveWranglerBinary } from "./lib/wrangler-config.mjs";
 import { inspectRemoteWebConfig } from "./lib/remote-config.mjs";
+import { requiredSecretsForAuthMode } from "./lib/auth-mode.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -56,6 +57,11 @@ async function main() {
     console.error("CORS_ORIGIN must include the same production origin as APP_BASE_URL before setup:remote.");
     process.exit(1);
   }
+  if (remoteWebConfig.corsRejected.length > 0) {
+    console.error(`CORS_ORIGIN contains malformed origins that will crash the app at runtime: ${remoteWebConfig.corsRejected.join(", ")}`);
+    console.error("Fix the invalid origins (check for trailing slashes, paths, or typos).");
+    process.exit(1);
+  }
 
   const wrangler = resolveWranglerBinary(ROOT);
 
@@ -85,14 +91,8 @@ async function main() {
 
   // ── Step 4: Check secrets ──
   console.log("── Secrets check ──");
-  // Determine which secrets are expected based on config
-  const expectedSecrets = [];
   const vars = config.vars ?? {};
-
-  // AUTH_ENABLED is not explicitly "false" → needs SESSION_SECRET
-  if (vars.AUTH_ENABLED !== "false") {
-    expectedSecrets.push("SESSION_SECRET");
-  }
+  const expectedSecrets = requiredSecretsForAuthMode(vars);
 
   if (expectedSecrets.length === 0) {
     console.log("- No required secrets for this configuration\n");

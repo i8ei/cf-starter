@@ -210,6 +210,7 @@ Better Auth 内蔵: `/api/auth/sign-up/email`, `/api/auth/sign-in/email`, `/api/
 - `APP_BASE_URL` は generated app ごとの本番 URL を使う。テンプレ repo 本体の localhost 値はそのまま deploy しない
 - `JOBS` Queue binding がある場合は queue 経由で送信し、ない場合はその場で直接送信する
 - フロントエンドは `/invite` ページから `acceptInvitation` を呼ぶ
+- `/invite` は AuthGuard 内に配置。Better Auth の acceptInvitation はセッション必須のため、未ログインユーザーはまずログイン/サインアップしてから招待を承認する
 
 ### 重要な制約
 

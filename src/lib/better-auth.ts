@@ -61,6 +61,8 @@ export function createAuth(env: Env) {
     },
     trustedOrigins: [
       ...resolveCorsOrigins(env),
+      // Dev convenience: allow localhost with any port. Safe in production because
+      // Better Auth trustedOrigins only gate CSRF origin matching, not cookie validation.
       "http://localhost:*",
     ],
   });

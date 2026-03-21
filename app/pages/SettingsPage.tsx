@@ -43,7 +43,7 @@ export function SettingsPage() {
         </button>
       </Panel>
 
-      {(health?.authMode as string) === "better-auth" ? (
+      {health?.authMode === "better-auth" ? (
         <BetterAuthSettings session={session} />
       ) : null}
     </div>

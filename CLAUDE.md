@@ -332,6 +332,7 @@ npm run deploy
 wouter による SPA ルーティング:
 - 未ログイン時 → AuthPage をインライン表示（専用 `/login` ルートはない）
 - `/` → HomePage（スターター案内 + 現在のユーザー/組織表示）
+- `/invite?id=<invitationId>` → 招待受諾（AuthGuard内。セッション必須のため未ログインならログイン画面が先に出る）
 - `/:record` → 一覧（Record Engine で生成・配線後に有効）
 - `/:record/new` → 新規作成（同上）
 - `/:record/:id` → 詳細（同上）
@@ -411,6 +412,8 @@ Recharts ベースのチャートラッパーとダッシュボード用UI部品
 プロジェクト固有の色に変更するには、`index.css` の `:root` で `--chart-1` 等を上書きするだけでよい。
 
 ### 数値フォーマッター（`app/lib/format.ts`）
+
+ロケールは `ja-JP` 固定（対象ユーザーが日本の自治体のため）。変更する場合は `format.ts` 冒頭のロケール指定を書き換える。
 
 | 関数 | 出力例 | 用途 |
 |---|---|---|

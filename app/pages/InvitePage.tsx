@@ -13,7 +13,7 @@ export function InvitePage() {
   const { data: health } = useHealth();
   const acceptInvitation = useAcceptInvitation();
   const invitationId = readInvitationId();
-  const authMode = (health?.authMode as string) ?? "better-auth";
+  const authMode = health?.authMode ?? "better-auth";
 
   if (authMode !== "better-auth") {
     return (

@@ -77,7 +77,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const authMode = (health?.authMode as string) ?? "better-auth";
+  const authMode = health?.authMode ?? "better-auth";
 
   // AUTH_MODE=none → PublicShell (no session query)
   if (authMode === "none") {
@@ -108,6 +108,10 @@ function AppRoutes() {
         {() => (
           <AuthGuard>
             <Switch>
+              {/* /invite is inside AuthGuard intentionally.
+                  Better Auth's acceptInvitation requires an active session,
+                  so the user must log in (or sign up) before accepting.
+                  Flow: email link → AuthGuard → login if needed → InvitePage → accept */}
               <Route path="/invite" component={InvitePage} />
               <Route path="/settings" component={SettingsPage} />
               <Route path="/" component={HomePage} />

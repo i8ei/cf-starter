@@ -97,6 +97,16 @@ export function buildDeployPlan({
     });
   }
 
+  if (remoteWebConfig.corsRejected.length > 0) {
+    warnings.push(`CORS_ORIGIN contains malformed origins: ${remoteWebConfig.corsRejected.join(", ")}`);
+    checks.push({
+      id: "cors-invalid",
+      level: "fail",
+      message: `CORS_ORIGIN contains malformed origins that will crash the app at runtime: ${remoteWebConfig.corsRejected.join(", ")}`,
+      fix: "Fix the invalid origins in CORS_ORIGIN (check for trailing slashes, paths, or typos).",
+    });
+  }
+
   if (pathStatuses["node_modules"]) {
     checks.push({
       id: "node-modules",

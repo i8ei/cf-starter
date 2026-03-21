@@ -21,16 +21,21 @@ export function isLocalOrigin(origin) {
 }
 
 export function parseCorsOrigins(raw) {
-  if (typeof raw !== "string") return [];
-  return raw
-    .split(",")
-    .map((origin) => normalizeOrigin(origin))
-    .filter(Boolean);
+  if (typeof raw !== "string") return { origins: [], rejected: [] };
+  const entries = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  const origins = [];
+  const rejected = [];
+  for (const entry of entries) {
+    const n = normalizeOrigin(entry);
+    if (n) origins.push(n);
+    else rejected.push(entry);
+  }
+  return { origins, rejected };
 }
 
 export function inspectRemoteWebConfig(vars = {}) {
   const appBaseUrl = normalizeOrigin(vars.APP_BASE_URL);
-  const corsOrigins = parseCorsOrigins(vars.CORS_ORIGIN);
+  const { origins: corsOrigins, rejected: corsRejected } = parseCorsOrigins(vars.CORS_ORIGIN);
   const hasHttpsAppBaseUrl = Boolean(appBaseUrl?.startsWith("https://"));
   const hasRemoteCorsOrigin = corsOrigins.some((origin) => !isLocalOrigin(origin));
   const appBaseUrlIncludedInCors = Boolean(
@@ -43,6 +48,7 @@ export function inspectRemoteWebConfig(vars = {}) {
     appBaseUrlIsLocal: Boolean(appBaseUrl && isLocalOrigin(appBaseUrl)),
     appBaseUrlUsesHttps: hasHttpsAppBaseUrl,
     corsOrigins,
+    corsRejected,
     hasRemoteCorsOrigin,
     appBaseUrlIncludedInCors,
   };

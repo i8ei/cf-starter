@@ -1,4 +1,5 @@
 import { inspectRemoteWebConfig } from "./remote-config.mjs";
+import { requiredSecretsForAuthMode } from "./auth-mode.mjs";
 
 function hasScript(scripts, name) {
   return typeof scripts?.[name] === "string" && scripts[name].length > 0;
@@ -31,35 +32,46 @@ export function analyzeDoctorContext({
     });
   }
 
-  const requiredScripts = ["doctor", "db:migrate", "db:migrate:remote", "seed:demo", "record:generate"];
-  const missingScripts = requiredScripts.filter((name) => !hasScript(scripts, name));
-  if (missingScripts.length === 0) {
+  const coreScripts = ["doctor", "db:migrate", "db:migrate:remote", "seed:demo"];
+  const missingCoreScripts = coreScripts.filter((name) => !hasScript(scripts, name));
+  if (missingCoreScripts.length === 0) {
     checks.push({
       id: "npm-scripts",
       level: "pass",
-      message: "Core npm scripts for doctor, migration, seed, and record generation are present.",
+      message: "Core npm scripts for doctor, migration, and seed are present.",
     });
   } else {
     checks.push({
       id: "npm-scripts",
       level: "fail",
-      message: `Missing core npm scripts: ${missingScripts.join(", ")}.`,
+      message: `Missing core npm scripts: ${missingCoreScripts.join(", ")}.`,
       fix: "Restore the missing scripts in package.json.",
     });
   }
 
-  const requiredPaths = [
+  // Record Engine scripts are optional — warn if partially present
+  if (!hasScript(scripts, "record:generate")) {
+    const hasAnyRecordEngineFile = pathStatuses["scripts/generate-record.mjs"] || pathStatuses["shared/records/task.ts"];
+    if (hasAnyRecordEngineFile) {
+      checks.push({
+        id: "record-engine-scripts",
+        level: "warn",
+        message: "record:generate script is missing but Record Engine files exist.",
+        fix: "Restore the record:generate script or remove remaining Record Engine files.",
+      });
+    }
+  }
+
+  const corePaths = [
     "README.md",
     "wrangler.jsonc",
     "migrations",
     "scripts/d1-migrate.mjs",
-    "scripts/generate-record.mjs",
     "scripts/lib/wrangler-config.mjs",
     "scripts/lib/example-migrations.mjs",
-    "shared/records/task.ts",
   ];
-  const missingPaths = requiredPaths.filter((filePath) => !pathStatuses[filePath]);
-  if (missingPaths.length === 0) {
+  const missingCorePaths = corePaths.filter((filePath) => !pathStatuses[filePath]);
+  if (missingCorePaths.length === 0) {
     checks.push({
       id: "required-paths",
       level: "pass",
@@ -69,7 +81,7 @@ export function analyzeDoctorContext({
     checks.push({
       id: "required-paths",
       level: "fail",
-      message: `Required files are missing: ${missingPaths.join(", ")}.`,
+      message: `Required files are missing: ${missingCorePaths.join(", ")}.`,
       fix: "Restore the missing files before running CLI workflows.",
     });
   }
@@ -232,11 +244,17 @@ export function analyzeDoctorContext({
       });
     }
 
-    // Required secrets check
-    const requiredSecrets = [];
-    if (vars.AUTH_ENABLED !== "false") {
-      requiredSecrets.push("SESSION_SECRET");
+    if (remoteWebConfig.corsRejected.length > 0) {
+      checks.push({
+        id: "remote-cors-invalid",
+        level: "fail",
+        message: `CORS_ORIGIN contains malformed origins that will crash the app at runtime: ${remoteWebConfig.corsRejected.join(", ")}`,
+        fix: "Fix the invalid origins in CORS_ORIGIN (check for trailing slashes, paths, or typos).",
+      });
     }
+
+    // Required secrets check (auth-mode aware)
+    const requiredSecrets = requiredSecretsForAuthMode(vars);
     if (requiredSecrets.length > 0 && remoteProbe) {
       checks.push({
         id: "remote-secrets-hint",

@@ -13,18 +13,15 @@ type OrganizationInviteEmailPayload = Extract<
   { type: "organization.invite_email" }
 >["payload"];
 
-/** Replace token values in URLs with [REDACTED] to prevent secret leakage in logs. */
-function redactUrlToken(url: string): string {
+/** Redact all query parameters in URLs to prevent credential leakage in logs. */
+function redactUrlParams(url: string): string {
   try {
     const parsed = new URL(url);
     for (const key of [...parsed.searchParams.keys()]) {
-      if (/token/i.test(key)) {
-        parsed.searchParams.set(key, "[REDACTED]");
-      }
+      parsed.searchParams.set(key, "[REDACTED]");
     }
     return parsed.toString();
   } catch {
-    // If the URL can't be parsed, redact the whole thing
     return "[REDACTED_URL]";
   }
 }
@@ -60,7 +57,7 @@ async function deliverOrganizationInviteEmail(
     inviteId: payload.inviteId,
     email: payload.email,
     role: payload.role,
-    inviteUrl: redactUrlToken(payload.inviteUrl),
+    inviteUrl: redactUrlParams(payload.inviteUrl),
     delivery: delivery.delivery,
     providerMessageId: delivery.id ?? null,
     requestId: payload.requestId,
