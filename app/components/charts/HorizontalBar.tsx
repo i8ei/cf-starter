@@ -7,25 +7,27 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import { getChartColors } from "./colors";
+import { fmtNumber } from "~/lib/format";
 
 interface HorizontalBarProps {
   data: { name: string; value: number }[];
   colors?: string[];
   valueFormatter?: (v: number) => string;
+  tooltipLabel?: string;
+  categoryWidth?: number;
   height?: number;
 }
 
-const DEFAULT_COLORS = [
-  "#2563eb", "#f97316", "#22c55e", "#a855f7", "#06b6d4",
-  "#f43f5e", "#eab308", "#ec4899", "#14b8a6", "#6366f1",
-];
-
 export function HorizontalBar({
   data,
-  colors = DEFAULT_COLORS,
-  valueFormatter = (v) => (isFinite(v) ? v.toLocaleString() : "–"),
+  colors,
+  valueFormatter = fmtNumber,
+  tooltipLabel = "値",
+  categoryWidth = 120,
   height,
 }: HorizontalBarProps) {
+  const palette = colors ?? getChartColors(data.length);
   const h = height ?? Math.max(250, data.length * 32);
 
   return (
@@ -35,18 +37,18 @@ export function HorizontalBar({
         <YAxis
           type="category"
           dataKey="name"
-          width={120}
+          width={categoryWidth}
           tick={{ fontSize: 12 }}
           tickLine={false}
           axisLine={false}
         />
         <Tooltip
-          formatter={(value) => [valueFormatter(Number(value)), "金額"]}
+          formatter={(value) => [valueFormatter(Number(value)), tooltipLabel]}
           contentStyle={{ fontSize: 12 }}
         />
         <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={20}>
           {data.map((_, i) => (
-            <Cell key={i} fill={colors[i % colors.length]} />
+            <Cell key={i} fill={palette[i % palette.length]} />
           ))}
         </Bar>
       </BarChart>

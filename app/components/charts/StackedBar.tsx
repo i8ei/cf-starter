@@ -8,6 +8,7 @@ import {
   Legend,
   CartesianGrid,
 } from "recharts";
+import { fmtNumber } from "~/lib/format";
 
 interface StackedBarProps {
   data: Record<string, unknown>[];
@@ -19,25 +20,28 @@ interface StackedBarProps {
   layout?: "horizontal" | "vertical";
   categoryWidth?: number;
   showGrid?: boolean;
+  margin?: { left?: number; right?: number; top?: number; bottom?: number };
 }
 
 export function StackedBar({
   data,
   bars,
   xKey = "name",
-  valueFormatter = (v) => (isFinite(v) ? v.toLocaleString() : "–"),
+  valueFormatter = fmtNumber,
   yTickFormatter,
   height = 300,
   layout = "horizontal",
   categoryWidth = 120,
   showGrid = false,
+  margin,
 }: StackedBarProps) {
   const h = layout === "vertical" ? Math.max(height, data.length * 36) : height;
 
   if (layout === "vertical") {
+    const m = margin ?? { left: 0, right: 20, top: 4, bottom: 4 };
     return (
       <ResponsiveContainer width="100%" height={h}>
-        <BarChart data={data} layout="vertical" margin={{ left: 0, right: 20, top: 4, bottom: 4 }}>
+        <BarChart data={data} layout="vertical" margin={m}>
           <XAxis type="number" hide />
           <YAxis
             type="category"
@@ -60,9 +64,10 @@ export function StackedBar({
     );
   }
 
+  const m = margin ?? { left: 0, right: 20, top: 4, bottom: 4 };
   return (
     <ResponsiveContainer width="100%" height={h}>
-      <BarChart data={data} margin={{ left: 0, right: 20, top: 4, bottom: 4 }}>
+      <BarChart data={data} margin={m}>
         {showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />}
         <XAxis dataKey={xKey} tick={{ fontSize: 12 }} />
         <YAxis

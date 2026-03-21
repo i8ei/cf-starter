@@ -8,6 +8,7 @@ import {
   Legend,
   CartesianGrid,
 } from "recharts";
+import { fmtNumber } from "~/lib/format";
 
 interface TrendLineProps {
   data: Record<string, unknown>[];
@@ -17,20 +18,22 @@ interface TrendLineProps {
   yTickFormatter?: (v: number) => string;
   height?: number;
   showGrid?: boolean;
+  margin?: { left?: number; right?: number; top?: number; bottom?: number };
 }
 
 export function TrendLine({
   data,
   lines,
   xKey = "year",
-  valueFormatter = (v) => (isFinite(v) ? v.toLocaleString() : "–"),
+  valueFormatter = fmtNumber,
   yTickFormatter,
   height = 300,
   showGrid = true,
+  margin = { left: 0, right: 20, top: 8, bottom: 4 },
 }: TrendLineProps) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={data} margin={{ left: 0, right: 20, top: 8, bottom: 4 }}>
+      <LineChart data={data} margin={margin}>
         {showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />}
         <XAxis dataKey={xKey} tick={{ fontSize: 12 }} />
         <YAxis

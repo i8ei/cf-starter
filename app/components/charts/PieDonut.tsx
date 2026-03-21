@@ -6,11 +6,14 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { getChartColors } from "./colors";
+import { fmtNumber } from "~/lib/format";
 
 interface PieDonutProps {
   data: { name: string; value: number; color?: string }[];
   colors?: string[];
   valueFormatter?: (v: number) => string;
+  tooltipLabel?: string;
   height?: number;
   /** Set > 0 for donut style */
   innerRadius?: number;
@@ -19,21 +22,19 @@ interface PieDonutProps {
   showLegend?: boolean;
 }
 
-const DEFAULT_COLORS = [
-  "#2563eb", "#f97316", "#22c55e", "#a855f7", "#06b6d4",
-  "#f43f5e", "#eab308", "#ec4899", "#14b8a6", "#6366f1",
-];
-
 export function PieDonut({
   data,
-  colors = DEFAULT_COLORS,
-  valueFormatter = (v) => (isFinite(v) ? v.toLocaleString() : "–"),
+  colors,
+  valueFormatter = fmtNumber,
+  tooltipLabel = "値",
   height = 300,
   innerRadius = 0,
   outerRadius = 110,
   showLabel = true,
   showLegend = true,
 }: PieDonutProps) {
+  const palette = colors ?? getChartColors(data.length);
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <PieChart>
@@ -54,11 +55,11 @@ export function PieDonut({
           fontSize={10}
         >
           {data.map((d, i) => (
-            <Cell key={i} fill={d.color ?? colors[i % colors.length]} />
+            <Cell key={i} fill={d.color ?? palette[i % palette.length]} />
           ))}
         </Pie>
         <Tooltip
-          formatter={(value) => [valueFormatter(Number(value)), "金額"]}
+          formatter={(value) => [valueFormatter(Number(value)), tooltipLabel]}
           contentStyle={{ fontSize: 12 }}
         />
         {showLegend && <Legend wrapperStyle={{ fontSize: 12 }} />}

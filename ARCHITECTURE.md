@@ -123,19 +123,19 @@ UI/UX 品質:
 
 ### チャートコンポーネント
 
-`app/components/charts/` に5種の Recharts ラッパーを提供します。
+`app/components/charts/` に5種の Recharts ラッパーを提供します。チャート色は `index.css` の `--chart-1`〜`--chart-10` CSS変数で一元管理され、`colors.ts` の `getChartColors()` が解決済みhex値を返します。
 
-- `HorizontalBar` — 横棒グラフ（ランキング等）
-- `ChangeBar` — 増減棒（正=緑、負=赤、ReferenceLine付き）
-- `TrendLine` — 折れ線（複数系列、CartesianGrid対応）
-- `StackedBar` — 積み上げ棒（vertical/horizontal切替可）
-- `PieDonut` — 円グラフ/ドーナツ（innerRadius>0でドーナツ）
+- `HorizontalBar` — 横棒グラフ（ランキング等）。`tooltipLabel`, `categoryWidth` でカスタマイズ可
+- `ChangeBar` — 増減棒（正=緑、負=赤、ReferenceLine付き）。`tooltipLabel`, `categoryWidth` でカスタマイズ可
+- `TrendLine` — 折れ線（複数系列、CartesianGrid対応）。`margin` でレイアウト調整可
+- `StackedBar` — 積み上げ棒（vertical/horizontal切替可）。`margin` でレイアウト調整可
+- `PieDonut` — 円グラフ/ドーナツ（innerRadius>0でドーナツ）。`tooltipLabel` でカスタマイズ可
 
-すべて `ResponsiveContainer` でラップ済み。`valueFormatter` prop で数値表示をカスタマイズ可能。
+すべて `ResponsiveContainer` でラップ済み。`valueFormatter` prop で数値表示をカスタマイズ可能（デフォルトは `fmtNumber`、ChangeBar は `fmtDiff`）。
 
 ### ダッシュボード用 UI 部品
 
-- `KpiCard` — 数値カード（ラベル + 値 + サブテキスト + 色カスタマイズ）
+- `KpiCard` — 数値カード（ラベル + 値 + サブテキスト）。`variant` prop でセマンティックカラー指定（`"success"`, `"danger"`, `"warning"`, `"primary"`）
 - `Section` — セクション見出し（h2 + children のシンプルラッパー）
 - `ChartTableToggle` — グラフとテーブルの切替タブ（WAI-ARIA tablist/tabpanel対応）
 - `DataTableSimple` — 読み取り専用の軽量テーブル（DataTableのソート不要版）
@@ -150,7 +150,7 @@ UI/UX 品質:
 
 ### 数値フォーマット
 
-`app/lib/format.ts` にドメイン固有のフォーマット関数を置く規約です。チャートの `valueFormatter` に渡して統一的な表示を実現します。
+`app/lib/format.ts` に数値フォーマッターを提供しています。`fmtNumber`（汎用）、`fmtCurrency`（¥付き）、`fmtDiff`（±符号付き）、`fmtPercent`（%表示）の4関数が組み込み済み。チャートの `valueFormatter` に渡して統一的な表示を実現します。プロジェクト固有のフォーマッターもこのファイルに追加します。
 
 ### Record Engine を使わない場合
 
@@ -167,7 +167,7 @@ coreからRecord Engineへの直接importはゼロ。CLAUDE.md の「Record Engi
 - core schema: `shared/schemas/`
 - feature schema: `shared/features/{key}/schema.ts`（Record Engine で生成）
 - record definitions: `shared/records/{key}.ts`
-- chart components: `app/components/charts/`（Recharts ラッパー5種）
+- chart components: `app/components/charts/`（Recharts ラッパー5種 + colors.ts）
 - dashboard components: `app/components/`（KpiCard, Section, ChartTableToggle, DataTableSimple）
 - layout shells: `app/components/`（AppShell: 認証あり、PublicShell: 公開アプリ）
 

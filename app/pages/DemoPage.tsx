@@ -27,8 +27,8 @@ export function DemoPage() {
       </p>
 
       <div className="mt-6 grid grid-cols-2 gap-3">
-        <KpiCard label="Total" value="1,000" sub="+12.3%" subColor="#22c55e" />
-        <KpiCard label="Average" value="250" valueColor="#2563eb" />
+        <KpiCard label="Total" value="1,000" sub="+12.3%" variant="success" />
+        <KpiCard label="Average" value="250" variant="primary" />
       </div>
 
       <Section title="横棒グラフ / テーブル切替">

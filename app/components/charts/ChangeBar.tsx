@@ -8,20 +8,25 @@ import {
   Cell,
   ReferenceLine,
 } from "recharts";
+import { fmtDiff } from "~/lib/format";
 
 interface ChangeBarProps {
   data: { name: string; value: number }[];
   valueFormatter?: (v: number) => string;
+  tooltipLabel?: string;
   positiveColor?: string;
   negativeColor?: string;
+  categoryWidth?: number;
   height?: number;
 }
 
 export function ChangeBar({
   data,
-  valueFormatter = (v) => isFinite(v) ? `${v > 0 ? "+" : ""}${v.toLocaleString()}` : "–",
+  valueFormatter = fmtDiff,
+  tooltipLabel = "増減",
   positiveColor = "#22c55e",
   negativeColor = "#f43f5e",
+  categoryWidth = 120,
   height,
 }: ChangeBarProps) {
   const h = height ?? Math.max(250, data.length * 32);
@@ -33,13 +38,13 @@ export function ChangeBar({
         <YAxis
           type="category"
           dataKey="name"
-          width={120}
+          width={categoryWidth}
           tick={{ fontSize: 12 }}
           tickLine={false}
           axisLine={false}
         />
         <Tooltip
-          formatter={(value) => [valueFormatter(Number(value)), "増減"]}
+          formatter={(value) => [valueFormatter(Number(value)), tooltipLabel]}
           contentStyle={{ fontSize: 12 }}
         />
         <ReferenceLine x={0} stroke="#94a3b8" strokeWidth={1} />

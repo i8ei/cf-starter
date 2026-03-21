@@ -1,18 +1,17 @@
-/**
- * Number formatting utilities placeholder.
- *
- * Add domain-specific formatters here. Examples:
- *
- *   export function fmtCurrency(yen: number): string {
- *     return `¥${yen.toLocaleString("ja-JP")}`;
- *   }
- *
- *   export function fmtPercent(ratio: number): string {
- *     return `${(ratio * 100).toFixed(1)}%`;
- *   }
- *
- *   export function fmtDiff(val: number): string {
- *     const sign = val > 0 ? "+" : "";
- *     return `${sign}${val.toLocaleString()}`;
- *   }
- */
+export function fmtNumber(n: number): string {
+  return isFinite(n) ? n.toLocaleString("ja-JP") : "–";
+}
+
+export function fmtCurrency(yen: number): string {
+  return isFinite(yen) ? `¥${yen.toLocaleString("ja-JP")}` : "–";
+}
+
+export function fmtDiff(val: number): string {
+  if (!isFinite(val)) return "–";
+  const sign = val > 0 ? "+" : "";
+  return `${sign}${val.toLocaleString("ja-JP")}`;
+}
+
+export function fmtPercent(ratio: number): string {
+  return isFinite(ratio) ? `${(ratio * 100).toFixed(1)}%` : "–";
+}

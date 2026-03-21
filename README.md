@@ -149,8 +149,9 @@ Record Engine は不要なら削除できます。core への依存はゼロで�
 
 認証不要の公開アプリ（ダッシュボード等）もすぐ作れます。
 
-- Recharts ラッパー 5 種（横棒・増減棒・折れ線・積み上げ棒・円/ドーナツ）
-- KPI カード・セクション見出し・グラフ/テーブル切替
+- Recharts ラッパー 5 種（横棒・増減棒・折れ線・積み上げ棒・円/ドーナツ）— CSS変数でチャート色を一元管理
+- KPI カード（`variant` でセマンティックカラー指定）・セクション見出し・グラフ/テーブル切替
+- 数値フォーマッター（`fmtNumber`, `fmtCurrency`, `fmtDiff`, `fmtPercent`）
 - PublicShell（モバイルファースト 1 カラムレイアウト）
 - `AUTH_MODE=none` で認証を無効化、PublicShell に自動切替
 
