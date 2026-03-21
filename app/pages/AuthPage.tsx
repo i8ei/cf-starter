@@ -25,18 +25,18 @@ function SimpleAdminAuth() {
   };
 
   const inputClass =
-    "w-full rounded-lg border border-input-border bg-input-bg px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    "w-full rounded-lg border border-input-border bg-input-bg px-4 py-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
     <div className="mx-auto max-w-sm">
-      <Panel title="Admin Login" subtitle="Enter the admin password to continue.">
+      <Panel title="管理者ログイン" subtitle="パスワードを入力してください">
         <div className="space-y-3">
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-            placeholder="Password"
+            placeholder="パスワード"
             className={inputClass}
             autoFocus
           />
@@ -46,11 +46,11 @@ function SimpleAdminAuth() {
             disabled={adminLogin.isPending}
             className="w-full rounded-xl bg-amber-400 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
           >
-            Log In
+            ログイン
           </button>
           {adminLogin.error ? (
             <p className="text-sm text-error-text">
-              {adminLogin.error.message}
+              パスワードが正しくありません
             </p>
           ) : null}
         </div>
@@ -78,13 +78,13 @@ function FullAuth() {
   };
 
   const inputClass =
-    "w-full rounded-lg border border-input-border bg-input-bg px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    "w-full rounded-lg border border-input-border bg-input-bg px-4 py-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
     <div className="mx-auto max-w-sm">
       <Panel
-        title="Authentication"
-        subtitle="Login or create an account to get started."
+        title="ログイン"
+        subtitle="ログインまたは新規登録"
       >
         <div className="mb-4 flex gap-2">
           {(["login", "signup"] as const).map((value) => (
@@ -98,7 +98,7 @@ function FullAuth() {
                   : "bg-surface text-muted"
               }`}
             >
-              {value}
+              {value === "login" ? "ログイン" : "新規登録"}
             </button>
           ))}
         </div>
@@ -107,14 +107,14 @@ function FullAuth() {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Name"
+              placeholder="名前"
               className={inputClass}
             />
           ) : null}
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
+            placeholder="メールアドレス"
             className={inputClass}
           />
           <input
@@ -122,7 +122,7 @@ function FullAuth() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-            placeholder="Password"
+            placeholder="パスワード"
             className={inputClass}
           />
           <button
@@ -131,7 +131,7 @@ function FullAuth() {
             disabled={currentMutation.isPending}
             className="w-full rounded-xl bg-amber-400 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
           >
-            {mode === "login" ? "Log In" : "Create Account"}
+            {mode === "login" ? "ログイン" : "アカウント作成"}
           </button>
           {currentMutation.error ? (
             <p className="text-sm text-error-text">

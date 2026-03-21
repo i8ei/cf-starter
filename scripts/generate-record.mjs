@@ -519,7 +519,7 @@ export type ${PASCAL}ListResponse = {
   offset: number;
 };
 
-export function use${PASCAL}s(enabled: boolean) {
+export function use${PASCAL}List(enabled: boolean) {
   return useQuery({
     queryKey: ${queryKey},
     enabled,

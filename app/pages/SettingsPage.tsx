@@ -21,16 +21,16 @@ export function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <Panel title="Session">
+      <Panel title="アカウント">
         <div className="space-y-2 text-sm text-muted">
           <div>
             {session.name} &middot; {session.email}
           </div>
-          <div>roles: {session.roles.join(", ")}</div>
-          <div>organizationRole: {session.organizationRole ?? "none"}</div>
+          <div>役割: {session.roles.join(", ")}</div>
+          <div>組織での役割: {session.organizationRole ?? "none"}</div>
           <div>
-            emailVerified:{" "}
-            {session.emailVerified ? "yes" : "pending"}
+            メール確認:{" "}
+            {session.emailVerified ? "確認済み" : "未確認"}
           </div>
         </div>
         <button
@@ -39,7 +39,7 @@ export function SettingsPage() {
           disabled={logout.isPending}
           className="mt-4 rounded-xl bg-rose-400 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
         >
-          Log Out
+          ログアウト
         </button>
       </Panel>
 
@@ -66,12 +66,12 @@ function BetterAuthSettings({ session }: { session: SessionData }) {
   return (
     <>
       <Panel
-        title="Organizations"
-        subtitle="Switch, create, or manage organizations."
+        title="所属グループ"
+        subtitle="グループの切替・作成・管理"
       >
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="space-y-3">
-            <div className="text-sm text-muted">Your Organizations</div>
+            <div className="text-sm text-muted">参加中のグループ</div>
             <div className="space-y-2">
               {organizations.map((org) => (
                 <button
@@ -95,20 +95,20 @@ function BetterAuthSettings({ session }: { session: SessionData }) {
                 </button>
               ))}
               {organizations.length === 0 ? (
-                <p className="text-sm text-muted">No organizations yet.</p>
+                <p className="text-sm text-muted">グループがありません</p>
               ) : null}
             </div>
           </div>
           <div className="space-y-4">
             <div className="rounded-xl border border-border bg-surface-alt p-4">
               <div className="mb-3 text-sm text-muted">
-                Create Organization
+                グループ作成
               </div>
               <div className="flex gap-2">
                 <input
                   value={orgName}
                   onChange={(e) => setOrgName(e.target.value)}
-                  placeholder="Organization name"
+                  placeholder="グループ名"
                   className="flex-1 rounded-lg border border-input-border bg-input-bg px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 <button
@@ -123,7 +123,7 @@ function BetterAuthSettings({ session }: { session: SessionData }) {
                   disabled={createOrganization.isPending}
                   className="rounded-xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
                 >
-                  Create
+                  作成
                 </button>
               </div>
               {createOrganization.error ? (
@@ -136,11 +136,11 @@ function BetterAuthSettings({ session }: { session: SessionData }) {
         </div>
       </Panel>
 
-      <Panel title="Invitations" subtitle="Invite members or accept invitations.">
+      <Panel title="招待" subtitle="メンバー招待・招待の承認">
         <div className="grid gap-6 lg:grid-cols-2">
           {session.currentOrganizationId ? (
             <div className="space-y-3">
-              <div className="text-sm text-muted">Invite Member</div>
+              <div className="text-sm text-muted">メンバー招待</div>
               <input
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
@@ -171,7 +171,7 @@ function BetterAuthSettings({ session }: { session: SessionData }) {
                 disabled={inviteMember.isPending}
                 className="w-full rounded-xl bg-amber-400 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
               >
-                Invite
+                招待する
               </button>
               {inviteMember.error ? (
                 <p className="mt-2 text-sm text-error-text">
@@ -181,15 +181,15 @@ function BetterAuthSettings({ session }: { session: SessionData }) {
             </div>
           ) : (
             <p className="text-sm text-muted">
-              Select an organization to invite members.
+              グループを選択してからメンバーを招待できます
             </p>
           )}
           <div className="space-y-3">
-            <div className="text-sm text-muted">Accept Invitation</div>
+            <div className="text-sm text-muted">招待を承認</div>
             <input
               value={invitationId}
               onChange={(e) => setInvitationId(e.target.value)}
-              placeholder="Invitation ID"
+              placeholder="招待ID"
               className="w-full rounded-lg border border-input-border bg-input-bg px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <button
@@ -203,7 +203,7 @@ function BetterAuthSettings({ session }: { session: SessionData }) {
               disabled={acceptInvitation.isPending}
               className="w-full rounded-xl bg-fuchsia-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
             >
-              Accept
+              承認する
             </button>
             {acceptInvitation.error ? (
               <p className="mt-2 text-sm text-error-text">

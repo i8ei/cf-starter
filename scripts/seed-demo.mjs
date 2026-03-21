@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { scryptSync, randomBytes } from "node:crypto";
 import { parseArgs } from "node:util";
+import { hashPassword } from "better-auth/crypto";
 import { printReport } from "./lib/cli-report.mjs";
 import { buildSeedDemoPlan } from "./lib/seed-demo.mjs";
 import { execWrangler, getPrimaryD1DatabaseName, readWranglerConfig } from "./lib/wrangler-config.mjs";
@@ -24,21 +24,6 @@ const name = values.name ?? "Demo User";
 const organizationName = `${name} Workspace`;
 const organizationSlug = `demo-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "workspace"}`;
 const mode = values.remote ? "--remote" : "--local";
-
-/**
- * Hash password using scrypt (compatible with Better Auth's current format).
- * Format: salt:derivedKey (both hex-encoded)
- * Better Auth uses scrypt with N=16384, r=8, p=1, keyLen=64.
- */
-function hashPasswordForBetterAuth(plainTextPassword) {
-  const salt = randomBytes(16);
-  const N = 16384;
-  const r = 8;
-  const p = 1;
-  const keyLen = 64;
-  const derived = scryptSync(plainTextPassword, salt, keyLen, { N, r, p });
-  return `${salt.toString("hex")}:${derived.toString("hex")}`;
-}
 
 function escapeSql(value) {
   return value.replaceAll("'", "''");
@@ -71,7 +56,7 @@ const userId = crypto.randomUUID();
 const accountId = crypto.randomUUID();
 const orgId = "default-org";
 const memberId = crypto.randomUUID();
-const passwordHash = hashPasswordForBetterAuth(password);
+const passwordHash = await hashPassword(password);
 const nowUnix = Math.floor(Date.now() / 1000);
 
 const sql = [

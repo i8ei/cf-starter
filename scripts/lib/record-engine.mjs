@@ -435,16 +435,16 @@ export function generatePages(def, defExportName) {
       relatedRecord: field.relatedRecord,
       relatedLabel: field.relatedLabel || "name",
       relatedPascal: pascalCase(field.relatedRecord),
-      relatedHookName: `use${pascalCase(field.relatedRecord)}s`,
+      relatedHookName: `use${pascalCase(field.relatedRecord)}List`,
       dataVar: camelCase(field.relatedRecord),
     }));
 
-  const listPage = `import { use${PASCAL}s } from "~/features/${KEY}/hooks/use${PASCAL}";
+  const listPage = `import { use${PASCAL}List } from "~/features/${KEY}/hooks/use${PASCAL}";
 import { RecordListPage } from "~/pages/records/RecordListPage";
 import { ${DEF_NAME} } from "@shared/records/${KEY}";
 
 export function ${PASCAL}ListPage() {
-  const { data, isLoading } = use${PASCAL}s(true);
+  const { data, isLoading } = use${PASCAL}List(true);
   return <RecordListPage def={${DEF_NAME}} data={data?.rows ?? []} isLoading={isLoading} />;
 }
 `;
@@ -465,7 +465,7 @@ export function ${PASCAL}ListPage() {
     .join("\n");
   const detailRelationImportBlock = detailRelationImports ? `\n${detailRelationImports}` : "";
   const detailRelationHooks = relationFields
-    .map((r) => `\n  const { data: ${r.dataVar} = [] } = ${r.relatedHookName}(true);`)
+    .map((r) => `\n  const { data: ${r.dataVar}Data } = ${r.relatedHookName}(true);\n  const ${r.dataVar} = ${r.dataVar}Data?.rows ?? [];`)
     .join("");
   const detailRelationLabelsEntries = relationFields
     .map((r) => `    ${r.fieldKey}: Object.fromEntries(${r.dataVar}.map((r: Record<string, unknown>) => [r.id as number, String(r.${r.relatedLabel} ?? r.id)])),`)
@@ -504,7 +504,7 @@ export function ${PASCAL}DetailPage() {
     .join("\n");
   const formRelationImportBlock = formRelationImports ? `\n${formRelationImports}` : "";
   const formRelationHooks = relationFields
-    .map((r) => `\n  const { data: ${r.dataVar} = [] } = ${r.relatedHookName}(true);`)
+    .map((r) => `\n  const { data: ${r.dataVar}Data } = ${r.relatedHookName}(true);\n  const ${r.dataVar} = ${r.dataVar}Data?.rows ?? [];`)
     .join("");
   const formRelationOptionsEntries = relationFields
     .map((r) => `    ${r.fieldKey}: ${r.dataVar}.map((r: Record<string, unknown>) => ({ id: r.id as number, label: String(r.${r.relatedLabel} ?? r.id) })),`)
