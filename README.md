@@ -1,7 +1,7 @@
 # cf-starter
 
 <p align="center">
-  <img src="docs/hero.png" alt="cf-starter — Edge Platform Framework" width="800" />
+  <img src="docs/hero.webp" alt="cf-starter — Edge Platform Framework" width="800" />
 </p>
 
 Cloudflare Workers 上で業務アプリを最短で立ち上げるための starter テンプレートです。
