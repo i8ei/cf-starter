@@ -1,5 +1,9 @@
 # cf-starter
 
+<p align="center">
+  <img src="docs/hero.png" alt="cf-starter — Edge Platform Framework" width="800" />
+</p>
+
 Cloudflare Workers 上で業務アプリを最短で立ち上げるための starter テンプレートです。
 
 認証・セッション・権限・DB・監査ログ・テスト・CLI・コード生成を最初から備えており、`cp` してすぐ開発を始められます。維持コストはほぼゼロ。Cloudflare の無償枠だけで本番運用できます。
