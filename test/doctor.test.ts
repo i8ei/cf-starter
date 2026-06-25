@@ -45,7 +45,9 @@ describe("analyzeDoctorContext", () => {
     expect(report.ok).toBe(true);
     expect(report.checks.find((check) => check.id === "node-version")?.level).toBe("pass");
     expect(report.checks.find((check) => check.id === "d1-database-id")?.level).toBe("warn");
+    expect(report.checks.find((check) => check.id === "rate-limiter")?.level).toBe("warn");
     expect(report.warnings).toContain("d1_databases[0].database_id is still TODO.");
+    expect(report.warnings).toContain("RATE_LIMITER Durable Object binding is not configured.");
   });
 
   it("fails remote doctor when production web origins are still local-only", () => {
@@ -120,6 +122,9 @@ describe("analyzeDoctorContext", () => {
       wranglerConfig: {
         d1_databases: [{ database_name: "my-db", database_id: "abc-123" }],
         r2_buckets: [{ binding: "BUCKET", bucket_name: "b" }],
+        durable_objects: {
+          bindings: [{ name: "RATE_LIMITER", class_name: "RateLimiter" }],
+        },
         vars: {
           APP_BASE_URL: "https://my-app.ichevi.workers.dev",
           CORS_ORIGIN: "http://localhost:5173, https://my-app.ichevi.workers.dev",
@@ -141,6 +146,7 @@ describe("analyzeDoctorContext", () => {
     expect(report.ok).toBe(true);
     expect(report.checks.find((check) => check.id === "remote-cors-origin")?.level).toBe("pass");
     expect(report.checks.find((check) => check.id === "remote-app-base-url")?.level).toBe("pass");
+    expect(report.checks.find((check) => check.id === "rate-limiter")?.level).toBe("pass");
     // AUTH_ENABLED=false → no secrets hint
     expect(report.checks.find((check) => check.id === "remote-secrets-hint")).toBeUndefined();
   });
