@@ -173,6 +173,24 @@ export function analyzeDoctorContext({
     });
   }
 
+  const hasRateLimiter = wranglerConfig?.durable_objects?.bindings?.some(
+    (binding) => binding.name === "RATE_LIMITER",
+  );
+  if (hasRateLimiter) {
+    checks.push({
+      id: "rate-limiter",
+      level: "pass",
+      message: "RATE_LIMITER Durable Object binding is configured.",
+    });
+  } else {
+    checks.push({
+      id: "rate-limiter",
+      level: "warn",
+      message: "RATE_LIMITER Durable Object binding is not configured.",
+      fix: "Enable durable_objects and its migration in wrangler.jsonc to rate-limit auth endpoints.",
+    });
+  }
+
   const vars = wranglerConfig?.vars ?? {};
   if (typeof vars.APP_BASE_URL === "string" && vars.APP_BASE_URL.length > 0) {
     checks.push({
