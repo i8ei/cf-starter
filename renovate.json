@@ -1,0 +1,62 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "Asia/Tokyo",
+  "schedule": ["before 6am on Monday"],
+  "labels": ["dependencies"],
+  "separateMajorMinor": true,
+  "separateMultipleMajor": true,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on Monday"]
+  },
+  "packageRules": [
+    {
+      "description": "Automerge non-major npm updates after CI passes",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "description": "Keep React packages aligned for non-major updates",
+      "matchPackageNames": [
+        "react",
+        "react-dom",
+        "react-is",
+        "@types/react",
+        "@types/react-dom"
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "React ecosystem"
+    },
+    {
+      "description": "Keep Tailwind packages aligned for non-major updates",
+      "matchPackageNames": ["tailwindcss", "@tailwindcss/vite"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Tailwind CSS"
+    },
+    {
+      "description": "Keep Drizzle packages aligned for non-major updates",
+      "matchPackageNames": ["drizzle-orm", "drizzle-kit"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Drizzle"
+    },
+    {
+      "description": "Keep Cloudflare tooling aligned for non-major updates",
+      "matchPackageNames": [
+        "wrangler",
+        "@cloudflare/vite-plugin",
+        "@cloudflare/workers-types"
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Cloudflare tooling"
+    },
+    {
+      "description": "Require manual review for major updates",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    }
+  ]
+}
