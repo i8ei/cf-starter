@@ -55,9 +55,9 @@ npm run deploy
 | Frontend | React + TypeScript + Tailwind CSS v4 + TanStack Query + Recharts + wouter |
 | Backend | Hono on Cloudflare Workers |
 | Database | D1 (SQLite) + Drizzle ORM |
-| Storage | R2 (optional) / KV (optional) |
-| Rate limit | Durable Objects |
-| Async jobs | Cloudflare Queues |
+| Storage | R2 binding included / KV (optional) |
+| Rate limit | Durable Objects addon (included, disabled by default) |
+| Async jobs | Cloudflare Queues addon (included, disabled by default) |
 | Validation | Zod（フロント・バック共有） |
 | Build | Vite + @cloudflare/vite-plugin |
 | Testing | Vitest + Playwright (E2E) |
@@ -90,7 +90,7 @@ Zod スキーマ → @hono/zod-validator → Drizzle ORM → AppType → hc<AppT
 - organization プラグイン（組織・メンバー・招待）
 - 招待メールは `/invite?id=...` のリンクを生成し、受信者がそのまま承認可能
 - CSRF 保護（Origin/Referer 検証、全 POST/PUT/PATCH/DELETE に自動適用）
-- Durable Object レート制限（認証エンドポイントに適用済み）
+- Durable Object レート制限を同梱（`wrangler.jsonc` の `durable_objects` と `migrations` を有効化すると認証エンドポイントに適用）
 - 監査ログ（認可失敗・重要操作を D1 に記録）
 - request id + 構造化 JSON ログ / 統一 API エラー形式
 - デプロイ前セキュリティチェック（`npm run security-check` / `npm run deploy` で自動実行）
@@ -265,7 +265,7 @@ cf-starter/
 
 ## セキュリティ
 
-cf-starter はテンプレートの時点でセキュリティの基盤を組み込んでいます。コピーして作ったアプリは、初期状態から以下の防御が有効です。
+cf-starter はテンプレートの時点でセキュリティの基盤を組み込んでいます。以下のうち Durable Object レート制限は実装を同梱していますが、binding は既定で無効です。
 
 ### 組み込み済みの防御
 
@@ -275,7 +275,7 @@ cf-starter はテンプレートの時点でセキュリティの基盤を組み
 | 認可 | `requireAuth` → `requireRole` → `requireOrgRole` のミドルウェアチェーン。型安全（タイポはコンパイルエラー） |
 | CSRF | Origin/Referer 検証。POST/PUT/PATCH/DELETE に自動適用。認証ミドルウェアより前に実行 |
 | CORS | 許可リストベース（ワイルドカード不可）。Zod でオリジン形式を検証 |
-| レート制限 | Durable Object による IP ベース制限。認証エンドポイントに適用済み |
+| レート制限 | Durable Object による IP ベース制限を同梱。`wrangler.jsonc` の `durable_objects` と `migrations` を有効化後、認証エンドポイントに適用 |
 | 入力検証 | Zod + @hono/zod-validator。フロント・バック共有スキーマ |
 | エラー制御 | 本番では `"Internal Server Error"` のみ返却。詳細はサーバーログに記録 |
 | 監査 | 認可失敗・重要操作を D1 に記録。request id で追跡可能 |
@@ -318,7 +318,8 @@ npm run security-check
 - [ ] `npm run ci:local` が通ることを確認
 - [ ] `vars.APP_BASE_URL` をそのアプリの本番 HTTPS URL にする
 - [ ] `vars.CORS_ORIGIN` に上記本番 URL を含める
-- [ ] KV / R2 / Queue が必要なら作成し `wrangler.jsonc` に設定
+- [ ] レート制限が必要なら `wrangler.jsonc` の `durable_objects` と `migrations` を有効化
+- [ ] KV / R2 / Queue / Cron が必要なら Cloudflare 資源を作成し `wrangler.jsonc` に設定
 - [ ] `COOKIE_SAME_SITE` / `COOKIE_SECURE` を運用に合わせる
 - [ ] `npm run doctor -- --remote` でデプロイ前チェック
 
@@ -341,6 +342,7 @@ npm run security-check
 |----------|------|
 | [CONSTITUTION.md](./CONSTITUTION.md) | 設計判断の基準（何を入れ、何を入れないか） |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 設計の詳細（認証・組織・Record Engine・セキュリティ不変条件） |
+| [CHANGELOG.md](./CHANGELOG.md) | バージョンごとの変更履歴 |
 | [ROADMAP.md](./ROADMAP.md) | 開発履歴と今後の計画 |
 | [CLI_DESIGN.md](./CLI_DESIGN.md) | CLI の設計と運用 |
 | CLAUDE.md | AI 向けガイド（セキュリティルール含む） |

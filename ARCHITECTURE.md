@@ -24,7 +24,7 @@
 6. Drizzle ORM
 7. D1
 
-補助インフラとして次を持ちます。
+補助インフラの実装を同梱しています。`wrangler.jsonc` では R2 のみ binding が有効で、KV / Durable Objects / Queues / Cron は既定でコメントアウトされています。
 
 - KV
 - R2
@@ -277,9 +277,9 @@ validation error も同じ envelope に入れます。
 - requestId
 - metadata
 
-## Queue
+## Queue addon
 
-`JOBS` Queue binding を持ち、job を処理します。
+Queue consumer 実装を同梱しています。`wrangler.jsonc` の `JOBS` Queue binding は既定でコメントアウトされており、有効化した場合に job を処理します。
 
 - `user.welcome` — ウェルカムメール
 - `upload.process` — ファイルアップロード処理
