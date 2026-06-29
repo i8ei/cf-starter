@@ -499,10 +499,10 @@ Drizzle スキーマ → drizzle-orm/d1（DBアクセス）
     ↓
 Hono ルート定義 → export type AppType
     ↓
-hc<AppType> → TanStack Query（フロントエンド）
+hc<AppType> + InferResponseType → TanStack Query（フロントエンド）
 ```
 
-バックエンドからフロントエンドまで型が貫通する。
+バックエンドからフロントエンドまで型が貫通する。Record Engine 生成hooksは Hono ルートの成功レスポンス型を推論するため、レスポンス型を手書きしない。
 
 ## dev:split モード（認証フリッカー回避）
 
@@ -548,19 +548,21 @@ seed:demo はべき等（何度実行しても安全）なので、すでに実�
 
 - **ハイフン入りキー**: `defineRecord()` の `key` にハイフンを含めることができる（例: `"my-record"`）。生成コードはキャメルケースに変換して使う。
 - **数値フィールド**: フォームからの入力は文字列になるため、`z.coerce.number()` を使う。`z.number()` ではバリデーションエラーになる。
+- **日付フィールド**: `YYYY-MM-DD` 形式に加えて実在日付（うるう年含む）を検証する。
+- **監査ログ除外**: `sensitive: true` または `audit: false` を付けたフィールドは生成ルートの audit metadata から除外される。
 - **FileField**: 型定義（`shared/lib/record-def.ts`）とバリデーション（Zod `z.string()`）は存在するが、UIのファイルアップロードは未実装。フォームでは「ファイルアップロードは未実装です」のプレースホルダーが表示される。R2連携の実装は将来課題。
 - **RelationField 自動解決**: 生成されるForm/Detailページは、relation型フィールドの関連レコードを自動的にフェッチし、`relationOptions`/`relationLabels` として渡す。`relatedLabel` で指定したフィールドが表示ラベルになる。
 
-## オプションバインディング（Queues / Cron / DurableObjects）
+## オプションバインディング（Queues / Workers AI）と既定有効の補助バインディング
 
-`wrangler.jsonc` では Queues・Cron Triggers・DurableObjects のセクションはデフォルトでコメントアウトされている。
-必要なときだけアンコメントして使う。
+`wrangler.jsonc` では DurableObjects（`RATE_LIMITER`）と Cron Triggers は既定有効、Queues と Workers AI は既定でコメントアウトされている。
 
-- **DurableObjects** (`RATE_LIMITER`): レートリミットが必要なときにアンコメント。`migrations` も同時にアンコメントする。
+- **DurableObjects** (`RATE_LIMITER`): 認証エンドポイントのレートリミット用。既定有効。不要なら `durable_objects` と `migrations` を同時に削除/コメントアウトする。
+- **Cron Triggers**: 期限切れセッション掃除などの定期メンテナンス用。既定で毎日1回（`0 3 * * *`）実行。頻度変更可。
 - **Queues** (`JOBS`): バックグラウンドジョブ（メール送信など）が必要なときにアンコメント。
-- **Cron Triggers**: 定期バッチ（セッション掃除など）が必要なときにアンコメント。
+- **Workers AI** (`AI`): AI機能が必要なときに `ai` binding をアンコメント。サンプルルートは `/api/ai/example/prompt`。
 
-`src/types.ts` の `RATE_LIMITER` と `JOBS` はオプション（`?`）なので、バインディングがない状態でもビルド・実行できる。
+`src/types.ts` の `RATE_LIMITER` / `JOBS` / `AI` はオプション（`?`）なので、バインディングがない状態でもビルド・実行できる。
 health チェック (`/api/health`) もバインディングの有無を動的に確認する。
 
 ## 変更時のチェックリスト

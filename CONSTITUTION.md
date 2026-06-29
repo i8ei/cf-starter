@@ -40,7 +40,8 @@ cf-starter の設計判断の基準。機能追加・削除・変更の際にこ
 |-------|-----------|
 | Record Engine | CLAUDE.md「Record Engine を使わない場合」参照 |
 | Recharts チャート群 | `app/components/charts/` を削除 |
-| Queues / Cron / DurableObjects | wrangler.jsonc のコメントアウトで無効化 |
+| DurableObjects / Cron | `wrangler.jsonc` で既定有効。不要なら該当セクションを削除またはコメントアウト |
+| Queues / Workers AI | `wrangler.jsonc` のコメントアウトを解除して有効化 |
 | FileField（R2 アップロード） | 未実装。定義のみ削除 |
 
 **addon の条件**: core からの直接 import がゼロであること。

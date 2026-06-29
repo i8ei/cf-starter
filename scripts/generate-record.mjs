@@ -22,17 +22,13 @@ import {
   resolveDefExportName,
   validateRecordDef,
   pascalCase,
-  camelCase,
-  snakeCase,
   appendDrizzleTable,
   generateZodSchemaContent,
+  generateRoutesContent,
+  generateHooksContent,
   insertRouteRegistration,
   generatePages,
   registerAppRoute,
-  fieldToTsType,
-  getDefaultSortField,
-  schemaHasTable,
-  indexHasRoute,
 } from "./lib/record-engine.mjs";
 import { buildRecordGenerationPlan } from "./lib/record-plan.mjs";
 
@@ -112,9 +108,10 @@ function ensureDir(filePath) {
 const KEY = def.key;
 const PASCAL = pascalCase(KEY);
 const TABLE = def.tableName;
-const fields = def.fields;
-const status = def.status;
-const fieldEntries = Object.entries(fields);
+const recordImportPath = values.record
+  .replace(/^\.?\//, "")
+  .replace(/^shared\/records\//, "")
+  .replace(/\.[cm]?[tj]sx?$/, "");
 
 const schemaPath = resolve(process.cwd(), "src/db/schema.ts");
 const indexPath = resolve(process.cwd(), "src/index.ts");
@@ -126,7 +123,7 @@ const existingPaths = [
   `shared/features/${KEY}/schema.ts`,
   `src/features/${KEY}/routes.ts`,
   `app/features/${KEY}/hooks/use${PASCAL}.ts`,
-  ...generatePages(def, defExportName).map((page) => page.path),
+  ...generatePages(def, defExportName, recordImportPath).map((page) => page.path),
 ].filter((relativePath) => existsSync(resolve(process.cwd(), relativePath)));
 
 const basePlanReport = buildRecordGenerationPlan({
@@ -214,248 +211,8 @@ function generateRoutes() {
     return;
   }
 
-  const tableVar = camelCase(TABLE);
-  const schemaImportPath = `../../../shared/features/${KEY}/schema`;
-
-  // Build the set object for update
-  const updateSetFields = fieldEntries
-    .map(([name]) => `          ...(${name} !== undefined ? { ${name} } : {})`)
-    .join(",\n");
-  const updateDestructure = fieldEntries.map(([name]) => name).join(", ");
-
-  // Status set field
-  const statusSetField = status
-    ? `,\n          ...(${camelCase(status.field)} !== undefined ? { ${camelCase(status.field)} } : {})`
-    : "";
-  const statusDestructure = status ? `, ${camelCase(status.field)}` : "";
-
-  // Status change endpoint
-  const statusRoute = status ? generateStatusRoute(tableVar) : "";
-
-  const zodImport = status ? `\nimport { z } from "zod";` : "";
-
-  const sortField = getDefaultSortField(def);
-  const sd = def.softDelete;
-
-  // Drizzle imports: add isNull when softDelete is enabled, always include sql for count
-  const drizzleImports = sd
-    ? `and, desc, eq, isNull, sql`
-    : `and, desc, eq, sql`;
-
-  // WHERE helpers for soft delete
-  const listWhere = sd
-    ? `and(eq(${tableVar}.organizationId, orgId), isNull(${tableVar}.deletedAt))`
-    : `eq(${tableVar}.organizationId, orgId)`;
-  const oneWhere = sd
-    ? `and(eq(${tableVar}.id, id), eq(${tableVar}.organizationId, orgId), isNull(${tableVar}.deletedAt))`
-    : `and(eq(${tableVar}.id, id), eq(${tableVar}.organizationId, orgId))`;
-
-  // DELETE body: soft delete sets deletedAt, hard delete removes the row
-  const deleteBody = sd
-    ? `const [row] = await db
-      .update(${tableVar})
-      .set({ deletedAt: new Date().toISOString() })
-      .where(and(eq(${tableVar}.id, id), eq(${tableVar}.organizationId, orgId)))
-      .returning();`
-    : `const [row] = await db
-      .delete(${tableVar})
-      .where(and(eq(${tableVar}.id, id), eq(${tableVar}.organizationId, orgId)))
-      .returning();`;
-
-  const content = `import { Hono } from "hono";
-import { ${drizzleImports} } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";${zodImport}
-import { ${tableVar} } from "../../db/schema";
-import {
-  create${PASCAL}Schema,
-  update${PASCAL}Schema,
-} from "${schemaImportPath}";
-import { requireAuth } from "../../middleware/auth";
-import type { AppContextEnv } from "../../types";
-import { writeAuditLog } from "../../lib/audit";
-import { jsonError } from "../../lib/http";
-import { validator } from "../../lib/validator";
-
-const app = new Hono<AppContextEnv>()
-  .use("*", requireAuth)
-  // LIST
-  .get("/", async (c) => {
-    const orgId = c.get("orgId");
-    if (!orgId) {
-      return jsonError(c, 403, "org_context_required", "Current organization is required");
-    }
-    const db = drizzle(c.env.DB);
-    const limit = Math.min(Number(c.req.query("limit") || 100), 500);
-    const offset = Number(c.req.query("offset") || 0);
-
-    const [{ count: total }] = await db
-      .select({ count: sql<number>\`count(*)\` })
-      .from(${tableVar})
-      .where(${listWhere});
-
-    const rows = await db
-      .select()
-      .from(${tableVar})
-      .where(${listWhere})
-      .orderBy(desc(${tableVar}.${sortField}))
-      .limit(limit)
-      .offset(offset);
-    return c.json({ rows, total, limit, offset });
-  })
-  // CREATE
-  .post(
-    "/",
-    validator("json", create${PASCAL}Schema),
-    async (c) => {
-      const orgId = c.get("orgId");
-      if (!orgId) {
-        return jsonError(c, 403, "org_context_required", "Current organization is required");
-      }
-      const db = drizzle(c.env.DB);
-      const body = c.req.valid("json");
-      const [row] = await db
-        .insert(${tableVar})
-        .values({ organizationId: orgId, ...body })
-        .returning();
-      await writeAuditLog(c.env.DB, c, {
-        actorUserId: c.get("userId") ?? null,
-        organizationId: orgId,
-        action: "${KEY}.create",
-        resourceType: "${KEY}",
-        resourceId: String(row.id),
-        status: 201,
-        metadata: body,
-      });
-      return c.json(row, 201);
-    }
-  )
-  // GET ONE
-  .get("/:id", async (c) => {
-    const orgId = c.get("orgId");
-    if (!orgId) {
-      return jsonError(c, 403, "org_context_required", "Current organization is required");
-    }
-    const db = drizzle(c.env.DB);
-    const id = Number(c.req.param("id"));
-    const [row] = await db
-      .select()
-      .from(${tableVar})
-      .where(${oneWhere});
-    if (!row) {
-      return jsonError(c, 404, "not_found", "${PASCAL} not found");
-    }
-    return c.json(row);
-  })
-  // UPDATE
-  .put(
-    "/:id",
-    validator("json", update${PASCAL}Schema),
-    async (c) => {
-      const orgId = c.get("orgId");
-      if (!orgId) {
-        return jsonError(c, 403, "org_context_required", "Current organization is required");
-      }
-      const db = drizzle(c.env.DB);
-      const id = Number(c.req.param("id"));
-      const { ${updateDestructure}${statusDestructure} } = c.req.valid("json");
-      const [row] = await db
-        .update(${tableVar})
-        .set({
-${updateSetFields}${statusSetField},
-          updatedAt: new Date().toISOString(),
-        })
-        .where(${oneWhere})
-        .returning();
-      if (!row) {
-        return jsonError(c, 404, "not_found", "${PASCAL} not found");
-      }
-      await writeAuditLog(c.env.DB, c, {
-        actorUserId: c.get("userId") ?? null,
-        organizationId: orgId,
-        action: "${KEY}.update",
-        resourceType: "${KEY}",
-        resourceId: String(row.id),
-        status: 200,
-        metadata: { ${updateDestructure}${statusDestructure} },
-      });
-      return c.json(row);
-    }
-  )
-  // DELETE${sd ? " (soft)" : ""}
-  .delete("/:id", async (c) => {
-    const orgId = c.get("orgId");
-    if (!orgId) {
-      return jsonError(c, 403, "org_context_required", "Current organization is required");
-    }
-    const db = drizzle(c.env.DB);
-    const id = Number(c.req.param("id"));
-    ${deleteBody}
-    if (!row) {
-      return jsonError(c, 404, "not_found", "${PASCAL} not found");
-    }
-    await writeAuditLog(c.env.DB, c, {
-      actorUserId: c.get("userId") ?? null,
-      organizationId: orgId,
-      action: "${KEY}.delete",
-      resourceType: "${KEY}",
-      resourceId: String(row.id),
-      status: 200,
-    });
-    return c.json({ ok: true });
-  })${statusRoute};
-
-export default app;
-`;
-
-  writeFileSync(outPath, content);
+  writeFileSync(outPath, generateRoutesContent(def));
   console.log(`  [gen] src/features/${KEY}/routes.ts`);
-}
-
-function generateStatusRoute(tableVar) {
-  const statusField = camelCase(status.field);
-  const opts = status.options.map((o) => `"${o}"`).join(", ");
-
-  return `
-  // STATUS CHANGE
-  .patch(
-    "/:id/status",
-    validator("json", z.object({ ${statusField}: z.enum([${opts}]) })),
-    async (c) => {
-      const orgId = c.get("orgId");
-      if (!orgId) {
-        return jsonError(c, 403, "org_context_required", "Current organization is required");
-      }
-      const db = drizzle(c.env.DB);
-      const id = Number(c.req.param("id"));
-      const { ${statusField} } = c.req.valid("json");
-
-      // Get current status for audit
-      const [current] = await db
-        .select({ ${statusField}: ${tableVar}.${statusField} })
-        .from(${tableVar})
-        .where(and(eq(${tableVar}.id, id), eq(${tableVar}.organizationId, orgId)));
-      if (!current) {
-        return jsonError(c, 404, "not_found", "${PASCAL} not found");
-      }
-
-      const [row] = await db
-        .update(${tableVar})
-        .set({ ${statusField}, updatedAt: new Date().toISOString() })
-        .where(and(eq(${tableVar}.id, id), eq(${tableVar}.organizationId, orgId)))
-        .returning();
-
-      await writeAuditLog(c.env.DB, c, {
-        actorUserId: c.get("userId") ?? null,
-        organizationId: orgId,
-        action: "${KEY}.status_change",
-        resourceType: "${KEY}",
-        resourceId: String(row.id),
-        status: 200,
-        metadata: { from: current.${statusField}, to: ${statusField} },
-      });
-      return c.json(row);
-    }
-  )`;
 }
 
 // ── 4. TanStack Query hooks ────────────────────
@@ -471,144 +228,8 @@ function generateHooks() {
     return;
   }
 
-  const queryKey = `${KEY.toUpperCase().replace(/-/g, "_")}_KEY`;
-
-  // Build the record type from fields
-  const typeFields = [];
-  typeFields.push("  id: number;");
-  typeFields.push("  organizationId: string;");
-  for (const [name, field] of fieldEntries) {
-    const tsType = fieldToTsType(field);
-    const optional = field.required ? "" : " | null";
-    typeFields.push(`  ${name}: ${tsType}${optional};`);
-  }
-  if (status) {
-    typeFields.push(`  ${camelCase(status.field)}: string;`);
-  }
-  typeFields.push("  createdAt: string;");
-  typeFields.push("  updatedAt: string;");
-
-  // Create input type
-  const createFields = [];
-  for (const [name, field] of fieldEntries) {
-    const tsType = fieldToTsType(field);
-    const optional = field.required ? "" : "?";
-    createFields.push(`  ${name}${optional}: ${tsType};`);
-  }
-  if (status) {
-    createFields.push(`  ${camelCase(status.field)}?: string;`);
-  }
-
-  const statusHook = status ? generateStatusHook(queryKey) : "";
-
-  const content = `import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { client } from "~/lib/api";
-import { readApiError } from "~/lib/errors";
-import type { Create${PASCAL}Input, Update${PASCAL}Input } from "@shared/features/${KEY}/schema";
-
-const ${queryKey} = ["${KEY}"] as const;
-
-export type ${PASCAL}Record = {
-${typeFields.join("\n")}
-};
-
-export type ${PASCAL}ListResponse = {
-  rows: ${PASCAL}Record[];
-  total: number;
-  limit: number;
-  offset: number;
-};
-
-export function use${PASCAL}List(enabled: boolean) {
-  return useQuery({
-    queryKey: ${queryKey},
-    enabled,
-    queryFn: async () => {
-      const res = await client.api["${KEY}"].$get();
-      if (!res.ok) throw new Error(await readApiError(res, "Failed to fetch ${KEY}"));
-      return (await res.json()) as ${PASCAL}ListResponse;
-    },
-  });
-}
-
-export function use${PASCAL}(id: number, enabled: boolean) {
-  return useQuery({
-    queryKey: [...${queryKey}, id],
-    enabled,
-    queryFn: async () => {
-      const res = await client.api["${KEY}"][":id"].$get({
-        param: { id: String(id) },
-      });
-      if (!res.ok) throw new Error(await readApiError(res, "Failed to fetch ${KEY}"));
-      return (await res.json()) as ${PASCAL}Record;
-    },
-  });
-}
-
-export function useCreate${PASCAL}() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: Create${PASCAL}Input) => {
-      const res = await client.api["${KEY}"].$post({ json: input });
-      if (!res.ok) throw new Error(await readApiError(res, "Failed to create ${KEY}"));
-      return (await res.json()) as ${PASCAL}Record;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ${queryKey} }),
-  });
-}
-
-export function useUpdate${PASCAL}() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, ...input }: Update${PASCAL}Input & { id: number }) => {
-      const res = await client.api["${KEY}"][":id"].$put({
-        param: { id: String(id) },
-        json: input,
-      });
-      if (!res.ok) throw new Error(await readApiError(res, "Failed to update ${KEY}"));
-      return (await res.json()) as ${PASCAL}Record;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ${queryKey} }),
-  });
-}
-
-export function useDelete${PASCAL}() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: number) => {
-      const res = await client.api["${KEY}"][":id"].$delete({
-        param: { id: String(id) },
-      });
-      if (!res.ok) throw new Error(await readApiError(res, "Failed to delete ${KEY}"));
-      return (await res.json()) as { ok: true };
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ${queryKey} }),
-  });
-}
-${statusHook}`;
-
-  writeFileSync(outPath, content);
+  writeFileSync(outPath, generateHooksContent(def));
   console.log(`  [gen] app/features/${KEY}/hooks/use${PASCAL}.ts`);
-}
-
-function generateStatusHook(queryKey) {
-  const statusField = camelCase(status.field);
-  return `
-export function useUpdate${PASCAL}Status() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, ${statusField} }: { id: number; ${statusField}: string }) => {
-      const res = await client.api["${KEY}"][":id"]["status"].$patch({
-        param: { id: String(id) },
-        json: { ${statusField} },
-      });
-      if (!res.ok) throw new Error(await readApiError(res, "Failed to update status"));
-      return (await res.json()) as ${PASCAL}Record;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ${queryKey} }),
-  });
-}
-`;
 }
 
 // ── 5. Route registration in src/index.ts ──────
@@ -629,7 +250,7 @@ function registerRoute() {
 
 // ── 6. Page wrappers ─────────────────────────
 function generatePageWrappers() {
-  const pages = generatePages(def, defExportName);
+  const pages = generatePages(def, defExportName, recordImportPath);
   for (const page of pages) {
     const outPath = resolve(process.cwd(), page.path);
     ensureDir(outPath);
