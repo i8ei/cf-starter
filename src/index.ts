@@ -6,6 +6,7 @@ import type { AppContextEnv, Env } from "./types";
 import health from "./routes/health";
 import auth from "./routes/auth";
 
+import aiExample from "./routes/ai-example";
 import publicExample from "./routes/public-example";
 import { purgeExpiredSessions } from "./db/session-maintenance";
 import { csrfProtection } from "./middleware/csrf";
@@ -29,6 +30,8 @@ export const app = new Hono<AppContextEnv>()
       contentSecurityPolicy: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
+        // Tailwind/Vite inject styles in this starter. Tighten this to nonces
+        // or hashes if you replace the styling pipeline.
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:"],
         fontSrc: ["'self'"],
@@ -42,7 +45,7 @@ export const app = new Hono<AppContextEnv>()
     cors({
       origin: (origin, c) => {
         const allowlist = resolveCorsOrigins(c.env);
-        if (!origin) return allowlist[0];
+        if (!origin) return "";
         return allowlist.includes(origin) ? origin : "";
       },
       credentials: true,
@@ -64,6 +67,7 @@ export const app = new Hono<AppContextEnv>()
   })
   .route("/api/health", health)
   .route("/api/auth", auth)
+  .route("/api/ai/example", aiExample)
   .route("/api/public/example", publicExample);
 
 export type AppType = typeof app;
