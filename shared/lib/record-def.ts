@@ -10,7 +10,17 @@
 // Field types
 // ──────────────────────────────────────────────
 
-export interface TextField {
+interface FieldAuditOptions {
+  /**
+   * Exclude this field from generated audit-log metadata.
+   * Use this for PII/secrets/large free-form text.
+   */
+  sensitive?: boolean;
+  /** Set to false to exclude this field from generated audit-log metadata. */
+  audit?: boolean;
+}
+
+export interface TextField extends FieldAuditOptions {
   type: "text";
   label: string;
   required?: boolean;
@@ -19,7 +29,7 @@ export interface TextField {
   defaultValue?: string;
 }
 
-export interface NumberField {
+export interface NumberField extends FieldAuditOptions {
   type: "number";
   label: string;
   required?: boolean;
@@ -28,14 +38,14 @@ export interface NumberField {
   defaultValue?: number;
 }
 
-export interface DateField {
+export interface DateField extends FieldAuditOptions {
   type: "date";
   label: string;
   required?: boolean;
   defaultValue?: string;
 }
 
-export interface SelectField {
+export interface SelectField extends FieldAuditOptions {
   type: "select";
   label: string;
   required?: boolean;
@@ -43,7 +53,7 @@ export interface SelectField {
   defaultValue?: string;
 }
 
-export interface RelationField {
+export interface RelationField extends FieldAuditOptions {
   type: "relation";
   label: string;
   required?: boolean;
@@ -52,7 +62,7 @@ export interface RelationField {
 }
 
 /** Not yet implemented in UI. Will show placeholder. */
-export interface FileField {
+export interface FileField extends FieldAuditOptions {
   type: "file";
   label: string;
   required?: boolean;

@@ -24,13 +24,14 @@
 6. Drizzle ORM
 7. D1
 
-補助インフラの実装を同梱しています。`wrangler.jsonc` では R2 のみ binding が有効で、KV / Durable Objects / Queues / Cron は既定でコメントアウトされています。
+補助インフラの実装を同梱しています。`wrangler.jsonc` では R2 / Durable Objects（`RATE_LIMITER`）/ Cron が既定で有効、KV / Queues / Workers AI は既定でコメントアウトされています。
 
 - KV
 - R2
 - Durable Objects
 - Queues
 - Cron
+- Workers AI
 
 ## Starter Core
 
@@ -87,7 +88,9 @@ Record Engine は3層で構成されます。
 
 - `defineRecord` はジェネリクスで `listView.columns` / `formView.sections[*].fields` を `fields` のキーに制約
 - 生成コードに `as any` キャストなし
+- 生成hooksは `InferResponseType` で Hono ルートの成功レスポンス型を推論し、手書きレスポンス型を持たない
 - `organizationId` は `.notNull()` + index 付きで生成
+- `sensitive: true` / `audit: false` フィールドは生成ルートの audit metadata から除外
 
 UI/UX 品質:
 

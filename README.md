@@ -56,7 +56,7 @@ npm run deploy
 | Backend | Hono on Cloudflare Workers |
 | Database | D1 (SQLite) + Drizzle ORM |
 | Storage | R2 binding included / KV (optional) |
-| Rate limit | Durable Objects addon (included, disabled by default) |
+| Rate limit | Durable Objects addon (included, enabled by default) |
 | Async jobs | Cloudflare Queues addon (included, disabled by default) |
 | AI | Workers AI addon (included, disabled by default) |
 | Validation | Zod（フロント・バック共有） |
@@ -70,7 +70,7 @@ npm run deploy
 Zod スキーマ → @hono/zod-validator → Drizzle ORM → AppType → hc<AppType> → TanStack Query
 ```
 
-バックエンドからフロントエンドまで型が貫通します。
+バックエンドからフロントエンドまで型が貫通します。Record Engine 生成hooksも `InferResponseType` で Hono ルートから成功レスポンス型を推論します。
 
 ---
 
@@ -91,7 +91,7 @@ Zod スキーマ → @hono/zod-validator → Drizzle ORM → AppType → hc<AppT
 - organization プラグイン（組織・メンバー・招待）
 - 招待メールは `/invite?id=...` のリンクを生成し、受信者がそのまま承認可能
 - CSRF 保護（Origin/Referer 検証、全 POST/PUT/PATCH/DELETE に自動適用）
-- Durable Object レート制限を同梱（`wrangler.jsonc` の `durable_objects` と `migrations` を有効化すると認証エンドポイントに適用）
+- Durable Object レート制限を同梱（`wrangler.jsonc` で既定有効、認証エンドポイントに適用）
 - 監査ログ（認可失敗・重要操作を D1 に記録）
 - request id + 構造化 JSON ログ / 統一 API エラー形式
 - デプロイ前セキュリティチェック（`npm run security-check` / `npm run deploy` で自動実行）
@@ -133,7 +133,7 @@ export const requestRecord = defineRecord({
     pickupDate:    { type: "date", label: "乗車日", required: true },
     passengers:    { type: "number", label: "人数", min: 1, max: 10 },
     vehicleType:   { type: "select", label: "車種", options: ["sedan", "van"] },
-    notes:         { type: "text", label: "備考", multiline: true },
+    notes:         { type: "text", label: "備考", multiline: true, sensitive: true },
   },
   status: {
     field: "status",
@@ -156,6 +156,7 @@ export const requestRecord = defineRecord({
 ```
 
 Record Engine は不要なら削除できます。core への依存はゼロです。
+`sensitive: true` または `audit: false` を付けたフィールドは、生成ルートの監査ログ metadata から除外されます。
 
 ### ダッシュボード UI キット
 

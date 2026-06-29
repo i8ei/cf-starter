@@ -13,6 +13,10 @@ import {
   appendDrizzleTable,
   generateZodField,
   generateZodSchemaContent,
+  getAuditedFieldNames,
+  generateAuditMetadataExpression,
+  generateRoutesContent,
+  generateHooksContent,
   insertRouteRegistration,
   generatePages,
   registerAppRoute,
@@ -321,6 +325,7 @@ describe("generateZodField", () => {
     const z = generateZodField("due", { type: "date", label: "D" }, false);
     expect(z).toContain("z.string().regex(");
     expect(z).toContain("YYYY-MM-DD");
+    expect(z).toContain("invalid calendar date");
   });
 
   it("generates select field with enum (required)", () => {
@@ -421,7 +426,11 @@ describe("generated Zod schemas validate correctly", () => {
     const dateExpr = generateZodField("d", { type: "date", label: "D" }, false);
     const dateSchema = loadSchema(dateExpr);
     expect(dateSchema.parse("2025-01-15")).toBe("2025-01-15");
+    expect(dateSchema.parse("2024-02-29")).toBe("2024-02-29");
     expect(() => dateSchema.parse("not-a-date")).toThrow();
+    expect(() => dateSchema.parse("2025-02-29")).toThrow();
+    expect(() => dateSchema.parse("2025-13-01")).toThrow();
+    expect(() => dateSchema.parse("2025-04-31")).toThrow();
 
     // select enum
     const selExpr = generateZodField("p", { type: "select", label: "P", options: ["a", "b"] }, false);
@@ -434,6 +443,83 @@ describe("generated Zod schemas validate correctly", () => {
     const optSchema = loadSchema(optExpr);
     expect(optSchema.parse(undefined)).toBeUndefined();
     expect(optSchema.parse("hello")).toBe("hello");
+  });
+});
+
+// ── Route and hook templates ────────────────────
+
+describe("generated route and hook templates", () => {
+  it("generates hooks that infer response types from the Hono client instead of hand-written casts", () => {
+    const content = generateHooksContent(sampleDef);
+
+    expect(content).toContain('import type { InferResponseType } from "hono/client"');
+    expect(content).toContain("type ApiErrorResponse = { error: { code: string; message: string; requestId: string | null } };");
+    expect(content).toContain("type SuccessResponse<T> = Exclude<T, ApiErrorResponse>;");
+    expect(content).toContain("export type TasksListResponse = SuccessResponse<InferResponseType<typeof listEndpoint, 200>>;");
+    expect(content).toContain("export type TasksRecord = SuccessResponse<InferResponseType<typeof getEndpoint, 200>>;");
+    expect(content).toContain("export type DeleteTasksResponse = SuccessResponse<InferResponseType<typeof deleteEndpoint, 200>>;");
+  });
+
+  it("generates status hooks with Hono-inferred response types", () => {
+    const content = generateHooksContent(sampleDef);
+
+    expect(content).toContain("const updateStatusEndpoint = client.api[\"tasks\"][\":id\"][\"status\"].$patch;");
+    expect(content).toContain("export type UpdateTasksStatusResponse = SuccessResponse<InferResponseType<typeof updateStatusEndpoint, 200>>;");
+  });
+
+  it("generates routes from a pure template function", () => {
+    const content = generateRoutesContent(sampleDef);
+
+    expect(content).toContain('import { tasks } from "../../db/schema";');
+    expect(content).toContain(".get(\"/\", async (c) =>");
+    expect(content).toContain(".post(");
+    expect(content).toContain(".patch(");
+    expect(content).toContain("metadata:");
+  });
+});
+
+// ── Audit metadata generation ───────────────────
+
+describe("audit metadata generation", () => {
+  it("excludes sensitive and audit:false fields from generated audit metadata", () => {
+    const def = {
+      ...sampleDef,
+      fields: {
+        ...sampleDef.fields,
+        ssn: { type: "text", label: "SSN", sensitive: true },
+        privateNote: { type: "text", label: "Private Note", audit: false },
+      },
+    };
+
+    expect(getAuditedFieldNames(def)).toContain("title");
+    expect(getAuditedFieldNames(def)).not.toContain("ssn");
+    expect(getAuditedFieldNames(def)).not.toContain("privateNote");
+
+    const metadata = generateAuditMetadataExpression(def, "body");
+    expect(metadata).toContain("title: body.title");
+    expect(metadata).toContain("status: body.status");
+    expect(metadata).not.toContain("ssn");
+    expect(metadata).not.toContain("privateNote");
+  });
+
+  it("returns null when no fields are safe for audit metadata and no status exists", () => {
+    const def = {
+      key: "secrets",
+      label: "Secrets",
+      tableName: "secrets",
+      fields: {
+        secret: { type: "text", label: "Secret", sensitive: true },
+      },
+      listView: {
+        columns: ["secret"],
+        defaultSort: { field: "secret", direction: "asc" },
+      },
+      formView: {
+        sections: [{ label: "Main", fields: ["secret"] }],
+      },
+    };
+
+    expect(generateAuditMetadataExpression(def, "body")).toBe("null");
   });
 });
 
