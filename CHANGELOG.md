@@ -9,14 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added a Workers AI addon entry point (`/api/ai/example/prompt`) and optional `AI` binding documentation.
 - Added weekly Renovate updates with automatic merging for patch and minor releases, manual review for major releases, and lockfile maintenance.
 - Added a separate Chromium Playwright job to CI.
 
 ### Changed
 
+- Enabled the `RATE_LIMITER` Durable Object binding and its migration by default so auth endpoints are rate-limited out of the box.
+- Enabled a daily Cron Trigger by default for scheduled maintenance such as expired session cleanup.
+- Limited Better Auth's wildcard localhost trusted origin to local/non-secure-cookie development.
+- Centralized Better Auth cookie `secure` and `sameSite` handling through `getAppConfig`.
+- Stopped returning the first configured CORS origin when requests have no `Origin` header.
 - Aligned CI with the local quality gate by running lint, typecheck, tests, unused-code checks, and build on Node.js 20.19.0.
-- Clarified that Durable Object rate limiting, Queues, and Cron support are included addons that require explicit `wrangler.jsonc` configuration.
-- Added a doctor warning when the `RATE_LIMITER` Durable Object binding is not configured.
+- Updated addon documentation: Durable Object rate limiting and Cron are now default-on; Queues and Workers AI remain opt-in.
 
 ## [2.1.0]
 

@@ -56,7 +56,7 @@ npm run deploy
 | Backend | Hono on Cloudflare Workers |
 | Database | D1 (SQLite) + Drizzle ORM |
 | Storage | R2 binding included / KV (optional) |
-| Rate limit | Durable Objects addon (included, disabled by default) |
+| Rate limit | Durable Objects addon (included, enabled by default) |
 | Async jobs | Cloudflare Queues addon (included, disabled by default) |
 | AI | Workers AI addon (included, disabled by default) |
 | Validation | Zod（フロント・バック共有） |

@@ -24,13 +24,14 @@
 6. Drizzle ORM
 7. D1
 
-補助インフラの実装を同梱しています。`wrangler.jsonc` では R2 のみ binding が有効で、KV / Durable Objects / Queues / Cron は既定でコメントアウトされています。
+補助インフラの実装を同梱しています。`wrangler.jsonc` では R2 / Durable Objects（`RATE_LIMITER`）/ Cron が既定で有効、KV / Queues / Workers AI は既定でコメントアウトされています。
 
 - KV
 - R2
 - Durable Objects
 - Queues
 - Cron
+- Workers AI
 
 ## Starter Core
 
