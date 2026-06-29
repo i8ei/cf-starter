@@ -30,6 +30,8 @@ export const app = new Hono<AppContextEnv>()
       contentSecurityPolicy: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
+        // Tailwind/Vite inject styles in this starter. Tighten this to nonces
+        // or hashes if you replace the styling pipeline.
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:"],
         fontSrc: ["'self'"],
@@ -43,7 +45,7 @@ export const app = new Hono<AppContextEnv>()
     cors({
       origin: (origin, c) => {
         const allowlist = resolveCorsOrigins(c.env);
-        if (!origin) return allowlist[0];
+        if (!origin) return "";
         return allowlist.includes(origin) ? origin : "";
       },
       credentials: true,

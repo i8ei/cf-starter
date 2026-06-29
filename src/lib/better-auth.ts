@@ -4,7 +4,7 @@ import { admin, organization } from "better-auth/plugins";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "../db/schema";
 import type { Env } from "../types";
-import { resolveAppBaseUrl } from "./config";
+import { getAppConfig, resolveAppBaseUrl } from "./config";
 import { resolveCorsOrigins } from "./cors";
 import { sendOrganizationInvite } from "../queues/jobs";
 
@@ -15,6 +15,7 @@ import { sendOrganizationInvite } from "../queues/jobs";
  */
 export function createAuth(env: Env) {
   const db = drizzle(env.DB, { schema });
+  const config = getAppConfig(env);
 
   return betterAuth({
     database: drizzleAdapter(db, { provider: "sqlite", schema }),
@@ -51,8 +52,9 @@ export function createAuth(env: Env) {
       cookiePrefix: "ba",
       defaultCookieAttributes: {
         httpOnly: true,
-        secure: env.COOKIE_SECURE !== "false",
-        sameSite: "lax",
+        // Single source of truth: derive from getAppConfig (handles SameSite=None → Secure).
+        secure: config.cookieSecure,
+        sameSite: config.cookieSameSite.toLowerCase() as "lax" | "strict" | "none",
         path: "/",
       },
     },
@@ -61,9 +63,10 @@ export function createAuth(env: Env) {
     },
     trustedOrigins: [
       ...resolveCorsOrigins(env),
-      // Dev convenience: allow localhost with any port. Safe in production because
-      // Better Auth trustedOrigins only gate CSRF origin matching, not cookie validation.
-      "http://localhost:*",
+      // Dev convenience: allow localhost with any port — only when cookies are not
+      // marked Secure (i.e. local HTTP development). Production (Secure cookies)
+      // restricts trusted origins to the configured CORS allowlist.
+      ...(config.cookieSecure ? [] : ["http://localhost:*"]),
     ],
   });
 }

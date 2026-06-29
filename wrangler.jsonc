@@ -29,16 +29,17 @@
   // "ai": {
   //   "binding": "AI"
   // },
-  // DurableObjects — uncomment if needed (e.g. rate limiter).
-  // Also add RATE_LIMITER to src/types.ts Env and uncomment migrations below.
-  // "durable_objects": {
-  //   "bindings": [
-  //     {
-  //       "name": "RATE_LIMITER",
-  //       "class_name": "RateLimiter"
-  //     }
-  //   ]
-  // },
+  // DurableObjects — enabled by default so auth endpoints are rate-limited
+  // out of the box. Remove this block (and the migration below) only if you
+  // intentionally want to disable rate limiting.
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "RATE_LIMITER",
+        "class_name": "RateLimiter"
+      }
+    ]
+  },
   // Queues — uncomment if needed. Also add JOBS to src/types.ts Env.
   // "queues": {
   //   "producers": [
@@ -55,13 +56,13 @@
   //     }
   //   ]
   // },
-  // DurableObject migrations — uncomment together with durable_objects above.
-  // "migrations": [
-  //   {
-  //     "tag": "v1",
-  //     "new_sqlite_classes": ["RateLimiter"]
-  //   }
-  // ],
+  // DurableObject migrations — required by the durable_objects binding above.
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["RateLimiter"]
+    }
+  ],
   "vars": {
     "CORS_ORIGIN": "http://localhost:5173",
     "COOKIE_SAME_SITE": "Lax",
@@ -83,10 +84,10 @@
     // Set to "false" to disable authentication for local development.
     // "AUTH_ENABLED": "false"
   },
-  // Cron triggers — uncomment if needed.
-  // "triggers": {
-  //   "crons": ["*/15 * * * *"]
-  // },
+  // Cron triggers — runs scheduled maintenance such as expired session cleanup.
+  "triggers": {
+    "crons": ["0 3 * * *"]
+  },
   // Static assets (React SPA)
   "assets": {
     "directory": "./dist/client",

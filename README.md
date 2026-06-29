@@ -203,6 +203,7 @@ Record Engine は不要なら削除できます。core への依存はゼロで�
 | `npm run record:generate -- --record shared/records/xxx.ts` | Record Engine コード生成 |
 
 CLI は `--plan --json` オプションで機械可読な出力にも対応しています。
+`bin/cf-starter` はこの `scripts/cf-starter.mjs` への薄いラッパーで、npm bin 経由でも同じCLIを呼び出せるようにしています。
 
 ---
 
@@ -266,7 +267,7 @@ cf-starter/
 
 ## セキュリティ
 
-cf-starter はテンプレートの時点でセキュリティの基盤を組み込んでいます。以下のうち Durable Object レート制限は実装を同梱していますが、binding は既定で無効です。
+cf-starter はテンプレートの時点でセキュリティの基盤を組み込んでいます。Durable Object レート制限は `wrangler.jsonc` で既定有効になっており、認証エンドポイントに適用されます。
 
 ### 組み込み済みの防御
 
@@ -276,7 +277,7 @@ cf-starter はテンプレートの時点でセキュリティの基盤を組み
 | 認可 | `requireAuth` → `requireRole` → `requireOrgRole` のミドルウェアチェーン。型安全（タイポはコンパイルエラー） |
 | CSRF | Origin/Referer 検証。POST/PUT/PATCH/DELETE に自動適用。認証ミドルウェアより前に実行 |
 | CORS | 許可リストベース（ワイルドカード不可）。Zod でオリジン形式を検証 |
-| レート制限 | Durable Object による IP ベース制限を同梱。`wrangler.jsonc` の `durable_objects` と `migrations` を有効化後、認証エンドポイントに適用 |
+| レート制限 | Durable Object による IP ベース制限を同梱。`wrangler.jsonc` の `durable_objects` と `migrations` は既定有効 |
 | 入力検証 | Zod + @hono/zod-validator。フロント・バック共有スキーマ |
 | エラー制御 | 本番では `"Internal Server Error"` のみ返却。詳細はサーバーログに記録 |
 | 監査 | 認可失敗・重要操作を D1 に記録。request id で追跡可能 |
@@ -319,8 +320,9 @@ npm run security-check
 - [ ] `npm run ci:local` が通ることを確認
 - [ ] `vars.APP_BASE_URL` をそのアプリの本番 HTTPS URL にする
 - [ ] `vars.CORS_ORIGIN` に上記本番 URL を含める
-- [ ] レート制限が必要なら `wrangler.jsonc` の `durable_objects` と `migrations` を有効化
-- [ ] KV / R2 / Queue / Cron が必要なら Cloudflare 資源を作成し `wrangler.jsonc` に設定
+- [ ] レート制限の Durable Object（`durable_objects` / `migrations`）は既定有効。不要時のみ無効化
+- [ ] 期限切れセッション掃除の cron（`triggers.crons`、既定で 1日1回）はそのままで可。頻度変更も可
+- [ ] KV / R2 / Queue が必要なら Cloudflare 資源を作成し `wrangler.jsonc` に設定
 - [ ] `COOKIE_SAME_SITE` / `COOKIE_SECURE` を運用に合わせる
 - [ ] `npm run doctor -- --remote` でデプロイ前チェック
 
