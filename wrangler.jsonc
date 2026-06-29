@@ -25,6 +25,10 @@
       "bucket_name": "cf-starter-bucket"
     }
   ],
+  // Workers AI — uncomment if needed. Also add AI to src/types.ts Env.
+  // "ai": {
+  //   "binding": "AI"
+  // },
   // DurableObjects — uncomment if needed (e.g. rate limiter).
   // Also add RATE_LIMITER to src/types.ts Env and uncomment migrations below.
   // "durable_objects": {

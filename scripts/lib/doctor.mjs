@@ -191,6 +191,22 @@ export function analyzeDoctorContext({
     });
   }
 
+  const hasWorkersAi = wranglerConfig?.ai?.binding === "AI";
+  if (hasWorkersAi) {
+    checks.push({
+      id: "workers-ai",
+      level: "pass",
+      message: "Workers AI binding is configured.",
+    });
+  } else {
+    checks.push({
+      id: "workers-ai",
+      level: "info",
+      message: "Workers AI binding is not configured; the AI example route will return 503 until enabled.",
+      fix: "Enable the ai binding in wrangler.jsonc if Workers AI features are needed.",
+    });
+  }
+
   const vars = wranglerConfig?.vars ?? {};
   if (typeof vars.APP_BASE_URL === "string" && vars.APP_BASE_URL.length > 0) {
     checks.push({

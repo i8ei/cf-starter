@@ -6,6 +6,7 @@ import type { AppContextEnv, Env } from "./types";
 import health from "./routes/health";
 import auth from "./routes/auth";
 
+import aiExample from "./routes/ai-example";
 import publicExample from "./routes/public-example";
 import { purgeExpiredSessions } from "./db/session-maintenance";
 import { csrfProtection } from "./middleware/csrf";
@@ -64,6 +65,7 @@ export const app = new Hono<AppContextEnv>()
   })
   .route("/api/health", health)
   .route("/api/auth", auth)
+  .route("/api/ai/example", aiExample)
   .route("/api/public/example", publicExample);
 
 export type AppType = typeof app;

@@ -10,6 +10,7 @@ export interface Env {
   DB: D1Database;
   KV?: KVNamespace;
   BUCKET: R2Bucket;
+  AI?: Ai;
   RATE_LIMITER?: DurableObjectNamespace;
   JOBS?: Queue<JobMessage>;
   ASSETS: Fetcher;
