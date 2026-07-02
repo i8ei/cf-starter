@@ -295,7 +295,7 @@ npm run security-check
 
 チェック項目:
 
-- シークレット（`ADMIN_PASSWORD`, `BETTER_AUTH_SECRET`）が設定済みか
+- シークレット（`ADMIN_PASSWORD`, `BETTER_AUTH_SECRET`）が Cloudflare シークレットとして設定済みか（`wrangler secret list` で確認。`wrangler.jsonc` の `vars` への平文記載はブロック）
 - `CORS_ORIGIN` がワイルドカードでないか
 - `AUTH_MODE` が意図した値か
 - デモ/サンプルファイルが残っていないか
