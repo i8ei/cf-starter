@@ -560,7 +560,7 @@ seed:demo はべき等（何度実行しても安全）なので、すでに実�
 - **DurableObjects** (`RATE_LIMITER`): 認証エンドポイントのレートリミット用。既定有効。不要なら `durable_objects` と `migrations` を同時に削除/コメントアウトする。
 - **Cron Triggers**: 期限切れセッション掃除などの定期メンテナンス用。既定で毎日1回（`0 3 * * *`）実行。頻度変更可。
 - **Queues** (`JOBS`): バックグラウンドジョブ（メール送信など）が必要なときにアンコメント。
-- **Workers AI** (`AI`): AI機能が必要なときに `ai` binding をアンコメント。サンプルルートは `/api/ai/example/prompt`。
+- **Workers AI** (`AI`): AI機能が必要なときに `ai` binding をアンコメント。サンプルルートは `/api/ai/example/prompt`（要認証 + IPレートリミット。Workers AIはクレジットを消費するため匿名公開しない）。
 
 `src/types.ts` の `RATE_LIMITER` / `JOBS` / `AI` はオプション（`?`）なので、バインディングがない状態でもビルド・実行できる。
 health チェック (`/api/health`) もバインディングの有無を動的に確認する。
@@ -656,7 +656,8 @@ health チェック (`/api/health`) もバインディングの有無を動的�
 以下は5本の派生アプリ（tara-grant-scout, volunteer-taxi, tara-shisetsu, tara-ocean, taradake-ai）で判明し、テンプレートに反映済みの知見。
 
 - **seed-demo.mjs**: `better-auth/crypto` の `hashPassword()` を直接使用。カスタムscryptは廃止（形式不一致バグの根本原因だった）
-- **AuthShell org自動セット**: ログイン後に `activeOrganizationId` が未設定の場合、`useEffect` で `default-org` を自動セット。レンダリング中の直接 `mutate` は無限ループの原因になるため禁止
+- **AuthShell org自動セット**: ログイン後に `activeOrganizationId` が未設定の場合、`OrgGate` が最初の所属組織を `useEffect` で自動セット。所属組織が0件（招待なしの自己サインアップ）の場合は組織作成画面を表示する。レンダリング中の直接 `mutate` は無限ループの原因になるため禁止
+- **CSRF検証と非ブラウザクライアント**: 全ミューテーション（POST/PUT/PATCH/DELETE）で Origin/Referer 検証が必須。curl や外部スクリプトから `/api/*` に POST する場合は `Origin: <CORS_ORIGINに含まれるorigin>` ヘッダを付けないと403になる
 - **Record Engine hook命名**: リストフックは `use{Key}List`（旧: `use{Key}s` はs終わりのキーで二重sになるバグがあった）
 - **CSSトークン**: `bg-accent` を使う場合は `--accent` が `:root` と `@theme` の両方に登録されていることを確認
 - **モバイル対応**: input要素は `text-base`（16px）以上にすること。`text-sm`（14px）だとiOSが自動ズームする
@@ -698,6 +699,7 @@ health チェック (`/api/health`) もバインディングの有無を動的�
 - `npm run security-check` がデプロイ前に自動実行される
 - ブロック（✗）が出たらデプロイは止まる。修正してから再実行
 - 警告（⚠）は確認の上で判断する
+- シークレット（`BETTER_AUTH_SECRET` / `ADMIN_PASSWORD`）は `npx wrangler secret put` で設定する。`wrangler.jsonc` の `vars` に書くと平文コミットになるため security-check がブロックする（存在確認は `wrangler secret list` で行われる）
 
 ### 型安全な権限チェック
 

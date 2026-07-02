@@ -13,8 +13,11 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { parseArgs } from "node:util";
-import { readWranglerConfig } from "./lib/wrangler-config.mjs";
+import { readWranglerConfig, resolveWranglerBinary } from "./lib/wrangler-config.mjs";
+import { requiredSecretsForAuthMode } from "./lib/auth-mode.mjs";
+import { evaluateSecretChecks } from "./lib/security-check.mjs";
 
 const { values } = parseArgs({
   options: {
@@ -65,29 +68,27 @@ if (authMode === "none") {
   pass("auth-mode", `AUTH_MODE is "${authMode}"`);
 }
 
-// 3. ADMIN_PASSWORD strength (simple-admin mode)
-if (authMode === "simple-admin") {
-  const pw = vars.ADMIN_PASSWORD;
-  if (!pw || pw === "TODO" || pw === "changeme") {
-    block("admin-password", "ADMIN_PASSWORD is not set or uses a placeholder. Set a strong password (8+ chars).");
-  } else if (pw.length < 8) {
-    block("admin-password", `ADMIN_PASSWORD is only ${pw.length} chars. Use 8+ characters.`);
-  } else {
-    pass("admin-password", "ADMIN_PASSWORD is configured");
+// 3/4. Required secrets (auth-mode aware).
+// Secrets live in Cloudflare secrets — wrangler.jsonc vars would commit them
+// to git, so a var with the same name is treated as a leak, not as configured.
+const requiredSecrets = requiredSecretsForAuthMode(vars);
+let secretList = null;
+if (requiredSecrets.some((name) => !vars[name])) {
+  const wrangler = resolveWranglerBinary(ROOT);
+  const listResult = spawnSync(wrangler, ["secret", "list", "--json"], {
+    cwd: ROOT,
+    encoding: "utf-8",
+    stdio: "pipe",
+  });
+  if (listResult.status === 0) {
+    try {
+      secretList = JSON.parse(listResult.stdout).map((s) => s.name);
+    } catch {
+      // keep null — reported as "could not be verified"
+    }
   }
 }
-
-// 4. BETTER_AUTH_SECRET (better-auth mode)
-if (authMode === "better-auth") {
-  const secret = vars.BETTER_AUTH_SECRET;
-  if (!secret || secret === "TODO" || secret === "changeme") {
-    block("better-auth-secret", "BETTER_AUTH_SECRET is not set or uses a placeholder. Generate a random 32+ char string.");
-  } else if (secret.length < 32) {
-    warn("better-auth-secret", `BETTER_AUTH_SECRET is only ${secret.length} chars. Recommend 32+ characters.`);
-  } else {
-    pass("better-auth-secret", "BETTER_AUTH_SECRET is configured");
-  }
-}
+checks.push(...evaluateSecretChecks({ vars, requiredSecrets, secretList }));
 
 // 5. CORS_ORIGIN check
 const corsOrigin = vars.CORS_ORIGIN ?? "";
@@ -126,7 +127,7 @@ const hardcodedSecrets = secretPatterns.filter(({ file, pattern }) => {
   return pattern.test(fs.readFileSync(filePath, "utf-8"));
 });
 if (hardcodedSecrets.length > 0) {
-  block("hardcoded-secrets", "Secrets found hardcoded in source code. Move to wrangler.jsonc vars or .dev.vars.");
+  block("hardcoded-secrets", "Secrets found hardcoded in source code. Move to .dev.vars (local) and `npx wrangler secret put` (production).");
 } else {
   pass("hardcoded-secrets", "No hardcoded secrets detected in source");
 }

@@ -1,15 +1,16 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Route, Switch } from "wouter";
-import { useSession, useSetActiveOrganization, useListOrganizations, type SessionData } from "./hooks/useSession";
+import { useSession, useSetActiveOrganization, useListOrganizations, useCreateOrganization, type SessionData } from "./hooks/useSession";
 import { useHealth } from "./hooks/useHealth";
 import { AppShell } from "./components/AppShell";
 import { PublicShell } from "./components/PublicShell";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { Panel } from "./components/Panel";
 import { AuthPage } from "./pages/AuthPage";
 import { InvitePage } from "./pages/InvitePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { HomePage } from "./pages/HomePage";
-import { lazy, Suspense, useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 
 const DemoPage = lazy(() => import("./pages/DemoPage").then((m) => ({ default: m.DemoPage })));
 
@@ -32,15 +33,15 @@ const publicNavItems: { label: string; href: string }[] = [
 ];
 
 /**
- * Authenticated shell — only runs useSession when auth is enabled.
- * Prevents unnecessary /api/auth/me calls for public apps.
- */
-/**
- * Auto-activates the first organization after login in better-auth mode.
+ * Resolves the active organization in better-auth mode.
  * Separated into its own component so org-related hooks are only called
  * when Better Auth endpoints are available (avoids 404 in simple-admin mode).
+ *
+ * - Memberships exist → auto-activates the first organization.
+ * - No memberships (self-signup without an invitation) → shows a
+ *   create-organization form instead of waiting forever.
  */
-function OrgAutoActivator({ session }: { session: SessionData }) {
+function OrgGate({ session }: { session: SessionData }) {
   const orgs = useListOrganizations();
   const setActiveOrg = useSetActiveOrganization();
   const attempted = useRef(false);
@@ -53,19 +54,75 @@ function OrgAutoActivator({ session }: { session: SessionData }) {
     setActiveOrg.mutate(orgList[0].id);
   }, [session.currentOrganizationId, orgs.data, setActiveOrg]);
 
-  return null;
+  if (orgs.data && orgs.data.length === 0) {
+    return <CreateOrganizationPrompt />;
+  }
+
+  return (
+    <div className="flex justify-center py-20">
+      <p className="text-sm text-muted">Loading...</p>
+    </div>
+  );
+}
+
+function CreateOrganizationPrompt() {
+  const [name, setName] = useState("");
+  const createOrg = useCreateOrganization();
+  const setActiveOrg = useSetActiveOrganization();
+
+  const handleSubmit = () => {
+    const trimmed = name.trim();
+    if (!trimmed || createOrg.isPending) return;
+    createOrg.mutate(
+      { name: trimmed },
+      {
+        onSuccess: (data) => {
+          // Activate immediately — the session refetch it triggers is what
+          // moves AuthShell past the org gate.
+          if (data?.id) setActiveOrg.mutate(data.id);
+        },
+      }
+    );
+  };
+
+  return (
+    <div className="mx-auto max-w-sm">
+      <Panel
+        title="組織を作成"
+        subtitle="所属している組織がありません。招待を受けている場合は、招待メールのリンクを開いてください。"
+      >
+        <div className="space-y-3">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            placeholder="組織名"
+            className="w-full rounded-lg border border-input-border bg-input-bg px-4 py-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            autoFocus
+          />
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={createOrg.isPending || setActiveOrg.isPending}
+            className="w-full rounded-xl bg-amber-400 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
+          >
+            作成
+          </button>
+          {createOrg.error ? (
+            <p className="text-sm text-error-text">{createOrg.error.message}</p>
+          ) : null}
+        </div>
+      </Panel>
+    </div>
+  );
 }
 
 function AuthShell({ authMode, children }: { authMode: "simple-admin" | "better-auth"; children: React.ReactNode }) {
   const { data: session, isLoading } = useSession();
 
-  const waitingForOrg = authMode === "better-auth" && session && !session.currentOrganizationId;
-
-  if (isLoading || waitingForOrg) {
+  if (isLoading) {
     return (
       <AppShell>
-        {/* Render OrgAutoActivator only in better-auth mode while waiting for org */}
-        {waitingForOrg && <OrgAutoActivator session={session} />}
         <div className="flex justify-center py-20">
           <p className="text-sm text-muted">Loading...</p>
         </div>
@@ -76,6 +133,13 @@ function AuthShell({ authMode, children }: { authMode: "simple-admin" | "better-
     return (
       <AppShell>
         <AuthPage authMode={authMode} />
+      </AppShell>
+    );
+  }
+  if (authMode === "better-auth" && !session.currentOrganizationId) {
+    return (
+      <AppShell>
+        <OrgGate session={session} />
       </AppShell>
     );
   }

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added Record Engine support for audit metadata exclusion via `sensitive: true` or `audit: false` field options.
 - Added a Workers AI addon entry point (`/api/ai/example/prompt`) and optional `AI` binding documentation.
+- Added an organization-creation screen for better-auth users with no organization memberships. Self-signup users without an invitation were previously stuck on a permanent loading screen.
 - Added weekly Renovate updates with automatic merging for patch and minor releases, manual review for major releases, and lockfile maintenance.
 - Added a separate Chromium Playwright job to CI.
 
@@ -27,6 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stopped returning the first configured CORS origin when requests have no `Origin` header.
 - Aligned CI with the local quality gate by running lint, typecheck, tests, unused-code checks, and build on Node.js 20.19.0.
 - Updated addon documentation: Durable Object rate limiting and Cron are now default-on; Queues and Workers AI remain opt-in.
+- The Workers AI example route (`/api/ai/example/prompt`) now requires authentication in addition to per-IP rate limiting.
+- Better Auth catch-all rate limiting now applies only to mutating requests, so reads (get-session, organization list) from shared IPs (office NAT, mobile CGNAT) are no longer throttled.
+
+### Fixed
+
+- `security-check` now verifies required secrets via `wrangler secret list` and blocks plaintext secrets committed to `wrangler.jsonc` vars. Previously it only accepted secrets placed in vars, which blocked correctly configured deploys and encouraged committing secrets to git.
+- Logout now also clears the `__Secure-`-prefixed Better Auth session cookie used when cookies are marked Secure (production).
 
 ## [2.1.0]
 

@@ -12,6 +12,7 @@ import type { AppContextEnv } from "../types";
 import { jsonError } from "../lib/http";
 import { validator } from "../lib/validator";
 import { rateLimit } from "../middleware/rate-limit";
+import { requireAuth } from "../middleware/auth";
 import { aiPromptSchema, type AiResponse } from "../../shared/schemas/ai";
 
 type WorkersAiTextGenerationResult = {
@@ -20,9 +21,12 @@ type WorkersAiTextGenerationResult = {
 
 const MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
 
+// requireAuth: Workers AI calls spend account credits — never expose them to
+// anonymous traffic. Per-IP rate limiting alone doesn't survive IP rotation.
 const aiExample = new Hono<AppContextEnv>().post(
   "/prompt",
   rateLimit({ namespace: "ai-example-prompt", maxRequests: 20, windowSeconds: 60 }),
+  requireAuth,
   validator("json", aiPromptSchema),
   async (c) => {
     if (!c.env.AI) {

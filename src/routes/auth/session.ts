@@ -36,10 +36,12 @@ const app = new Hono<AppContextEnv>()
       });
     }
 
-    // Clear all possible session cookies
+    // Clear all possible session cookies. Better Auth prefixes its cookie
+    // with __Secure- when cookies are Secure, so both names must be cleared.
     deleteCookie(c, HOST_SESSION_COOKIE_NAME, { path: "/", sameSite, secure: true });
     deleteCookie(c, LEGACY_SESSION_COOKIE_NAME, { path: "/", sameSite, secure });
     deleteCookie(c, "ba.session_token", { path: "/", sameSite, secure });
+    deleteCookie(c, "__Secure-ba.session_token", { path: "/", sameSite, secure: true });
 
     return c.json({ ok: true });
   })

@@ -80,6 +80,47 @@ describe("app security", () => {
     });
   });
 
+  it("requires authentication for the AI example route", async () => {
+    const res = await app.fetch(
+      new Request("http://local.test/api/ai/example/prompt", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "http://localhost:5173",
+        },
+        body: JSON.stringify({ prompt: "hello" }),
+      }),
+      createTestEnv({ AUTH_MODE: "simple-admin", ADMIN_PASSWORD: "test" })
+    );
+
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({
+      error: {
+        code: "unauthorized",
+        message: "Authentication required",
+        requestId: expect.any(String),
+      },
+    });
+  });
+
+  it("does not rate-limit read requests on the Better Auth catch-all", async () => {
+    const env = createTestEnv({ AUTH_MODE: "simple-admin", ADMIN_PASSWORD: "test" });
+    const request = () =>
+      app.fetch(
+        new Request("http://local.test/api/auth/get-session", {
+          method: "GET",
+          headers: { "cf-connecting-ip": "203.0.113.20" },
+        }),
+        env
+      );
+
+    // Far beyond the 10/min mutating limit — reads must never return 429.
+    for (let i = 0; i < 15; i++) {
+      const res = await request();
+      expect(res.status).toBe(404);
+    }
+  });
+
   it("returns a unified validation error shape", async () => {
     const res = await app.fetch(
       new Request("http://local.test/api/auth/admin-login", {
