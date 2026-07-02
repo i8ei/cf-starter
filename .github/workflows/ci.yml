@@ -35,6 +35,12 @@ jobs:
       - name: Check unused code
         run: npm run unused
 
+      # Template-only: guard CLAUDE.md against bloat. Skipped in derived apps
+      # (different repo name), which naturally accrete app-specific context.
+      - name: Check docs size
+        if: github.repository == 'i8ei/cf-starter'
+        run: npm run docs:check -- --strict
+
       - name: Build
         run: npm run build
 
