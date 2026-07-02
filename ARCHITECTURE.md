@@ -158,7 +158,7 @@ UI/UX 品質:
 
 ### Record Engine を使わない場合
 
-coreからRecord Engineへの直接importはゼロ。CLAUDE.md の「Record Engine を使わない場合」セクションに従ってファイルを削除すれば、coreは壊れない。
+coreからRecord Engineへの直接importはゼロ。`docs/record-engine.md` の「Record Engine を使わない場合」セクションに従ってファイルを削除すれば、coreは壊れない。
 
 ## Feature Structure
 

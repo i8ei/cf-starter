@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added an organization-creation screen for better-auth users with no organization memberships. Self-signup users without an invitation were previously stuck on a permanent loading screen.
 - Added weekly Renovate updates with automatic merging for patch and minor releases, manual review for major releases, and lockfile maintenance.
 - Added a separate Chromium Playwright job to CI.
+- Split reference detail out of `CLAUDE.md` into topic files under `docs/` (auth, frontend, ui-kit, runbook, record-engine, patterns), cutting the always-loaded `CLAUDE.md` from ~38KB to ~11KB while keeping load-bearing invariants, Record Engine footguns, and security musts in the root file. Added a task-triggered docs map so assistants read the right detail file before editing.
+- Added `npm run docs:check` to guard `CLAUDE.md` against bloat (byte budget), wired into template CI only (skipped in derived apps by repository name).
 
 ### Changed
 
