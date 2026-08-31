@@ -11,7 +11,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["@cloudflare/workers-types/2023-07-01" /* latest entrypoint, covers compat_date >= 2023-07-01 */, "vite/client"],
+    "types": ["@cloudflare/workers-types", "vite/client"],
     "paths": {
       "~/*": ["./app/*"],
       "@server/*": ["./src/*"],

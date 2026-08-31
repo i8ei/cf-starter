@@ -48,7 +48,7 @@
     "@hono/zod-validator": "^0.5",
     "@tanstack/react-query": "^5",
     "better-auth": "^1.5.5",
-    "drizzle-orm": "^0.43",
+    "drizzle-orm": "^0.45",
     "hono": "^4",
     "react": "^19",
     "react-dom": "^19",
@@ -59,7 +59,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1",
-    "@cloudflare/workers-types": "^4",
+    "@cloudflare/workers-types": "^5",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "^4",
     "@types/react": "^19",
