@@ -1,5 +1,10 @@
 # cf-starter
 
+> [!NOTE]
+> **Project Status: Archived / Reference Only (2026-08)**  
+> 本リポジトリは開発・保守を終了し、過去の設計・実装の参照用として保管しています。  
+> 現在の新規開発では、Cloudflare 公式の最小構成（Hono + Workers Static Assets + D1）をベースに、AI エージェントによる都度生成（JIT）を行う方針に移行しました。
+
 <p align="center">
   <img src="docs/hero.webp" alt="cf-starter — Edge Platform Framework" width="800" />
 </p>
